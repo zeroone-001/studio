@@ -286,14 +286,17 @@ export default function KioskPage() {
     <KioskLayout>
       <canvas ref={canvasRef} className="hidden" />
       
-      {/* Small Text Logo - All Other Screens */}
+      {/* Small Text Logo & Date - All Other Screens */}
       {appState !== "welcome" && (
-        <div 
-          className="fixed bottom-6 left-0 right-0 z-[60] text-center cursor-default select-none opacity-40 hover:opacity-100 transition-opacity"
-          onClick={handleLogoClick}
-        >
-          <p className="font-headline font-black text-[10px] sm:text-xs tracking-[0.4em] text-white uppercase italic flex items-center justify-center gap-2">
-            <span>JNL</span> <span className="text-primary">STUDIO</span>
+        <div className="fixed bottom-6 left-6 right-6 z-[60] flex justify-between items-center opacity-40 hover:opacity-100 transition-opacity pointer-events-none">
+          <div className="cursor-pointer pointer-events-auto" onClick={handleLogoClick}>
+            <p className="font-headline font-black text-[10px] sm:text-xs tracking-[0.2em] text-white uppercase italic flex items-center gap-3">
+              <span>JNL</span>
+              <span className="text-primary">STUDIO</span>
+            </p>
+          </div>
+          <p className="text-[8px] sm:text-[10px] font-bold text-white uppercase tracking-[0.3em] pointer-events-none">
+            {new Date().toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })}
           </p>
         </div>
       )}
@@ -386,7 +389,28 @@ export default function KioskPage() {
                <div className="text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">TOTAL DETECTED</div>
             </div>
 
-            {(paymentReceived >= 50 || isOwnerMode) && (
+            {isOwnerMode ? (
+              <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto">
+                <NeonButton 
+                  onClick={() => {
+                    setPackageSelected(50);
+                    setAppState("setup");
+                  }}
+                  className="w-full py-6 text-base"
+                >
+                  TEST ₱50 PKG
+                </NeonButton>
+                <NeonButton 
+                  onClick={() => {
+                    setPackageSelected(100);
+                    setAppState("setup");
+                  }}
+                  className="w-full py-6 text-base"
+                >
+                  TEST ₱100 PKG
+                </NeonButton>
+              </div>
+            ) : paymentReceived >= 50 ? (
               <div className="space-y-4">
                 <NeonButton 
                   onClick={() => {
@@ -398,7 +422,7 @@ export default function KioskPage() {
                   START SESSION
                 </NeonButton>
               </div>
-            )}
+            ) : null}
           </div>
         )}
 

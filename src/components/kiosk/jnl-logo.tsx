@@ -57,12 +57,12 @@ export function JnlLogo({ variant = "hero", color = "light", className }: JnlLog
         </div>
       )}
 
-      {/* Main Typography */}
+      {/* Main Typography - Added gap to prevent italic overlap */}
       <div className="text-center">
         <h1 
           className={cn(
             "font-headline font-black tracking-tight uppercase italic leading-none flex items-center justify-center",
-            isHero ? "text-6xl gap-4" : isWatermark ? "text-lg gap-1.5" : "text-xl gap-2"
+            isHero ? "text-6xl gap-4" : isWatermark ? "text-lg gap-2" : "text-xl gap-2"
           )}
           style={{ color: activeColors.main }}
         >

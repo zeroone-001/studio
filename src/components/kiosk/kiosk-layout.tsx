@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -32,34 +31,33 @@ export function KioskLayout({ children, className }: KioskLayoutProps) {
   const [meteors, setMeteors] = useState<Meteor[]>([]);
 
   useEffect(() => {
-    // Generate 200 stars for a dense, high-end celestial feel
+    // Generate stars only on the client
     setStars(
       Array.from({ length: 200 }).map((_, i) => ({
         id: i,
         top: `${Math.random() * 100}%`,
         left: `${Math.random() * 100}%`,
-        size: `${Math.random() * 2 + 1}px`, // Slightly larger stars
+        size: `${Math.random() * 2 + 1}px`,
         duration: `${(Math.random() * 4 + 2).toFixed(2)}s`,
         delay: `${(Math.random() * 10).toFixed(2)}s`,
-        opacity: Math.random() * 0.8 + 0.2, // High visibility
+        opacity: Math.random() * 0.8 + 0.2,
       }))
     );
 
-    // Frequent meteor showers
     setMeteors(
       Array.from({ length: 12 }).map((_, i) => ({
         id: i,
         top: `${Math.random() * 50}%`,
         right: `${Math.random() * 30}%`,
-        duration: `${(Math.random() * 2 + 3).toFixed(2)}s`, // Faster meteors
+        duration: `${(Math.random() * 2 + 3).toFixed(2)}s`,
         delay: `${(Math.random() * 20).toFixed(2)}s`,
       }))
     );
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-black flex items-center justify-center overflow-hidden touch-none select-none">
-      {/* Global Background Elements */}
+    <div className="fixed inset-0 bg-black flex items-center justify-center overflow-hidden touch-none select-none w-screen h-[100dvh]">
+      {/* Background stays under all components */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
         {stars.map((star) => (
           <div
@@ -91,6 +89,7 @@ export function KioskLayout({ children, className }: KioskLayoutProps) {
         <div className="absolute inset-0 bg-gradient-to-b from-primary/15 via-transparent to-primary/15" />
       </div>
 
+      {/* Portrait Container - Optimized for Tablet Heights */}
       <div className={cn(
         "portrait-container z-10 bg-black/20 backdrop-blur-[1px]",
         "safe-area-spacing",

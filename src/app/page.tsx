@@ -8,13 +8,13 @@ import { AdminControls } from "@/components/kiosk/admin-controls";
 import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
   Wallet, Sparkles, Frame, Quote, Trash2, Cat, Moon, Sun, 
-  Coffee, Pizza, Flower2, Crown, Layers, CameraIcon, Flashlight, User, HeartIcon, Maximize2,
-  ShieldCheck, QrCode, Facebook, CheckCircle2, Printer, Share2, Heart, MessageCircle
+  Coffee, Pizza, Flower2, Crown, Layers, CameraIcon, Flashlight, User, HeartIcon,
+  ShieldCheck, QrCode, Facebook, CheckCircle2, Printer, Share2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
 import { BlueprintFrame } from "@/components/kiosk/blueprint-frame";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import * as Kawaii from "@/components/kiosk/kawaii-stickers";
 
@@ -102,7 +102,6 @@ export default function KioskPage() {
   // Admin & Storage States
   const [isOwnerMode, setIsOwnerMode] = useState(false);
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
-  const [logoClickCount, setLogoClickCount] = useState(0);
   const [usbHandle, setUsbHandle] = useState<any>(null);
   const [isDevMode, setIsDevMode] = useState(true);
 
@@ -115,7 +114,6 @@ export default function KioskPage() {
     return FILTERS.slice(0, packageSelected === 100 ? 10 : 5);
   }, [packageSelected]);
 
-  // Sync blueprint selection when package is chosen
   useEffect(() => {
     if (packageSelected) {
       const first = BLUEPRINTS.find(bp => bp.package === packageSelected);
@@ -123,7 +121,6 @@ export default function KioskPage() {
     }
   }, [packageSelected]);
 
-  // Handle Printing Simulation
   useEffect(() => {
     if (appState === "printing" && printProgress < 100) {
       const timer = setInterval(() => {
@@ -151,11 +148,9 @@ export default function KioskPage() {
     setPromotionalConsent(null);
   }, []);
 
-  // Auto-reset timer for the "Thank You" screen
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (appState === "printing" && printProgress === 100) {
-      // Give the user 45 seconds to scan QR codes before automatically returning to Welcome
       timer = setTimeout(() => {
         resetSession();
       }, 45000); 
@@ -163,7 +158,6 @@ export default function KioskPage() {
     return () => clearTimeout(timer);
   }, [appState, printProgress, resetSession]);
 
-  // Camera Management
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -187,13 +181,12 @@ export default function KioskPage() {
 
   const takePhoto = (): string | null => {
     if (!videoRef.current || !canvasRef.current) return null;
-    const video = videoRef.current;
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
     if (context) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
       return canvas.toDataURL('image/jpeg', 0.9);
     }
     return null;
@@ -234,14 +227,7 @@ export default function KioskPage() {
   }, [appState]);
 
   const handleLogoClick = () => {
-    setLogoClickCount(prev => {
-      const next = prev + 1;
-      if (next >= 5) {
-        setIsAdminDialogOpen(true);
-        return 0;
-      }
-      return next;
-    });
+    setIsAdminDialogOpen(true);
   };
 
   const addSticker = (type: string) => {
@@ -256,6 +242,7 @@ export default function KioskPage() {
     <KioskLayout>
       <canvas ref={canvasRef} className="hidden" />
       
+      {/* Small Bottom Branding for UI Pages */}
       {appState !== "welcome" && (
         <div className="fixed bottom-6 left-6 right-6 z-[60] flex justify-between items-center opacity-40 hover:opacity-100 transition-opacity pointer-events-none">
           <div className="cursor-pointer pointer-events-auto" onClick={handleLogoClick}>
@@ -292,7 +279,8 @@ export default function KioskPage() {
         />
       )}
 
-      <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 overflow-y-auto pt-36 sm:pt-48 pb-20 sm:pb-24">
+      {/* Main Content Area - Auto Adjusts to Portrait Viewports */}
+      <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 overflow-y-auto pt-36 sm:pt-48 pb-20 sm:pb-24 scrollbar-hide">
         
         {appState === "welcome" && (
           <div className="flex flex-col items-center w-full max-w-lg animate-in fade-in slide-in-from-bottom-4 duration-1000" style={{ paddingTop: '120px', paddingBottom: '100px' }}>
@@ -318,7 +306,7 @@ export default function KioskPage() {
         )}
 
         {appState === "payment" && (
-          <div className="w-full max-md animate-in slide-in-from-bottom-8 duration-500 text-center">
+          <div className="w-full max-w-md animate-in slide-in-from-bottom-8 duration-500 text-center">
             <div className="mb-10">
                <div className="w-28 h-28 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-dashed border-primary/30 animate-pulse">
                   <Wallet className="w-12 h-12 text-primary" />
@@ -396,7 +384,7 @@ export default function KioskPage() {
         )}
 
         {appState === "review" && (
-          <div className="w-full max-lg animate-in fade-in duration-500 text-center">
+          <div className="w-full max-w-lg animate-in fade-in duration-500 text-center">
             <h2 className="font-headline font-black text-3xl mb-6 italic uppercase">Looking Sharp!</h2>
             <div className="w-full max-w-[450px] mb-8 mx-auto">
                {selectedBlueprint && (

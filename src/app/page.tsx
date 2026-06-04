@@ -8,12 +8,14 @@ import { AdminControls } from "@/components/kiosk/admin-controls";
 import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
   Wallet, Sparkles, Frame, Quote, Trash2, Cat, Moon, Sun, 
-  Coffee, Pizza, Flower2, Crown, Layers, CameraIcon, Flashlight, User, HeartIcon, Maximize2
+  Coffee, Pizza, Flower2, Crown, Layers, CameraIcon, Flashlight, User, HeartIcon, Maximize2,
+  ShieldCheck, QrCode, Facebook, CheckCircle2, Printer, ArrowRight, X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
 import { BlueprintFrame } from "@/components/kiosk/blueprint-frame";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 import * as Kawaii from "@/components/kiosk/kawaii-stickers";
 
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "test-stickers";
@@ -32,29 +34,24 @@ export const FILTERS = [
 ];
 
 export const STICKER_DEFS = [
-  // HEARTS
   { id: "puffy-heart", icon: Kawaii.PuffyHeart, color: "", category: "HEARTS" },
   { id: "ribbon-heart", icon: Kawaii.RibbonHeart, color: "", category: "HEARTS" },
   { id: "sparkle-heart", icon: HeartIcon, color: "text-pink-300", category: "HEARTS" },
-  // CUTE OBJECTS
   { id: "bunny", icon: Kawaii.KawaiiBunny, color: "", category: "CUTE" },
   { id: "bear", icon: Kawaii.TeddyBear, color: "", category: "CUTE" },
   { id: "cat-face", icon: Cat, color: "text-orange-200", category: "CUTE" },
   { id: "pizza", icon: Pizza, color: "text-yellow-600", category: "CUTE" },
   { id: "coffee", icon: Coffee, color: "text-amber-900", category: "CUTE" },
-  // PHOTOBOOTH ITEMS
   { id: "mini-camera", icon: CameraIcon, color: "text-zinc-400", category: "PHOTO" },
   { id: "film", icon: Layers, color: "text-zinc-500", category: "PHOTO" },
   { id: "flash", icon: Flashlight, color: "text-yellow-400", category: "PHOTO" },
   { id: "selfie", icon: User, color: "text-blue-300", category: "PHOTO" },
-  // AESTHETIC ITEMS
   { id: "cloud", icon: Kawaii.KawaiiCloud, color: "", category: "AESTHETIC" },
   { id: "sparkle", icon: Kawaii.PastelSparkle, color: "", category: "AESTHETIC" },
   { id: "moon", icon: Moon, color: "text-indigo-200", category: "AESTHETIC" },
   { id: "sun", icon: Sun, color: "text-yellow-300", category: "AESTHETIC" },
   { id: "crown", icon: Crown, color: "text-yellow-400", category: "AESTHETIC" },
   { id: "flower", icon: Flower2, color: "text-pink-400", category: "AESTHETIC" },
-  // TEXT STICKERS
   { id: "slay", icon: Kawaii.SlayText, color: "", category: "TEXT" },
   { id: "cutie", icon: Kawaii.CutieText, color: "", category: "TEXT" },
   { id: "besties", icon: Kawaii.BestiesText, color: "", category: "TEXT" },
@@ -85,6 +82,7 @@ export default function KioskPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
   const [currentShotIndex, setCurrentShotIndex] = useState(0);
+  const [printProgress, setPrintProgress] = useState(0);
   
   // Camera Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -124,22 +122,27 @@ export default function KioskPage() {
     }
   }, [packageSelected]);
 
+  // Handle Printing Simulation
+  useEffect(() => {
+    if (appState === "printing" && printProgress < 100) {
+      const timer = setInterval(() => {
+        setPrintProgress(prev => Math.min(prev + 2, 100));
+      }, 100);
+      return () => clearInterval(timer);
+    }
+  }, [appState, printProgress]);
+
   // Camera Management
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: "user",
-          width: { ideal: 1280 },
-          height: { ideal: 1706 }
-        },
+        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 1706 } },
         audio: false
       });
       setCameraStream(stream);
       if (videoRef.current) videoRef.current.srcObject = stream;
       setCameraError(null);
     } catch (err) {
-      console.error("Camera Error:", err);
       setCameraError("Unable to access device camera.");
     }
   };
@@ -156,7 +159,6 @@ export default function KioskPage() {
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
-    
     if (context) {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
@@ -166,23 +168,25 @@ export default function KioskPage() {
     return null;
   };
 
-  const handleLogoClick = () => {
-    setLogoClickCount(prev => {
-      const next = prev + 1;
-      if (next >= 5) {
-        setIsAdminDialogOpen(true);
-        return 0;
+  const startShotSequence = async () => {
+    const totalShots = packageSelected === 50 ? 3 : 6;
+    const photos: string[] = [];
+    for (let i = 0; i < totalShots; i++) {
+      setCurrentShotIndex(i + 1);
+      for (let c = 3; c > 0; c--) {
+        setCountdown(c);
+        await new Promise(r => setTimeout(r, 1000));
       }
-      return next;
-    });
-  };
-
-  useEffect(() => {
-    if (logoClickCount > 0) {
-      const timer = setTimeout(() => setLogoClickCount(0), 3000);
-      return () => clearTimeout(timer);
+      setCountdown(null);
+      setIsProcessing(true);
+      const shot = takePhoto();
+      photos.push(shot || `https://picsum.photos/seed/jnl-${Date.now()}-${i}/1200/1600`);
+      await new Promise(r => setTimeout(r, 800)); 
+      setIsProcessing(false);
     }
-  }, [logoClickCount]);
+    setCapturedPhotos(photos);
+    setAppState("review");
+  };
 
   useEffect(() => {
     if (appState === "setup" || appState === "capturing") {
@@ -198,29 +202,6 @@ export default function KioskPage() {
     }
   }, [appState]);
 
-  const startShotSequence = async () => {
-    const totalShots = packageSelected === 50 ? 3 : 6;
-    const photos: string[] = [];
-
-    for (let i = 0; i < totalShots; i++) {
-      setCurrentShotIndex(i + 1);
-      for (let c = 3; c > 0; c--) {
-        setCountdown(c);
-        await new Promise(r => setTimeout(r, 1000));
-      }
-      setCountdown(null);
-      setIsProcessing(true);
-      
-      const shot = takePhoto();
-      photos.push(shot || `https://picsum.photos/seed/jnl-${Date.now()}-${i}/1200/1600`);
-      
-      await new Promise(r => setTimeout(r, 800)); 
-      setIsProcessing(false);
-    }
-    setCapturedPhotos(photos);
-    setAppState("review");
-  };
-
   const resetSession = useCallback(() => {
     stopCamera();
     setAppState("welcome");
@@ -235,36 +216,24 @@ export default function KioskPage() {
     setPlacedStickers([]);
     setSelectedQuote(QUOTES[0]);
     setSelectedStickerId(null);
+    setPrintProgress(0);
   }, []);
 
+  const handleLogoClick = () => {
+    setLogoClickCount(prev => {
+      const next = prev + 1;
+      if (next >= 5) {
+        setIsAdminDialogOpen(true);
+        return 0;
+      }
+      return next;
+    });
+  };
+
   const addSticker = (type: string) => {
-    const newSticker: PlacedSticker = {
-      id: `sticker-${Date.now()}`,
-      type,
-      x: 50,
-      y: 40,
-      size: 15,
-      rotation: 0
-    };
+    const newSticker: PlacedSticker = { id: `sticker-${Date.now()}`, type, x: 50, y: 40, size: 15, rotation: 0 };
     setPlacedStickers(prev => [...prev, newSticker]);
     setSelectedStickerId(newSticker.id);
-  };
-
-  const updateSticker = (id: string, updates: Partial<PlacedSticker>) => {
-    setPlacedStickers(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
-  };
-
-  const removeSticker = (id: string) => {
-    setPlacedStickers(prev => prev.filter(s => s.id !== id));
-    if (selectedStickerId === id) setSelectedStickerId(null);
-  };
-
-  const bringStickerToFront = (id: string) => {
-    setPlacedStickers(prev => {
-      const sticker = prev.find(s => s.id === id);
-      if (!sticker) return prev;
-      return [...prev.filter(s => s.id !== id), sticker];
-    });
   };
 
   const isStorageBlocked = !usbHandle && !isDevMode;
@@ -273,7 +242,6 @@ export default function KioskPage() {
     <KioskLayout>
       <canvas ref={canvasRef} className="hidden" />
       
-      {/* Small Text Logo & Date - Bottom Branding Fix */}
       {appState !== "welcome" && (
         <div className="fixed bottom-6 left-6 right-6 z-[60] flex justify-between items-center opacity-40 hover:opacity-100 transition-opacity pointer-events-none">
           <div className="cursor-pointer pointer-events-auto" onClick={handleLogoClick}>
@@ -302,11 +270,7 @@ export default function KioskPage() {
           onExitOwnerMode={() => setIsOwnerMode(false)}
           hasPackage={!!packageSelected}
           onSimulateCash={(amount) => setPaymentReceived(prev => prev + amount)}
-          onBypassPayment={(pkg) => { 
-            setPaymentReceived(pkg); 
-            setPackageSelected(pkg); 
-            setAppState("setup"); 
-          }}
+          onBypassPayment={(pkg) => { setPaymentReceived(pkg); setPackageSelected(pkg); setAppState("setup"); }}
           usbStatus={usbHandle ? "connected" : "disconnected"}
           onSetupUsb={() => setUsbHandle({})}
           isDevMode={isDevMode}
@@ -317,65 +281,41 @@ export default function KioskPage() {
       <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 overflow-y-auto pt-36 sm:pt-48 pb-20 sm:pb-24">
         
         {appState === "welcome" && (
-          <div 
-            className="flex flex-col items-center w-full max-w-lg animate-in fade-in slide-in-from-bottom-4 duration-1000"
-            style={{ paddingTop: '120px', paddingBottom: '100px' }}
-          >
-            {/* 1. LOGO ICON */}
+          <div className="flex flex-col items-center w-full max-w-lg animate-in fade-in slide-in-from-bottom-4 duration-1000" style={{ paddingTop: '120px', paddingBottom: '100px' }}>
             <div className="flex justify-center mb-[40px] cursor-default" onClick={handleLogoClick}>
               <JnlLogo variant="icon" color="light" className="w-32 h-32" />
             </div>
-            
-            {/* 2. MAIN TITLE */}
             <div className="flex justify-center mb-[30px] w-full px-4">
               <h1 className="font-headline font-black text-5xl sm:text-7xl tracking-tight uppercase italic text-center whitespace-nowrap flex items-center gap-4">
                 <span className="text-white">JNL</span>
                 <span className="text-primary">STUDIO</span>
               </h1>
             </div>
-            
-            {/* 3. SUBTITLE */}
             <div className="flex justify-center mb-[20px] w-full px-4">
-              <h2 className="font-headline font-black text-2xl sm:text-3xl tracking-[0.2em] uppercase italic text-white/90 text-center">
-                TOUCH TO START
-              </h2>
+              <h2 className="font-headline font-black text-2xl sm:text-3xl tracking-[0.2em] uppercase italic text-white/90 text-center">TOUCH TO START</h2>
             </div>
-            
-            {/* 4. PHOTOBOOTH LABEL */}
             <div className="flex justify-center mb-[80px] w-full px-4">
-              <p className="font-bold text-[10px] sm:text-xs tracking-[0.5em] uppercase text-white/40 text-center">
-                PHOTOBOOTH
-              </p>
+              <p className="font-bold text-[10px] sm:text-xs tracking-[0.5em] uppercase text-white/40 text-center">PHOTOBOOTH</p>
             </div>
-            
-            {/* 5. BUTTON */}
             <div className="flex justify-center w-full">
-              <NeonButton 
-                onClick={() => setAppState("payment")} 
-                className="w-[75%] sm:w-[80%] text-2xl py-10"
-                disabled={isStorageBlocked && !isOwnerMode}
-              >
-                READY?
-              </NeonButton>
+              <NeonButton onClick={() => setAppState("payment")} className="w-[75%] sm:w-[80%] text-2xl py-10" disabled={isStorageBlocked && !isOwnerMode}>READY?</NeonButton>
             </div>
           </div>
         )}
 
         {appState === "payment" && (
           <div className="w-full max-md animate-in slide-in-from-bottom-8 duration-500 text-center">
-            <div className="mb-10 text-center">
+            <div className="mb-10">
                <div className="w-28 h-28 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-dashed border-primary/30 animate-pulse">
                   <Wallet className="w-12 h-12 text-primary" />
                </div>
                <h2 className="font-headline font-black text-3xl mb-2 italic uppercase">INSERT CASH</h2>
                <p className="text-[10px] opacity-60 uppercase font-bold tracking-widest">AWAITING BILL</p>
             </div>
-
             <div className="bg-white/5 border-2 border-white/10 p-8 mb-8">
                <div className="text-5xl sm:text-6xl font-black italic text-primary mb-2">{paymentReceived} <span className="text-2xl text-white">PHP</span></div>
                <div className="text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">TOTAL DETECTED</div>
             </div>
-
             <div className="grid grid-cols-1 gap-4 max-w-sm mx-auto">
               {isOwnerMode && (
                 <>
@@ -395,7 +335,6 @@ export default function KioskPage() {
              <div className="relative w-full aspect-[3/4] max-h-[60vh] mx-auto overflow-hidden bg-zinc-900 border-2 border-white/20">
                 <video ref={videoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover", selectedFilter.class)} />
              </div>
-
              <div className="space-y-6 sm:max-h-[70vh] overflow-y-auto pr-4 scrollbar-hide">
               <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Styling</h2>
               <div className="space-y-8">
@@ -429,23 +368,51 @@ export default function KioskPage() {
           </div>
         )}
 
-        {(appState === "decorating" || appState === "test-stickers") && (
+        {appState === "capturing" && (
+          <div className="w-full h-full flex flex-col items-center justify-center">
+            <div className="relative aspect-[3/4] max-h-[65vh] w-full max-w-lg bg-zinc-900 overflow-hidden shadow-[0_0_60px_rgba(255,51,153,0.4)] border-4 border-white">
+               <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} />
+               {countdown !== null && (
+                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-20">
+                    <span className="text-[10rem] font-headline font-black italic text-white animate-bounce drop-shadow-[0_0_40px_rgba(255,51,153,0.9)]">{countdown}</span>
+                 </div>
+               )}
+            </div>
+          </div>
+        )}
+
+        {appState === "review" && (
+          <div className="w-full max-lg animate-in fade-in duration-500 text-center">
+            <h2 className="font-headline font-black text-3xl mb-6 italic uppercase">Looking Sharp!</h2>
+            <div className="w-full max-w-[450px] mb-8 mx-auto">
+               {selectedBlueprint && (
+                 <BlueprintFrame blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.class} isPreview />
+               )}
+            </div>
+            <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
+               <NeonButton onClick={() => setAppState("decorating")} className="w-full py-8 text-xl">DECORATE</NeonButton>
+               <button onClick={() => setAppState("setup")} className="w-full border-2 border-white font-headline font-black text-xl py-8 italic uppercase hover:bg-white hover:text-black">RETAKE</button>
+            </div>
+          </div>
+        )}
+
+        {appState === "decorating" && (
           <div className="w-full max-w-6xl flex flex-col lg:flex-row gap-8 items-start animate-in fade-in duration-500">
              <div className="relative flex-1 w-full max-h-[70vh] flex items-center justify-center">
                 <div className="relative w-full h-full max-w-[450px]">
                   {selectedBlueprint && (
                     <BlueprintFrame 
                       blueprint={selectedBlueprint} 
-                      photos={capturedPhotos.length ? capturedPhotos : Array(6).fill("https://picsum.photos/seed/test/1200/1600")} 
+                      photos={capturedPhotos} 
                       filterClass={selectedFilter.class}
                       isPreview
                       quoteText={selectedQuote.text}
                       stickers={placedStickers}
                       selectedStickerId={selectedStickerId}
-                      onUpdateSticker={updateSticker}
-                      onRemoveSticker={removeSticker}
+                      onUpdateSticker={(id, updates) => setPlacedStickers(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))}
+                      onRemoveSticker={(id) => setPlacedStickers(prev => prev.filter(s => s.id !== id))}
                       onSelectSticker={setSelectedStickerId}
-                      onBringToFront={bringStickerToFront}
+                      onBringToFront={(id) => setPlacedStickers(prev => [...prev.filter(s => s.id !== id), prev.find(s => s.id === id)!])}
                     />
                   )}
                 </div>
@@ -453,9 +420,7 @@ export default function KioskPage() {
              <div className="w-full lg:w-96 space-y-6 lg:max-h-[75vh] overflow-y-auto pr-4 scrollbar-hide">
                 <div className="flex items-center justify-between">
                   <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Decoration</h2>
-                  <button onClick={() => { setPlacedStickers([]); setSelectedStickerId(null); }} className="text-[10px] font-black uppercase text-red-500 bg-red-500/10 px-3 py-1.5 border border-red-500/20">
-                    <Trash2 className="w-3 h-3 inline mr-2" /> Clear All
-                  </button>
+                  <button onClick={() => setPlacedStickers([])} className="text-[10px] font-black uppercase text-red-500 bg-red-500/10 px-3 py-1.5 border border-red-500/20"><Trash2 className="w-3 h-3 inline mr-2" /> Clear All</button>
                 </div>
                 <div className="space-y-8">
                   <Tabs defaultValue="HEARTS" onValueChange={setActiveStickerCategory} className="w-full">
@@ -482,41 +447,92 @@ export default function KioskPage() {
                       ))}
                     </div>
                   </div>
-                  <div className="bg-white/5 border border-white/10 p-4 rounded-xl flex items-center gap-4">
-                    <Maximize2 className="w-5 h-5 text-primary" />
-                    <p className="text-[10px] font-bold text-white/60 uppercase leading-relaxed tracking-wider">Drag stickers to move. Use handles to scale & rotate live.</p>
-                  </div>
                 </div>
-                <NeonButton onClick={() => appState === "test-stickers" ? setAppState("welcome") : setAppState("consent")} className="w-full !py-8 mt-6">{appState === "test-stickers" ? "FINISH TEST" : "DONE"}</NeonButton>
+                <NeonButton onClick={() => setAppState("consent")} className="w-full !py-8 mt-6">DONE</NeonButton>
              </div>
           </div>
         )}
 
-        {appState === "capturing" && (
-          <div className="w-full h-full flex flex-col items-center justify-center">
-            <div className="relative aspect-[3/4] max-h-[65vh] w-full max-w-lg bg-zinc-900 overflow-hidden shadow-[0_0_60px_rgba(255,51,153,0.4)] border-4 border-white">
-               <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} />
-               {countdown !== null && (
-                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-20">
-                    <span className="text-[10rem] font-headline font-black italic text-white animate-bounce drop-shadow-[0_0_40px_rgba(255,51,153,0.9)]">{countdown}</span>
-                 </div>
-               )}
+        {appState === "consent" && (
+          <div className="w-full max-w-xl animate-in slide-in-from-bottom-8 duration-500 text-center">
+            <div className="mb-10">
+               <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-primary/30">
+                  <ShieldCheck className="w-12 h-12 text-primary" />
+               </div>
+               <h2 className="font-headline font-black text-4xl mb-4 italic uppercase">Privacy Consent</h2>
+               <p className="text-sm opacity-60 uppercase font-bold tracking-widest leading-relaxed">Do you allow JNL Studio to store a digital copy of your photo for QR code retrieval?</p>
+            </div>
+            <div className="space-y-4">
+               <NeonButton onClick={() => setAppState("printing")} className="w-full py-8 text-xl">I AGREE</NeonButton>
+               <button onClick={() => setAppState("printing")} className="w-full border-2 border-white/20 font-headline font-black text-lg py-6 italic uppercase hover:bg-white/10 text-white/40 transition-all">NO, JUST PRINT</button>
             </div>
           </div>
         )}
 
-        {appState === "review" && (
-          <div className="w-full max-lg animate-in fade-in duration-500 text-center">
-            <h2 className="font-headline font-black text-3xl mb-6 italic uppercase">Looking Sharp!</h2>
-            <div className="w-full max-w-[450px] mb-8 mx-auto">
-               {selectedBlueprint && (
-                 <BlueprintFrame blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.class} isPreview />
-               )}
-            </div>
-            <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
-               <NeonButton onClick={() => setAppState("decorating")} className="w-full py-8 text-xl">DECORATE</NeonButton>
-               <button onClick={() => setAppState("setup")} className="w-full border-2 border-white font-headline font-black text-xl py-8 italic uppercase hover:bg-white hover:text-black">RETAKE</button>
-            </div>
+        {appState === "printing" && (
+          <div className="w-full max-w-3xl animate-in fade-in duration-500">
+             {printProgress < 100 ? (
+                <div className="text-center space-y-8 py-12">
+                   <div className="relative w-32 h-32 mx-auto">
+                      <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
+                      <div className="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin" />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                         <Printer className="w-12 h-12 text-primary animate-pulse" />
+                      </div>
+                   </div>
+                   <div className="space-y-2">
+                      <h2 className="font-headline font-black text-3xl italic uppercase">Printing Portrait...</h2>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Please wait for the photo to exit the slot</p>
+                   </div>
+                   <div className="max-w-md mx-auto">
+                      <Progress value={printProgress} className="h-3 bg-white/5 border border-white/10" />
+                      <div className="flex justify-between mt-2 text-[10px] font-black uppercase opacity-60">
+                         <span>Preparing Frame</span>
+                         <span>{printProgress}%</span>
+                      </div>
+                   </div>
+                </div>
+             ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center animate-in slide-in-from-bottom-8">
+                   <div className="space-y-8 text-center lg:text-left">
+                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/30 rounded-full mb-4">
+                         <CheckCircle2 className="w-4 h-4 text-green-500" />
+                         <span className="text-[10px] font-black uppercase text-green-500 tracking-widest">Print Successful</span>
+                      </div>
+                      <h2 className="font-headline font-black text-5xl italic uppercase leading-none">Capture <br /><span className="text-primary">Complete</span></h2>
+                      <p className="text-sm opacity-60 font-bold uppercase tracking-widest max-w-sm">Thank you for visiting JNL Studio! Your premium physical print is ready for collection.</p>
+                      <NeonButton onClick={resetSession} className="w-full lg:w-auto px-16 !py-8 text-xl">FINISH</NeonButton>
+                   </div>
+
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div className="bg-white/5 border border-white/10 p-6 flex flex-col items-center text-center space-y-4">
+                         <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center border border-primary/30">
+                            <QrCode className="w-5 h-5 text-primary" />
+                         </div>
+                         <div className="space-y-1">
+                            <h3 className="font-headline font-black text-sm uppercase italic">SOFT COPY</h3>
+                            <p className="text-[8px] font-bold opacity-40 uppercase tracking-widest">Download digital portrait</p>
+                         </div>
+                         <div className="aspect-square w-32 bg-white p-2 rounded-lg">
+                            <img src="https://picsum.photos/seed/softcopy/200/200" alt="Soft Copy QR" className="w-full h-full object-cover" />
+                         </div>
+                      </div>
+
+                      <div className="bg-white/5 border border-white/10 p-6 flex flex-col items-center text-center space-y-4">
+                         <div className="w-10 h-10 bg-blue-500/10 rounded-full flex items-center justify-center border border-blue-500/30">
+                            <Facebook className="w-5 h-5 text-blue-500" />
+                         </div>
+                         <div className="space-y-1">
+                            <h3 className="font-headline font-black text-sm uppercase italic">FOLLOW US</h3>
+                            <p className="text-[8px] font-bold opacity-40 uppercase tracking-widest">JNL Studio Facebook</p>
+                         </div>
+                         <div className="aspect-square w-32 bg-white p-2 rounded-lg">
+                            <img src="https://picsum.photos/seed/fb-qr/200/200" alt="Facebook QR" className="w-full h-full object-cover" />
+                         </div>
+                      </div>
+                   </div>
+                </div>
+             )}
           </div>
         )}
       </div>

@@ -6,6 +6,7 @@ import Image from "next/image";
 import { FrameBlueprint } from "./frame-blueprint";
 import { cn } from "@/lib/utils";
 import { STICKER_DEFS, PlacedSticker } from "@/app/page";
+import { X } from "lucide-react";
 
 interface BlueprintFrameProps {
   blueprint: FrameBlueprint;
@@ -17,6 +18,7 @@ interface BlueprintFrameProps {
   isPreview?: boolean;
   stickers?: PlacedSticker[];
   onStickerPointerDown?: (id: string) => void;
+  onRemoveSticker?: (id: string) => void;
 }
 
 export function BlueprintFrame({
@@ -29,6 +31,7 @@ export function BlueprintFrame({
   isPreview = false,
   stickers = [],
   onStickerPointerDown,
+  onRemoveSticker,
 }: BlueprintFrameProps) {
   // Safety check to prevent crash if blueprint is undefined
   if (!blueprint || !blueprint.slots) {
@@ -97,14 +100,14 @@ export function BlueprintFrame({
             <div
               key={s.id}
               className={cn(
-                "absolute pointer-events-auto cursor-move active:scale-110 transition-transform",
+                "absolute pointer-events-auto cursor-move active:scale-110 transition-transform group",
                 isPreview ? "drop-shadow-lg" : ""
               )}
               style={{
                 left: `${s.x}%`,
                 top: `${s.y}%`,
                 transform: `translate(-50%, -50%)`,
-                width: isPreview ? "12%" : `${s.size}px`,
+                width: isPreview ? "15%" : `${s.size}px`,
                 height: isPreview ? "auto" : `${s.size}px`,
                 aspectRatio: "1/1"
               }}
@@ -114,6 +117,19 @@ export function BlueprintFrame({
               }}
             >
               <Icon className={cn("w-full h-full", def.color)} strokeWidth={3} />
+              
+              {/* Delete Option (Visible only in preview/decoration mode) */}
+              {isPreview && onRemoveSticker && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemoveSticker(s.id);
+                  }}
+                  className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform z-50 border-2 border-white"
+                >
+                  <X className="w-3.5 h-3.5" strokeWidth={4} />
+                </button>
+              )}
             </div>
           );
         })}

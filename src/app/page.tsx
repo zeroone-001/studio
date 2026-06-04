@@ -44,9 +44,12 @@ export const STICKER_DEFS = [
   { id: "flower", icon: Flower2, color: "text-pink-400" },
   { id: "ghost", icon: Ghost, color: "text-zinc-300" },
   { id: "rocket", icon: Rocket, color: "text-cyan-400" },
+  { id: "cat", icon: Cat, color: "text-orange-200" },
+  { id: "pizza", icon: Pizza, color: "text-yellow-600" },
+  { id: "coffee", icon: Coffee, color: "text-brown-400" },
 ];
 
-const QUOTES = [
+export const QUOTES = [
   { id: "none", text: "", label: "NONE" },
   { id: "stay", text: "STAY POSITIVE", label: "POSITIVE" },
   { id: "magic", text: "JNL MAGIC", label: "MAGIC" },
@@ -578,29 +581,27 @@ export default function KioskPage() {
                       quoteText={selectedQuote.text}
                       stickers={placedStickers}
                       onStickerPointerDown={(id) => setDraggingId(id)}
+                      onRemoveSticker={(id) => removeSticker(id)}
                     />
                   )}
-                  <div className="absolute top-2 right-2 flex gap-2">
-                    <button 
-                      onClick={() => setPlacedStickers([])}
-                      className="bg-red-500/80 p-2 rounded-full text-white hover:bg-red-600 transition-colors"
-                      title="Clear All"
-                    >
-                      <XCircle className="w-5 h-5" />
-                    </button>
-                  </div>
                 </div>
              </div>
 
              <div className="w-full lg:w-96 space-y-6 lg:max-h-[75vh] overflow-y-auto pr-4 scrollbar-hide">
                 <div className="flex items-center justify-between">
                   <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Studio Decor</h2>
+                  <button 
+                    onClick={() => setPlacedStickers([])}
+                    className="flex items-center gap-2 text-[10px] font-black uppercase text-red-500 bg-red-500/10 px-3 py-1.5 border border-red-500/20"
+                  >
+                    <Trash2 className="w-3 h-3" /> Clear All
+                  </button>
                 </div>
 
                 <div className="space-y-8">
                   <div>
                     <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
-                      <Smile className="w-4 h-4 text-primary" /> Tap to Add Cute Stickers
+                      <Smile className="w-4 h-4 text-primary" /> Trendy Sticker Pack
                     </div>
                     <div className="grid grid-cols-4 gap-3">
                       {STICKER_DEFS.map((s) => (
@@ -614,7 +615,7 @@ export default function KioskPage() {
                       ))}
                     </div>
                     <p className="mt-4 text-[10px] text-white/40 font-bold uppercase tracking-widest text-center italic">
-                      TIP: DRAG STICKERS ON PHOTO TO ARRANGE
+                      TIP: DRAG TO MOVE • TAP 'X' TO DELETE
                     </p>
                   </div>
 

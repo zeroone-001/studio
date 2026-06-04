@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -8,45 +9,45 @@ import { AdminControls } from "@/components/kiosk/admin-controls";
 import { 
   Camera, Zap, Wallet, ArrowRight, Loader2, ShieldAlert, Facebook, 
   Check, X, Share2, Sparkles, Frame, Usb, AlertTriangle, Printer,
-  Smile, Quote, Wand2
+  Smile, Quote, Wand2, Star, Heart, Flame
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
-type SessionState = "welcome" | "payment" | "capturing" | "review" | "editing" | "consent" | "printing";
+type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing";
 
 const FILTERS = [
-  { id: "none", label: "NORMAL", class: "" },
-  { id: "bw", label: "B&W", class: "grayscale" },
-  { id: "sepia", label: "VINTAGE", class: "sepia contrast-125" },
-  { id: "vivid", label: "VIVID", class: "saturate-150 contrast-110" },
-  { id: "cool", label: "COOL", class: "hue-rotate-180 brightness-110" },
-  { id: "noir", label: "NOIR", class: "grayscale contrast-200 brightness-75" },
-  { id: "soft", label: "SOFT", class: "blur-[0.5px] brightness-110 contrast-90" },
-  { id: "warm", label: "WARM", class: "sepia-[0.3] saturate-125" },
-  { id: "hard", label: "HARD", class: "contrast-150 brightness-90" },
-  { id: "glow", label: "GLOW", class: "brightness-125 saturate-150 contrast-110" },
+  { id: "none", label: "STYLE A", class: "" },
+  { id: "bw", label: "STYLE B", class: "grayscale" },
+  { id: "sepia", label: "STYLE C", class: "sepia contrast-125" },
+  { id: "vivid", label: "STYLE D", class: "saturate-150 contrast-110" },
+  { id: "cool", label: "STYLE E", class: "hue-rotate-180 brightness-110" },
+  { id: "noir", label: "STYLE F", class: "grayscale contrast-200 brightness-75" },
+  { id: "soft", label: "STYLE G", class: "blur-[0.5px] brightness-110 contrast-90" },
+  { id: "warm", label: "STYLE H", class: "sepia-[0.3] saturate-125" },
+  { id: "hard", label: "STYLE I", class: "contrast-150 brightness-90" },
+  { id: "glow", label: "STYLE J", class: "brightness-125 saturate-150 contrast-110" },
 ];
 
 const FRAMES = [
-  { id: "none", label: "NO FRAME", border: "border-transparent" },
-  { id: "neon", label: "NEON GLOW", border: "border-primary shadow-[0_0_20px_rgba(255,51,153,0.5)]" },
-  { id: "vintage", label: "CLASSIC WHITE", border: "border-[16px] border-white" },
-  { id: "minimal", label: "MINIMALIST", border: "border-2 border-white/20" },
-  { id: "polaroid", label: "POLAROID", border: "border-[20px] border-white border-b-[60px]" },
-  { id: "golden", label: "GOLDEN LUX", border: "border-4 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.5)]" },
-  { id: "floral", label: "SOFT FLORAL", border: "border-8 border-pink-200/30" },
-  { id: "retro", label: "RETRO BLUE", border: "border-[12px] border-blue-900/50" },
-  { id: "modern", label: "MODERN EDGE", border: "border-r-8 border-l-8 border-primary" },
-  { id: "wood", label: "CLASSIC WOOD", border: "border-[14px] border-[#3d2b1f]" },
+  { id: "none", label: "LAYOUT A", border: "border-transparent" },
+  { id: "neon", label: "LAYOUT B", border: "border-primary shadow-[0_0_20px_rgba(255,51,153,0.5)]" },
+  { id: "vintage", label: "LAYOUT C", border: "border-[16px] border-white" },
+  { id: "minimal", label: "LAYOUT D", border: "border-2 border-white/20" },
+  { id: "polaroid", label: "LAYOUT E", border: "border-[20px] border-white border-b-[60px]" },
+  { id: "golden", label: "LAYOUT F", border: "border-4 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.5)]" },
+  { id: "floral", label: "LAYOUT G", border: "border-8 border-pink-200/30" },
+  { id: "retro", label: "LAYOUT H", border: "border-[12px] border-blue-900/50" },
+  { id: "modern", label: "LAYOUT I", border: "border-r-8 border-l-8 border-primary" },
+  { id: "wood", label: "LAYOUT J", border: "border-[14px] border-[#3d2b1f]" },
 ];
 
 const STICKERS = [
-  { id: "heart", icon: "❤️", label: "HEART" },
-  { id: "star", icon: "⭐", label: "STAR" },
-  { id: "sparkle", icon: "✨", label: "SPARKLE" },
-  { id: "fire", icon: "🔥", label: "FIRE" },
-  { id: "camera", icon: "📸", label: "SNAP" },
+  { id: "heart", icon: <Heart className="w-8 h-8 text-red-500" />, label: "HEART" },
+  { id: "star", icon: <Star className="w-8 h-8 text-yellow-400" />, label: "STAR" },
+  { id: "sparkle", icon: <Sparkles className="w-8 h-8 text-white" />, label: "SPARKLE" },
+  { id: "fire", icon: <Flame className="w-8 h-8 text-orange-500" />, label: "FIRE" },
+  { id: "camera", icon: <Camera className="w-8 h-8 text-primary" />, label: "SNAP" },
 ];
 
 const QUOTES = [
@@ -130,7 +131,7 @@ export default function KioskPage() {
     if (appState === "payment" && packageSelected) {
       if (paymentReceived >= packageSelected) {
         const timer = setTimeout(() => {
-          setAppState("capturing");
+          setAppState("setup");
         }, 1500);
         return () => clearTimeout(timer);
       }
@@ -296,68 +297,23 @@ export default function KioskPage() {
           </div>
         )}
 
-        {appState === "capturing" && (
-          <div className="w-full h-full flex flex-col items-center justify-center">
-            <div className="w-full aspect-[3/4] max-h-[65vh] bg-zinc-900 border-4 border-primary relative overflow-hidden shadow-[0_0_60px_rgba(255,51,153,0.4)]">
-               <div className="absolute inset-0 bg-[url('https://picsum.photos/seed/live/1080/1440')] bg-cover bg-center grayscale contrast-125 brightness-75" />
-               {countdown !== null && (
-                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-20">
-                    <span className="text-[10rem] font-headline font-black italic text-white animate-bounce drop-shadow-[0_0_40px_rgba(255,51,153,0.9)]">{countdown}</span>
-                 </div>
-               )}
-               {isProcessing && (
-                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-30">
-                    <Loader2 className="w-16 h-16 text-primary animate-spin mb-6" />
-                    <p className="font-headline font-black text-2xl italic tracking-widest animate-pulse uppercase">SAVING TO USB...</p>
-                 </div>
-               )}
-            </div>
-            <p className="mt-8 font-body font-black italic text-xl opacity-80 uppercase tracking-widest animate-pulse">Strike a pose!</p>
-          </div>
-        )}
-
-        {appState === "review" && (
-          <div className="w-full max-w-lg animate-in fade-in duration-500">
-            <h2 className="font-headline font-black text-3xl mb-6 text-center italic uppercase">Looking Sharp!</h2>
-            <div className="relative aspect-[3/4] max-h-[55vh] w-full mb-8 border-4 border-white shadow-2xl overflow-hidden mx-auto">
-               {capturedPhoto && <Image src={capturedPhoto} alt="Captured" fill className="object-cover" />}
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-               <NeonButton onClick={() => setAppState("editing")} className="w-full py-8 text-xl">NEXT: DESIGN</NeonButton>
-               <button onClick={() => setAppState("capturing")} className="w-full border-2 border-white font-headline font-black text-xl py-8 italic hover:bg-white hover:text-black transition-colors uppercase">RETAKE</button>
-            </div>
-          </div>
-        )}
-
-        {appState === "editing" && (
+        {appState === "setup" && (
           <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in duration-500">
-            {/* Live Preview */}
-            <div className="relative aspect-[3/4] w-full max-h-[50vh] sm:max-h-[60vh] bg-zinc-950 border border-white/10 p-2 mx-auto overflow-hidden">
-              <div className={cn("relative w-full h-full transition-all duration-500", selectedFrame.border)}>
-                {capturedPhoto && (
-                   <Image src={capturedPhoto} alt="Preview" fill className={cn("object-cover transition-all duration-500", selectedFilter.class)} />
-                 )}
-                 {selectedSticker && (
-                   <div className="absolute top-1/4 left-1/4 text-6xl drop-shadow-lg animate-bounce z-20 select-none">
-                     {selectedSticker.icon}
-                   </div>
-                 )}
-                 {selectedQuote.text && (
-                   <div className="absolute bottom-16 left-0 right-0 text-center z-20">
-                     <span className="bg-black/80 text-white px-4 py-1 text-sm font-black italic tracking-widest border border-white/20 uppercase">
-                       {selectedQuote.text}
-                     </span>
-                   </div>
-                 )}
-                 <div className="absolute bottom-6 right-6 text-right z-10">
-                    <div className="font-headline font-black text-2xl text-white drop-shadow-md italic">JNL <span className="text-primary">STUDIO</span></div>
-                 </div>
-              </div>
-            </div>
+             {/* Preview */}
+             <div className="relative aspect-[3/4] w-full max-h-[50vh] sm:max-h-[60vh] bg-zinc-950 border border-white/10 p-2 mx-auto overflow-hidden">
+                <div className={cn("relative w-full h-full transition-all duration-500", selectedFrame.border)}>
+                  <Image src="https://picsum.photos/seed/live/1080/1440" alt="Preview" fill className={cn("object-cover transition-all duration-500", selectedFilter.class)} />
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="bg-primary/80 px-6 py-3 font-headline font-black italic uppercase tracking-widest text-white shadow-2xl">
+                    PRE-SHOT PREVIEW
+                  </div>
+                </div>
+             </div>
 
-            {/* Customization Controls */}
-            <div className="space-y-6 sm:max-h-[70vh] overflow-y-auto pr-4 scrollbar-hide">
-              <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Design Studio</h2>
+             {/* Setup Controls */}
+             <div className="space-y-6 sm:max-h-[70vh] overflow-y-auto pr-4 scrollbar-hide">
+              <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Pre-Shot Settings</h2>
               
               <div className="space-y-8">
                 {/* Filters */}
@@ -383,34 +339,106 @@ export default function KioskPage() {
                     ))}
                   </div>
                 </div>
-
-                {/* Stickers */}
-                <div>
-                  <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
-                    <Smile className="w-4 h-4 text-primary" /> Stickers
-                  </div>
-                  <div className="flex gap-4">
-                    {STICKERS.map((s) => (
-                      <button key={s.id} onClick={() => setSelectedSticker(s === selectedSticker ? null : s)} className={cn("w-12 h-12 flex items-center justify-center text-2xl bg-white/5 border-2 rounded-lg transition-all", selectedSticker?.id === s.id ? "border-primary bg-primary/20" : "border-white/10")}>{s.icon}</button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Quotes */}
-                <div>
-                  <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
-                    <Quote className="w-4 h-4 text-primary" /> Motivation
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {QUOTES.map((q) => (
-                      <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("py-3 px-4 text-[10px] font-black uppercase border-2 transition-all italic", selectedQuote.id === q.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40")}>{q.label}</button>
-                    ))}
-                  </div>
-                </div>
               </div>
 
-              <NeonButton onClick={() => setAppState("consent")} className="w-full !py-8 mt-6">FINALIZE & PRINT</NeonButton>
+              <NeonButton onClick={() => setAppState("capturing")} className="w-full !py-8 mt-6">START SHOOTING</NeonButton>
             </div>
+          </div>
+        )}
+
+        {appState === "capturing" && (
+          <div className="w-full h-full flex flex-col items-center justify-center">
+            <div className={cn("relative aspect-[3/4] max-h-[65vh] w-full max-w-lg bg-zinc-900 overflow-hidden shadow-[0_0_60px_rgba(255,51,153,0.4)]", selectedFrame.border)}>
+               <div className={cn("absolute inset-0 bg-[url('https://picsum.photos/seed/live/1080/1440')] bg-cover bg-center", selectedFilter.class)} />
+               {countdown !== null && (
+                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-20">
+                    <span className="text-[10rem] font-headline font-black italic text-white animate-bounce drop-shadow-[0_0_40px_rgba(255,51,153,0.9)]">{countdown}</span>
+                 </div>
+               )}
+               {isProcessing && (
+                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-30">
+                    <Loader2 className="w-16 h-16 text-primary animate-spin mb-6" />
+                    <p className="font-headline font-black text-2xl italic tracking-widest animate-pulse uppercase">SAVING TO USB...</p>
+                 </div>
+               )}
+            </div>
+            <p className="mt-8 font-body font-black italic text-xl opacity-80 uppercase tracking-widest animate-pulse">Strike a pose!</p>
+          </div>
+        )}
+
+        {appState === "review" && (
+          <div className="w-full max-w-lg animate-in fade-in duration-500">
+            <h2 className="font-headline font-black text-3xl mb-6 text-center italic uppercase">Looking Sharp!</h2>
+            <div className={cn("relative aspect-[3/4] max-h-[55vh] w-full mb-8 border-4 border-white shadow-2xl overflow-hidden mx-auto", selectedFrame.border)}>
+               {capturedPhoto && <Image src={capturedPhoto} alt="Captured" fill className={cn("object-cover", selectedFilter.class)} />}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+               <NeonButton onClick={() => setAppState("decorating")} className="w-full py-8 text-xl">DECORATE</NeonButton>
+               <button onClick={() => setAppState("setup")} className="w-full border-2 border-white font-headline font-black text-xl py-8 italic hover:bg-white hover:text-black transition-colors uppercase">RETAKE</button>
+            </div>
+          </div>
+        )}
+
+        {appState === "decorating" && (
+          <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in duration-500">
+             {/* Live Preview */}
+             <div className="relative aspect-[3/4] w-full max-h-[50vh] sm:max-h-[60vh] bg-zinc-950 border border-white/10 p-2 mx-auto overflow-hidden">
+                <div className={cn("relative w-full h-full transition-all duration-500", selectedFrame.border)}>
+                  {capturedPhoto && (
+                     <Image src={capturedPhoto} alt="Preview" fill className={cn("object-cover transition-all duration-500", selectedFilter.class)} />
+                   )}
+                   {selectedSticker && (
+                     <div className="absolute top-1/4 left-1/4 drop-shadow-lg animate-bounce z-20 select-none">
+                       {selectedSticker.icon}
+                     </div>
+                   )}
+                   {selectedQuote.text && (
+                     <div className="absolute bottom-16 left-0 right-0 text-center z-20">
+                       <span className="bg-black/80 text-white px-4 py-1 text-sm font-black italic tracking-widest border border-white/20 uppercase">
+                         {selectedQuote.text}
+                       </span>
+                     </div>
+                   )}
+                   <div className="absolute bottom-6 right-6 text-right z-10">
+                      <div className="font-headline font-black text-2xl text-white drop-shadow-md italic">JNL <span className="text-primary">STUDIO</span></div>
+                   </div>
+                </div>
+             </div>
+
+             {/* Decoration Controls */}
+             <div className="space-y-6 sm:max-h-[70vh] overflow-y-auto pr-4 scrollbar-hide">
+                <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Final Touches</h2>
+                
+                <div className="space-y-8">
+                  {/* Stickers */}
+                  <div>
+                    <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
+                      <Smile className="w-4 h-4 text-primary" /> Stickers
+                    </div>
+                    <div className="flex gap-4">
+                      {STICKERS.map((s) => (
+                        <button key={s.id} onClick={() => setSelectedSticker(s === selectedSticker ? null : s)} className={cn("w-14 h-14 flex items-center justify-center bg-white/5 border-2 rounded-lg transition-all", selectedSticker?.id === s.id ? "border-primary bg-primary/20" : "border-white/10")}>
+                          {s.icon}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Quotes */}
+                  <div>
+                    <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
+                      <Quote className="w-4 h-4 text-primary" /> Motivation
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {QUOTES.map((q) => (
+                        <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("py-3 px-4 text-[10px] font-black uppercase border-2 transition-all italic", selectedQuote.id === q.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40")}>{q.label}</button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <NeonButton onClick={() => setAppState("consent")} className="w-full !py-8 mt-6">FINALIZE & PRINT</NeonButton>
+             </div>
           </div>
         )}
 

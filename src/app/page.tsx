@@ -1,18 +1,19 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { KioskLayout } from "@/components/kiosk/kiosk-layout";
 import { NeonButton } from "@/components/kiosk/neon-button";
 import { AdminAuthDialog } from "@/components/kiosk/admin-auth-dialog";
 import { AdminControls } from "@/components/kiosk/admin-controls";
 import { 
   Camera, Zap, Wallet, ArrowRight, Loader2, ShieldAlert, Facebook, 
-  Check, X, Share2, Sparkles, Frame, Usb, AlertTriangle, Printer,
-  Smile, Quote, Wand2, Star, Heart, Flame
+  Sparkles, Frame, Usb, Printer, Smile, Quote, Share2, Heart, Star, Flame
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
+import { BlueprintFrame } from "@/components/kiosk/blueprint-frame";
 
 type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing";
 
@@ -27,19 +28,6 @@ const FILTERS = [
   { id: "warm", label: "STYLE H", class: "sepia-[0.3] saturate-125" },
   { id: "hard", label: "STYLE I", class: "contrast-150 brightness-90" },
   { id: "glow", label: "STYLE J", class: "brightness-125 saturate-150 contrast-110" },
-];
-
-const FRAMES = [
-  { id: "none", label: "LAYOUT A", border: "border-transparent" },
-  { id: "neon", label: "LAYOUT B", border: "border-primary shadow-[0_0_20px_rgba(255,51,153,0.5)]" },
-  { id: "vintage", label: "LAYOUT C", border: "border-[16px] border-white" },
-  { id: "minimal", label: "LAYOUT D", border: "border-2 border-white/20" },
-  { id: "polaroid", label: "LAYOUT E", border: "border-[20px] border-white border-b-[60px]" },
-  { id: "golden", label: "LAYOUT F", border: "border-4 border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.5)]" },
-  { id: "floral", label: "LAYOUT G", border: "border-8 border-pink-200/30" },
-  { id: "retro", label: "LAYOUT H", border: "border-[12px] border-blue-900/50" },
-  { id: "modern", label: "LAYOUT I", border: "border-r-8 border-l-8 border-primary" },
-  { id: "wood", label: "LAYOUT J", border: "border-[14px] border-[#3d2b1f]" },
 ];
 
 const STICKERS = [
@@ -64,12 +52,12 @@ export default function KioskPage() {
   const [paymentReceived, setPaymentReceived] = useState(0);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
-  const [hasSocialConsent, setHasSocialConsent] = useState<boolean | null>(null);
+  const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
+  const [currentShotIndex, setCurrentShotIndex] = useState(0);
   
   // Customization States
   const [selectedFilter, setSelectedFilter] = useState(FILTERS[0]);
-  const [selectedFrame, setSelectedFrame] = useState(FRAMES[0]);
+  const [selectedBlueprint, setSelectedBlueprint] = useState<FrameBlueprint | null>(null);
   const [selectedSticker, setSelectedSticker] = useState<typeof STICKERS[0] | null>(null);
   const [selectedQuote, setSelectedQuote] = useState(QUOTES[0]);
   
@@ -80,9 +68,9 @@ export default function KioskPage() {
   const [usbHandle, setUsbHandle] = useState<any>(null);
   const [usbError, setUsbError] = useState<string | null>(null);
 
-  // Filter lists based on package
+  // Filter layouts based on package
+  const availableBlueprints = BLUEPRINTS.filter(bp => bp.package === packageSelected);
   const availableFilters = FILTERS.slice(0, packageSelected === 100 ? 10 : 5);
-  const availableFrames = FRAMES.slice(0, packageSelected === 100 ? 10 : 5);
 
   const setupUsbStorage = async () => {
     try {
@@ -140,46 +128,46 @@ export default function KioskPage() {
 
   useEffect(() => {
     if (appState === "capturing") {
-      setCountdown(3);
-      const timer = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev === 1) {
-            clearInterval(timer);
-            takePhoto();
-            return null;
-          }
-          return prev !== null ? prev - 1 : null;
-        });
-      }, 1000);
-      return () => clearInterval(timer);
+      startShotSequence();
     }
   }, [appState]);
 
-  const takePhoto = async () => {
-    setIsProcessing(true);
-    const mockPhoto = `https://picsum.photos/seed/${Date.now()}/1080/1440`;
-    try {
-      if (usbHandle) await saveToUsb(mockPhoto);
-      setCapturedPhoto(mockPhoto);
-      await new Promise(r => setTimeout(r, 2000));
-      setAppState("review");
-    } catch (e) {
-      setAppState("review");
-    } finally {
+  const startShotSequence = async () => {
+    const totalShots = packageSelected === 50 ? 3 : 6;
+    const photos: string[] = [];
+
+    for (let i = 0; i < totalShots; i++) {
+      setCurrentShotIndex(i + 1);
+      
+      // 3 second countdown
+      for (let c = 3; c > 0; c--) {
+        setCountdown(c);
+        await new Promise(r => setTimeout(r, 1000));
+      }
+      
+      setCountdown(null);
+      setIsProcessing(true);
+      // Simulate capture
+      const mockPhoto = `https://picsum.photos/seed/jnl-${Date.now()}-${i}/1200/1600`;
+      photos.push(mockPhoto);
+      await new Promise(r => setTimeout(r, 800)); // Shutter delay
       setIsProcessing(false);
     }
+
+    setCapturedPhotos(photos);
+    setAppState("review");
   };
 
   const resetSession = useCallback(() => {
     setAppState("welcome");
     setPaymentReceived(0);
     setPackageSelected(null);
-    setCapturedPhoto(null);
+    setCapturedPhotos([]);
+    setCurrentShotIndex(0);
     setCountdown(null);
     setIsProcessing(false);
-    setHasSocialConsent(null);
+    setSelectedBlueprint(null);
     setSelectedFilter(FILTERS[0]);
-    setSelectedFrame(FRAMES[0]);
     setSelectedSticker(null);
     setSelectedQuote(QUOTES[0]);
   }, []);
@@ -194,7 +182,7 @@ export default function KioskPage() {
           JNL <span className="text-primary">STUDIO</span>
         </h1>
         <p className="font-body font-bold text-[10px] sm:text-sm uppercase tracking-[0.4em] opacity-60 mt-2">
-          Premium Portrait Kiosk
+          Premium Portrait Blueprint
         </p>
       </div>
 
@@ -267,7 +255,7 @@ export default function KioskPage() {
               >
                 <div>
                   <div className="text-4xl sm:text-5xl font-black italic">50 PHP</div>
-                  <div className="text-[10px] sm:text-sm font-bold opacity-60 uppercase mt-2">3 SHOTS • 5 FILTERS • 5 FRAMES</div>
+                  <div className="text-[10px] sm:text-sm font-bold opacity-60 uppercase mt-2">3 SHOTS • 5 BLUEPRINTS</div>
                 </div>
                 <ArrowRight className={cn("w-8 h-8", packageSelected === 50 ? "text-primary" : "text-white/20")} />
               </button>
@@ -281,7 +269,7 @@ export default function KioskPage() {
               >
                 <div>
                   <div className="text-4xl sm:text-5xl font-black italic">100 PHP</div>
-                  <div className="text-[10px] sm:text-sm font-bold opacity-60 uppercase mt-2">6 SHOTS • 10 FILTERS • 10 FRAMES</div>
+                  <div className="text-[10px] sm:text-sm font-bold opacity-60 uppercase mt-2">6 SHOTS • 10 BLUEPRINTS</div>
                 </div>
                 <Zap className={cn("w-8 h-8", packageSelected === 100 ? "text-primary" : "text-white/20")} />
               </button>
@@ -300,26 +288,46 @@ export default function KioskPage() {
         {appState === "setup" && (
           <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in duration-500">
              {/* Preview */}
-             <div className="relative aspect-[3/4] w-full max-h-[50vh] sm:max-h-[60vh] bg-zinc-950 border border-white/10 p-2 mx-auto overflow-hidden">
-                <div className={cn("relative w-full h-full transition-all duration-500", selectedFrame.border)}>
-                  <Image src="https://picsum.photos/seed/live/1080/1440" alt="Preview" fill className={cn("object-cover transition-all duration-500", selectedFilter.class)} />
-                </div>
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="bg-primary/80 px-6 py-3 font-headline font-black italic uppercase tracking-widest text-white shadow-2xl">
-                    PRE-SHOT PREVIEW
-                  </div>
-                </div>
+             <div className="relative w-full max-h-[60vh] mx-auto overflow-hidden">
+                <BlueprintFrame 
+                  blueprint={selectedBlueprint || availableBlueprints[0]} 
+                  photos={[]} 
+                  filterClass={selectedFilter.class}
+                  isPreview
+                  quoteText="YOUR SHOT HERE"
+                />
              </div>
 
              {/* Setup Controls */}
              <div className="space-y-6 sm:max-h-[70vh] overflow-y-auto pr-4 scrollbar-hide">
-              <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Pre-Shot Settings</h2>
+              <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Pre-Shot Blueprint</h2>
               
               <div className="space-y-8">
+                {/* Blueprints */}
+                <div>
+                  <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
+                    <Frame className="w-4 h-4 text-primary" /> Choose Layout (A-{(availableBlueprints.length + 9).toString(36).toUpperCase()})
+                  </div>
+                  <div className="grid grid-cols-5 gap-2">
+                    {availableBlueprints.map((bp) => (
+                      <button 
+                        key={bp.id} 
+                        onClick={() => setSelectedBlueprint(bp)} 
+                        className={cn(
+                          "aspect-square flex items-center justify-center text-[10px] font-black uppercase border-2 transition-all italic", 
+                          (selectedBlueprint?.id || availableBlueprints[0].id) === bp.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40 hover:border-white/30"
+                        )}
+                      >
+                        {bp.label.split(' ')[1]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Filters */}
                 <div>
                   <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
-                    <Sparkles className="w-4 h-4 text-primary" /> {packageSelected === 100 ? 10 : 5} Filters
+                    <Sparkles className="w-4 h-4 text-primary" /> Portrait Style
                   </div>
                   <div className="grid grid-cols-5 gap-2">
                     {availableFilters.map((f) => (
@@ -327,38 +335,39 @@ export default function KioskPage() {
                     ))}
                   </div>
                 </div>
-
-                {/* Frames */}
-                <div>
-                  <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
-                    <Frame className="w-4 h-4 text-primary" /> {packageSelected === 100 ? 10 : 5} Frames
-                  </div>
-                  <div className="grid grid-cols-5 gap-2">
-                    {availableFrames.map((f) => (
-                      <button key={f.id} onClick={() => setSelectedFrame(f)} className={cn("aspect-square flex items-center justify-center text-[8px] font-black uppercase border-2 transition-all italic p-1", selectedFrame.id === f.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40 hover:border-white/30")}>{f.label}</button>
-                    ))}
-                  </div>
-                </div>
               </div>
 
-              <NeonButton onClick={() => setAppState("capturing")} className="w-full !py-8 mt-6">START SHOOTING</NeonButton>
+              <NeonButton 
+                onClick={() => {
+                  if (!selectedBlueprint) setSelectedBlueprint(availableBlueprints[0]);
+                  setAppState("capturing");
+                }} 
+                className="w-full !py-8 mt-6"
+              >
+                START SHOOTING
+              </NeonButton>
             </div>
           </div>
         )}
 
         {appState === "capturing" && (
           <div className="w-full h-full flex flex-col items-center justify-center">
-            <div className={cn("relative aspect-[3/4] max-h-[65vh] w-full max-w-lg bg-zinc-900 overflow-hidden shadow-[0_0_60px_rgba(255,51,153,0.4)]", selectedFrame.border)}>
-               <div className={cn("absolute inset-0 bg-[url('https://picsum.photos/seed/live/1080/1440')] bg-cover bg-center", selectedFilter.class)} />
+            <div className="relative aspect-[3/4] max-h-[65vh] w-full max-w-lg bg-zinc-900 overflow-hidden shadow-[0_0_60px_rgba(255,51,153,0.4)] border-4 border-white">
+               <div className={cn("absolute inset-0 bg-[url('https://picsum.photos/seed/live-jnl/1200/1600')] bg-cover bg-center", selectedFilter.class)} />
                {countdown !== null && (
                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-20">
                     <span className="text-[10rem] font-headline font-black italic text-white animate-bounce drop-shadow-[0_0_40px_rgba(255,51,153,0.9)]">{countdown}</span>
                  </div>
                )}
+               <div className="absolute top-6 left-6 z-30">
+                  <div className="bg-primary px-4 py-2 font-black italic uppercase tracking-widest text-xs">
+                    SHOT {currentShotIndex} / {packageSelected === 50 ? 3 : 6}
+                  </div>
+               </div>
                {isProcessing && (
-                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-30">
-                    <Loader2 className="w-16 h-16 text-primary animate-spin mb-6" />
-                    <p className="font-headline font-black text-2xl italic tracking-widest animate-pulse uppercase">SAVING TO USB...</p>
+                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-30 animate-pulse">
+                    <Camera className="w-16 h-16 text-primary mb-4" />
+                    <p className="font-headline font-black text-2xl italic tracking-widest uppercase">CAPTURED!</p>
                  </div>
                )}
             </div>
@@ -369,8 +378,15 @@ export default function KioskPage() {
         {appState === "review" && (
           <div className="w-full max-w-lg animate-in fade-in duration-500">
             <h2 className="font-headline font-black text-3xl mb-6 text-center italic uppercase">Looking Sharp!</h2>
-            <div className={cn("relative aspect-[3/4] max-h-[55vh] w-full mb-8 border-4 border-white shadow-2xl overflow-hidden mx-auto", selectedFrame.border)}>
-               {capturedPhoto && <Image src={capturedPhoto} alt="Captured" fill className={cn("object-cover", selectedFilter.class)} />}
+            <div className="w-full mb-8 mx-auto">
+               {selectedBlueprint && (
+                 <BlueprintFrame 
+                   blueprint={selectedBlueprint} 
+                   photos={capturedPhotos} 
+                   filterClass={selectedFilter.class}
+                   isPreview
+                 />
+               )}
             </div>
             <div className="grid grid-cols-2 gap-4">
                <NeonButton onClick={() => setAppState("decorating")} className="w-full py-8 text-xl">DECORATE</NeonButton>
@@ -382,27 +398,21 @@ export default function KioskPage() {
         {appState === "decorating" && (
           <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in duration-500">
              {/* Live Preview */}
-             <div className="relative aspect-[3/4] w-full max-h-[50vh] sm:max-h-[60vh] bg-zinc-950 border border-white/10 p-2 mx-auto overflow-hidden">
-                <div className={cn("relative w-full h-full transition-all duration-500", selectedFrame.border)}>
-                  {capturedPhoto && (
-                     <Image src={capturedPhoto} alt="Preview" fill className={cn("object-cover transition-all duration-500", selectedFilter.class)} />
-                   )}
-                   {selectedSticker && (
-                     <div className="absolute top-1/4 left-1/4 drop-shadow-lg animate-bounce z-20 select-none">
-                       {selectedSticker.icon}
-                     </div>
-                   )}
-                   {selectedQuote.text && (
-                     <div className="absolute bottom-16 left-0 right-0 text-center z-20">
-                       <span className="bg-black/80 text-white px-4 py-1 text-sm font-black italic tracking-widest border border-white/20 uppercase">
-                         {selectedQuote.text}
-                       </span>
-                     </div>
-                   )}
-                   <div className="absolute bottom-6 right-6 text-right z-10">
-                      <div className="font-headline font-black text-2xl text-white drop-shadow-md italic">JNL <span className="text-primary">STUDIO</span></div>
-                   </div>
-                </div>
+             <div className="relative w-full max-h-[60vh] mx-auto overflow-hidden">
+                {selectedBlueprint && (
+                   <BlueprintFrame 
+                     blueprint={selectedBlueprint} 
+                     photos={capturedPhotos} 
+                     filterClass={selectedFilter.class}
+                     isPreview
+                     quoteText={selectedQuote.text}
+                   />
+                )}
+                {selectedSticker && (
+                  <div className="absolute top-1/4 left-1/4 drop-shadow-lg animate-bounce z-20 select-none">
+                    {selectedSticker.icon}
+                  </div>
+                )}
              </div>
 
              {/* Decoration Controls */}

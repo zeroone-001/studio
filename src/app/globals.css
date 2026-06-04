@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -58,4 +59,33 @@
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
   }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+@keyframes meteor {
+  0% { transform: translate(0, 0) rotate(215deg) scale(0); opacity: 0; }
+  10% { opacity: 1; scale: 1; }
+  20% { transform: translate(-500px, 500px) rotate(215deg) scale(1); opacity: 0; }
+  100% { transform: translate(-500px, 500px) rotate(215deg) scale(1); opacity: 0; }
+}
+
+.animate-twinkle {
+  animation: twinkle 3s ease-in-out infinite;
+}
+
+.animate-meteor {
+  animation: meteor 5s linear infinite;
+}
+
+.animate-neon-pulse {
+  animation: neon-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes neon-pulse {
+  0%, 100% { opacity: 1; filter: drop-shadow(0 0 15px #FF3399); }
+  50% { opacity: 0.7; filter: drop-shadow(0 0 5px #FF3399); }
 }

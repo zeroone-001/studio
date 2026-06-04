@@ -1,14 +1,15 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { KioskLayout } from "@/components/kiosk/kiosk-layout";
 import { NeonButton } from "@/components/kiosk/neon-button";
 import { AdminAuthDialog } from "@/components/kiosk/admin-auth-dialog";
 import { AdminControls } from "@/components/kiosk/admin-controls";
 import { 
   Camera, Zap, Wallet, ArrowRight, Loader2, ShieldAlert, Facebook, 
-  Sparkles, Frame, Usb, Printer, Smile, Quote, Share2, Heart, Star, Flame
+  Sparkles, Frame, Usb, Printer, Smile, Quote, Share2, Heart, Star, Flame,
+  AlertTriangle, HardDrive
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -66,31 +67,38 @@ export default function KioskPage() {
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
   const [logoClickCount, setLogoClickCount] = useState(0);
   const [usbHandle, setUsbHandle] = useState<any>(null);
-  const [usbError, setUsbError] = useState<string | null>(null);
+  const [storageError, setStorageError] = useState<string | null>(null);
 
   // Filter layouts based on package
-  const availableBlueprints = BLUEPRINTS.filter(bp => bp.package === packageSelected);
-  const availableFilters = FILTERS.slice(0, packageSelected === 100 ? 10 : 5);
+  const availableBlueprints = useMemo(() => BLUEPRINTS.filter(bp => bp.package === packageSelected), [packageSelected]);
+  const availableFilters = useMemo(() => FILTERS.slice(0, packageSelected === 100 ? 10 : 5), [packageSelected]);
 
+  // USB Storage Logic
   const setupUsbStorage = async () => {
     try {
       // @ts-ignore
       const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
       setUsbHandle(handle);
-      setUsbError(null);
+      setStorageError(null);
     } catch (e: any) {
-      setUsbError("USB Setup Failed.");
+      setStorageError("USB Access Denied or Cancelled.");
     }
   };
 
-  const saveToUsb = async (dataUri: string) => {
+  const saveToUsb = async (dataUri: string, folder: 'Originals' | 'Edited' | 'FinalOutput' | 'QRCopies') => {
     if (!usbHandle) return false;
     try {
       const today = new Date().toISOString().split('T')[0];
-      const sessionId = Math.random().toString(36).substring(7);
-      const dateDir = await usbHandle.getDirectoryHandle(today, { create: true });
-      const sessionDir = await dateDir.getDirectoryHandle(`Session_${sessionId}`, { create: true });
-      const fileHandle = await sessionDir.getFileHandle(`portrait_${Date.now()}.jpg`, { create: true });
+      const sessionId = `Session_${new Date().getTime()}`;
+      
+      const rootDir = await usbHandle.getDirectoryHandle('Photobooth', { create: true });
+      const dateDir = await rootDir.getDirectoryHandle(today, { create: true });
+      const sessionDir = await dateDir.getDirectoryHandle(sessionId, { create: true });
+      const targetDir = await sessionDir.getDirectoryHandle(folder, { create: true });
+      
+      const fileName = `${folder.toUpperCase()}_${new Date().getTime()}.jpg`;
+      const fileHandle = await targetDir.getFileHandle(fileName, { create: true });
+      
       const response = await fetch(dataUri);
       const blob = await response.blob();
       const writable = await fileHandle.createWritable();
@@ -98,7 +106,7 @@ export default function KioskPage() {
       await writable.close();
       return true;
     } catch (e) {
-      setUsbError("USB Write Error.");
+      setStorageError("USB Write Error. Please check connection.");
       return false;
     }
   };
@@ -139,7 +147,6 @@ export default function KioskPage() {
     for (let i = 0; i < totalShots; i++) {
       setCurrentShotIndex(i + 1);
       
-      // 3 second countdown
       for (let c = 3; c > 0; c--) {
         setCountdown(c);
         await new Promise(r => setTimeout(r, 1000));
@@ -147,15 +154,34 @@ export default function KioskPage() {
       
       setCountdown(null);
       setIsProcessing(true);
-      // Simulate capture
+      
+      // Simulation of capture
       const mockPhoto = `https://picsum.photos/seed/jnl-${Date.now()}-${i}/1200/1600`;
       photos.push(mockPhoto);
-      await new Promise(r => setTimeout(r, 800)); // Shutter delay
+      
+      // Save original to USB in background if available
+      if (usbHandle) {
+        saveToUsb(mockPhoto, 'Originals');
+      }
+      
+      await new Promise(r => setTimeout(r, 800)); 
       setIsProcessing(false);
     }
 
     setCapturedPhotos(photos);
     setAppState("review");
+  };
+
+  const handleFinalize = async () => {
+    setAppState("printing");
+    // In a real app, we would generate the final canvas image here and save it
+    if (usbHandle && capturedPhotos.length > 0) {
+      await saveToUsb(capturedPhotos[0], 'FinalOutput');
+    }
+    // Cleanup temporary photos from memory after saving
+    setTimeout(() => {
+       // Reset only non-persistent state if needed
+    }, 5000);
   };
 
   const resetSession = useCallback(() => {
@@ -202,7 +228,24 @@ export default function KioskPage() {
           onBypassPayment={() => setPaymentReceived(packageSelected || 0)}
           usbStatus={usbHandle ? "connected" : "disconnected"}
           onSetupUsb={setupUsbStorage}
+          onTestSave={() => saveToUsb("https://picsum.photos/200", "Originals")}
         />
+      )}
+
+      {/* Storage Warning for Owner */}
+      {!usbHandle && !isOwnerMode && appState === "welcome" && (
+        <div className="absolute inset-0 z-[100] bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center p-12 text-center">
+          <div className="w-24 h-24 bg-red-500/20 rounded-full flex items-center justify-center mb-8 border-2 border-red-500 animate-pulse">
+            <AlertTriangle className="w-12 h-12 text-red-500" />
+          </div>
+          <h2 className="text-4xl font-black italic uppercase mb-4">Storage Required</h2>
+          <p className="text-white/60 font-bold uppercase tracking-widest text-sm max-w-sm mb-12">
+            Booth is offline. Please connect external USB storage to begin sessions.
+          </p>
+          <div className="text-[10px] font-black uppercase text-white/20 tracking-[0.3em]">
+            Awaiting Owner Configuration
+          </div>
+        </div>
       )}
 
       <div className="absolute top-4 left-4 z-50 flex flex-col gap-2">
@@ -214,8 +257,8 @@ export default function KioskPage() {
         )}
         {usbHandle && (
           <div className="flex items-center gap-2 bg-green-600/40 backdrop-blur-md text-white px-3 py-1 rounded-full text-[9px] font-black uppercase border border-green-500/50">
-            <Usb className="w-3 h-3" />
-            USB ACTIVE
+            <HardDrive className="w-3 h-3" />
+            USB STORAGE ACTIVE
           </div>
         )}
       </div>
@@ -255,7 +298,7 @@ export default function KioskPage() {
               >
                 <div>
                   <div className="text-4xl sm:text-5xl font-black italic">50 PHP</div>
-                  <div className="text-[10px] sm:text-sm font-bold opacity-60 uppercase mt-2">3 SHOTS • 5 BLUEPRINTS</div>
+                  <div className="text-[10px] sm:text-sm font-bold opacity-60 uppercase mt-2">3 SHOTS • PREMIUM STYLE</div>
                 </div>
                 <ArrowRight className={cn("w-8 h-8", packageSelected === 50 ? "text-primary" : "text-white/20")} />
               </button>
@@ -269,7 +312,7 @@ export default function KioskPage() {
               >
                 <div>
                   <div className="text-4xl sm:text-5xl font-black italic">100 PHP</div>
-                  <div className="text-[10px] sm:text-sm font-bold opacity-60 uppercase mt-2">6 SHOTS • 10 BLUEPRINTS</div>
+                  <div className="text-[10px] sm:text-sm font-bold opacity-60 uppercase mt-2">6 SHOTS • FULL BLUEPRINT</div>
                 </div>
                 <Zap className={cn("w-8 h-8", packageSelected === 100 ? "text-primary" : "text-white/20")} />
               </button>
@@ -287,7 +330,6 @@ export default function KioskPage() {
 
         {appState === "setup" && (
           <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in duration-500">
-             {/* Preview */}
              <div className="relative w-full max-h-[60vh] mx-auto overflow-hidden">
                 <BlueprintFrame 
                   blueprint={selectedBlueprint || availableBlueprints[0]} 
@@ -298,15 +340,12 @@ export default function KioskPage() {
                 />
              </div>
 
-             {/* Setup Controls */}
              <div className="space-y-6 sm:max-h-[70vh] overflow-y-auto pr-4 scrollbar-hide">
               <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Pre-Shot Blueprint</h2>
-              
               <div className="space-y-8">
-                {/* Blueprints */}
                 <div>
                   <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
-                    <Frame className="w-4 h-4 text-primary" /> Choose Layout (A-{(availableBlueprints.length + 9).toString(36).toUpperCase()})
+                    <Frame className="w-4 h-4 text-primary" /> Choose Layout
                   </div>
                   <div className="grid grid-cols-5 gap-2">
                     {availableBlueprints.map((bp) => (
@@ -324,7 +363,6 @@ export default function KioskPage() {
                   </div>
                 </div>
 
-                {/* Filters */}
                 <div>
                   <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
                     <Sparkles className="w-4 h-4 text-primary" /> Portrait Style
@@ -371,7 +409,6 @@ export default function KioskPage() {
                  </div>
                )}
             </div>
-            <p className="mt-8 font-body font-black italic text-xl opacity-80 uppercase tracking-widest animate-pulse">Strike a pose!</p>
           </div>
         )}
 
@@ -397,7 +434,6 @@ export default function KioskPage() {
 
         {appState === "decorating" && (
           <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in duration-500">
-             {/* Live Preview */}
              <div className="relative w-full max-h-[60vh] mx-auto overflow-hidden">
                 {selectedBlueprint && (
                    <BlueprintFrame 
@@ -408,19 +444,11 @@ export default function KioskPage() {
                      quoteText={selectedQuote.text}
                    />
                 )}
-                {selectedSticker && (
-                  <div className="absolute top-1/4 left-1/4 drop-shadow-lg animate-bounce z-20 select-none">
-                    {selectedSticker.icon}
-                  </div>
-                )}
              </div>
 
-             {/* Decoration Controls */}
              <div className="space-y-6 sm:max-h-[70vh] overflow-y-auto pr-4 scrollbar-hide">
                 <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Final Touches</h2>
-                
                 <div className="space-y-8">
-                  {/* Stickers */}
                   <div>
                     <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
                       <Smile className="w-4 h-4 text-primary" /> Stickers
@@ -434,7 +462,6 @@ export default function KioskPage() {
                     </div>
                   </div>
 
-                  {/* Quotes */}
                   <div>
                     <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
                       <Quote className="w-4 h-4 text-primary" /> Motivation
@@ -447,7 +474,7 @@ export default function KioskPage() {
                   </div>
                 </div>
 
-                <NeonButton onClick={() => setAppState("consent")} className="w-full !py-8 mt-6">FINALIZE & PRINT</NeonButton>
+                <NeonButton onClick={() => setAppState("consent")} className="w-full !py-8 mt-6">FINALIZE & SAVE</NeonButton>
              </div>
           </div>
         )}
@@ -460,8 +487,8 @@ export default function KioskPage() {
             <h2 className="font-headline font-black text-4xl mb-6 italic uppercase tracking-tighter">BE FEATURED!</h2>
             <p className="text-sm opacity-80 mb-12 uppercase tracking-widest font-bold leading-relaxed px-6">MAY WE FEATURE YOUR PORTRAIT ON OUR FACEBOOK PAGE?</p>
             <div className="flex flex-col gap-4 px-6">
-              <NeonButton onClick={() => setAppState("printing")} className="w-full py-8">YES, SHARE IT!</NeonButton>
-              <button onClick={() => setAppState("printing")} className="w-full border-2 border-white/20 py-6 font-headline font-black text-xl italic uppercase tracking-widest">NO, KEEP IT PRIVATE</button>
+              <NeonButton onClick={handleFinalize} className="w-full py-8">YES, SHARE IT!</NeonButton>
+              <button onClick={handleFinalize} className="w-full border-2 border-white/20 py-6 font-headline font-black text-xl italic uppercase tracking-widest">NO, KEEP IT PRIVATE</button>
             </div>
           </div>
         )}
@@ -486,7 +513,7 @@ export default function KioskPage() {
               </div>
             </div>
             <div className="mt-12 flex flex-col gap-6">
-               <div className="flex items-center gap-3 justify-center text-primary text-xs font-black italic uppercase tracking-widest"><Printer className="w-5 h-5 animate-bounce" /> PRINTING PORTRAIT...</div>
+               <div className="flex items-center gap-3 justify-center text-primary text-xs font-black italic uppercase tracking-widest"><Printer className="w-5 h-5 animate-bounce" /> PREPARING PORTRAIT...</div>
                <NeonButton onClick={resetSession} className="w-full py-8">NEW SESSION</NeonButton>
             </div>
           </div>

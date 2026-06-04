@@ -16,7 +16,9 @@ import {
   Usb,
   HardDrive,
   AlertCircle,
-  LayoutGrid
+  LayoutGrid,
+  CheckCircle2,
+  Database
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS } from "./frame-blueprint";
@@ -33,6 +35,7 @@ interface AdminControlsProps {
   onBypassPayment: () => void;
   usbStatus: "connected" | "disconnected";
   onSetupUsb: () => void;
+  onTestSave?: () => void;
 }
 
 export function AdminControls({ 
@@ -43,9 +46,11 @@ export function AdminControls({
   hasPackage,
   onBypassPayment,
   usbStatus,
-  onSetupUsb
+  onSetupUsb,
+  onTestSave
 }: AdminControlsProps) {
   const [showBlueprints, setShowBlueprints] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
 
   const states: { id: SessionState; label: string; icon: any }[] = [
     { id: "welcome", label: "Intro", icon: PlayCircle },
@@ -57,6 +62,15 @@ export function AdminControls({
     { id: "consent", label: "Consent", icon: Share2 },
     { id: "printing", label: "Final", icon: Printer },
   ];
+
+  const handleTestSave = async () => {
+    if (onTestSave) {
+      setTestResult("testing...");
+      await onTestSave();
+      setTestResult("Write Success!");
+      setTimeout(() => setTestResult(null), 3000);
+    }
+  };
 
   return (
     <div className="fixed bottom-16 right-4 z-[100] flex flex-col items-end gap-2 scale-90 sm:scale-100 origin-bottom-right">
@@ -100,19 +114,11 @@ export function AdminControls({
         </div>
 
         <div className="space-y-4">
-          <button 
-            onClick={() => setShowBlueprints(true)}
-            className="w-full bg-blue-600 hover:bg-blue-500 text-white border border-blue-400 py-3 text-[10px] font-black uppercase flex items-center justify-center gap-2 transition-colors mb-2"
-          >
-            <LayoutGrid className="w-3 h-3" />
-            View All Blueprints
-          </button>
-
-          <div className="bg-white/5 p-3 border border-white/10">
-            <div className="flex items-center justify-between mb-2">
+          <div className="bg-white/5 p-3 border border-white/10 space-y-3">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-[9px] font-black uppercase text-white/60">
                 <Usb className={cn("w-3 h-3", usbStatus === 'connected' ? "text-green-500" : "text-red-500")} />
-                External USB Storage
+                USB Storage Status
               </div>
               <div className={cn(
                 "px-2 py-0.5 rounded-full text-[8px] font-black uppercase",
@@ -121,14 +127,34 @@ export function AdminControls({
                 {usbStatus}
               </div>
             </div>
-            <button 
-              onClick={onSetupUsb}
-              className="w-full bg-primary/10 hover:bg-primary/20 border border-primary/30 py-2 text-[10px] font-black uppercase flex items-center justify-center gap-2 transition-colors"
-            >
-              <HardDrive className="w-3 h-3" />
-              {usbStatus === 'connected' ? "Update USB Folder" : "Connect USB Storage"}
-            </button>
+
+            <div className="grid grid-cols-1 gap-2">
+              <button 
+                onClick={onSetupUsb}
+                className="w-full bg-primary/10 hover:bg-primary/20 border border-primary/30 py-2 text-[10px] font-black uppercase flex items-center justify-center gap-2 transition-colors"
+              >
+                <HardDrive className="w-3 h-3" />
+                {usbStatus === 'connected' ? "Remount Folder" : "Mount USB Folder"}
+              </button>
+              
+              <button 
+                disabled={usbStatus !== 'connected'}
+                onClick={handleTestSave}
+                className="w-full bg-white/5 hover:bg-white/10 border border-white/10 py-2 text-[10px] font-black uppercase flex items-center justify-center gap-2 transition-colors disabled:opacity-30"
+              >
+                <CheckCircle2 className="w-3 h-3" />
+                {testResult || "Test Write Access"}
+              </button>
+            </div>
           </div>
+
+          <button 
+            onClick={() => setShowBlueprints(true)}
+            className="w-full bg-blue-600 hover:bg-blue-500 text-white border border-blue-400 py-3 text-[10px] font-black uppercase flex items-center justify-center gap-2 transition-colors"
+          >
+            <LayoutGrid className="w-3 h-3" />
+            Verify Blueprints
+          </button>
 
           <div className="grid grid-cols-2 gap-2">
             <button 
@@ -152,7 +178,7 @@ export function AdminControls({
           </div>
 
           <div className="space-y-1">
-            <p className="text-[9px] font-bold text-white/40 uppercase mb-2 tracking-widest">Quick Navigation:</p>
+            <p className="text-[9px] font-bold text-white/40 uppercase mb-2 tracking-widest">Navigation:</p>
             <div className="grid grid-cols-2 gap-1">
               {states.map((state) => (
                 <button
@@ -174,8 +200,8 @@ export function AdminControls({
         </div>
 
         <div className="mt-4 pt-2 border-t border-white/10 flex justify-between items-center text-[8px] font-bold text-white/20 tracking-widest uppercase">
-          <span>Storage: {usbStatus === 'connected' ? "USB-FS" : "CACHED"}</span>
-          <span className="text-primary/40 italic">JNL BLUEPRINT v3.0</span>
+          <span className="flex items-center gap-1"><Database className="w-2 h-2" /> Direct USB Storage</span>
+          <span className="text-primary/40 italic">JNL v4.0</span>
         </div>
       </div>
     </div>

@@ -204,7 +204,6 @@ export default function KioskPage() {
   useEffect(() => {
     if (appState === "printing" && promotionalConsent === true && usbHandle) {
       setIsSavingToUsb(true);
-      // Simulate physical file write to the mounted USB drive
       const timer = setTimeout(() => {
         setIsSavingToUsb(false);
       }, 3000);
@@ -567,7 +566,7 @@ export default function KioskPage() {
         )}
 
         {appState === "printing" && (
-          <div className="w-full max-w-3xl animate-in fade-in duration-500">
+          <div className="w-full max-w-4xl animate-in fade-in duration-500">
              {printProgress < 100 ? (
                 <div className="text-center space-y-8 py-12">
                    <div className="relative w-32 h-32 mx-auto">
@@ -594,44 +593,45 @@ export default function KioskPage() {
                    </div>
                 </div>
              ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center animate-in slide-in-from-bottom-8">
-                   <div className="space-y-8 text-center lg:text-left">
-                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/30 rounded-full mb-4">
+                <div className="flex flex-col items-center space-y-12 animate-in slide-in-from-bottom-8">
+                   <div className="text-center space-y-4">
+                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/30 rounded-full">
                          <CheckCircle2 className="w-4 h-4 text-green-500" />
-                         <span className="text-[10px] font-black uppercase text-green-500 tracking-widest">Print Successful</span>
+                         <span className="text-[10px] font-black uppercase text-green-500 tracking-widest">Capture Complete</span>
                       </div>
-                      <h2 className="font-headline font-black text-5xl italic uppercase leading-none">Capture <br /><span className="text-primary">Complete</span></h2>
-                      <p className="text-sm opacity-60 font-bold uppercase tracking-widest max-w-sm">Thank you for visiting JNL Studio! Scan below to download your soft copy and follow our journey.</p>
-                      <NeonButton onClick={resetSession} className="w-full lg:w-auto px-16 !py-8 text-xl">FINISH</NeonButton>
+                      <h2 className="font-headline font-black text-5xl sm:text-6xl italic uppercase leading-none">THANK <span className="text-primary">YOU!</span></h2>
+                      <p className="text-sm opacity-60 font-bold uppercase tracking-widest max-w-lg mx-auto leading-relaxed">Scan below to download your soft copy and follow JNL Studio for more iconic moments.</p>
                    </div>
 
-                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      <div className="bg-white/5 border border-white/10 p-6 flex flex-col items-center text-center space-y-4">
-                         <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center border border-primary/30">
-                            <QrCode className="w-5 h-5 text-primary" />
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 w-full">
+                      <div className="bg-white/5 border border-white/10 p-8 sm:p-10 flex flex-col items-center text-center space-y-6 rounded-2xl">
+                         <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center border-2 border-primary/30">
+                            <QrCode className="w-7 h-7 text-primary" />
                          </div>
-                         <div className="space-y-1">
-                            <h3 className="font-headline font-black text-sm uppercase italic">SOFT COPY</h3>
-                            <p className="text-[8px] font-bold opacity-40 uppercase tracking-widest">Digital Download</p>
+                         <div className="space-y-2">
+                            <h3 className="font-headline font-black text-xl uppercase italic tracking-wide">SOFT COPY</h3>
+                            <p className="text-[10px] font-bold opacity-40 uppercase tracking-[0.2em]">High-Resolution Download</p>
                          </div>
-                         <div className="aspect-square w-32 bg-white p-2 rounded-lg shadow-[0_0_20px_rgba(255,255,255,0.2)]">
-                            <img src="https://picsum.photos/seed/softcopy/200/200" alt="Soft Copy QR" className="w-full h-full object-cover" />
+                         <div className="aspect-square w-48 sm:w-56 bg-white p-3 rounded-2xl shadow-[0_0_40px_rgba(255,255,255,0.15)] transition-transform hover:scale-105">
+                            <img src="https://picsum.photos/seed/softcopy/400/400" alt="Soft Copy QR" className="w-full h-full object-cover" />
                          </div>
                       </div>
 
-                      <div className="bg-white/5 border border-white/10 p-6 flex flex-col items-center text-center space-y-4">
-                         <div className="w-10 h-10 bg-blue-500/10 rounded-full flex items-center justify-center border border-blue-500/30">
-                            <Facebook className="w-5 h-5 text-blue-500" />
+                      <div className="bg-white/5 border border-white/10 p-8 sm:p-10 flex flex-col items-center text-center space-y-6 rounded-2xl">
+                         <div className="w-14 h-14 bg-blue-500/10 rounded-full flex items-center justify-center border-2 border-blue-500/30">
+                            <Facebook className="w-7 h-7 text-blue-500" />
                          </div>
-                         <div className="space-y-1">
-                            <h3 className="font-headline font-black text-sm uppercase italic">FOLLOW US</h3>
-                            <p className="text-[8px] font-bold opacity-40 uppercase tracking-widest leading-tight">Like, Share & Follow on FB</p>
+                         <div className="space-y-2">
+                            <h3 className="font-headline font-black text-xl uppercase italic tracking-wide">FOLLOW US</h3>
+                            <p className="text-[10px] font-bold opacity-40 uppercase tracking-[0.2em]">Like & Share JNL Studio</p>
                          </div>
-                         <div className="aspect-square w-32 bg-white p-2 rounded-lg shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-                            <img src="https://picsum.photos/seed/fb-qr/200/200" alt="Facebook QR" className="w-full h-full object-cover" />
+                         <div className="aspect-square w-48 sm:w-56 bg-white p-3 rounded-2xl shadow-[0_0_40px_rgba(255,255,255,0.05)] transition-transform hover:scale-105">
+                            <img src="https://picsum.photos/seed/fb-qr/400/400" alt="Facebook QR" className="w-full h-full object-cover" />
                          </div>
                       </div>
                    </div>
+
+                   <NeonButton onClick={resetSession} className="px-24 !py-8 text-2xl mt-8">FINISH SESSION</NeonButton>
                 </div>
              )}
           </div>

@@ -10,11 +10,12 @@ import {
   CreditCard, 
   Camera, 
   Image as ImageIcon, 
-  Printer 
+  Printer,
+  Share2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type SessionState = "welcome" | "payment" | "capturing" | "review" | "printing";
+type SessionState = "welcome" | "payment" | "capturing" | "review" | "consent" | "printing";
 
 interface AdminControlsProps {
   currentStatus: SessionState;
@@ -38,7 +39,8 @@ export function AdminControls({
     { id: "payment", label: "Cash", icon: CreditCard },
     { id: "capturing", label: "Camera", icon: Camera },
     { id: "review", label: "Review", icon: ImageIcon },
-    { id: "printing", label: "Print/QR", icon: Printer },
+    { id: "consent", label: "Consent", icon: Share2 },
+    { id: "printing", label: "Final", icon: Printer },
   ];
 
   return (
@@ -103,7 +105,7 @@ export function AdminControls({
         </div>
 
         <div className="mt-4 pt-2 border-t border-white/10 flex justify-between items-center text-[8px] font-bold text-white/20 tracking-widest uppercase">
-          <span>v2.1 Build-302</span>
+          <span>v2.2 Build-415</span>
           <span className="text-primary/40 italic">JNL STUDIO PRO</span>
         </div>
       </div>

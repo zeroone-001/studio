@@ -7,11 +7,11 @@ import { NeonButton } from "@/components/kiosk/neon-button";
 import { HealthMonitor } from "@/components/kiosk/health-monitor";
 import { AdminAuthDialog } from "@/components/kiosk/admin-auth-dialog";
 import { AdminControls } from "@/components/kiosk/admin-controls";
-import { Camera, Zap, Wallet, ArrowRight, Loader2, ShieldAlert } from "lucide-react";
+import { Camera, Zap, Wallet, ArrowRight, Loader2, ShieldAlert, Facebook, Check, X, Share2 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
-type SessionState = "welcome" | "payment" | "capturing" | "review" | "printing";
+type SessionState = "welcome" | "payment" | "capturing" | "review" | "consent" | "printing";
 
 export default function KioskPage() {
   const [appState, setAppState] = useState<SessionState>("welcome");
@@ -20,13 +20,13 @@ export default function KioskPage() {
   const [countdown, setCountdown] = useState<number | null>(null);
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [hasSocialConsent, setHasSocialConsent] = useState<boolean | null>(null);
   
   // Admin Mode States
   const [isOwnerMode, setIsOwnerMode] = useState(false);
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
   const [logoClickCount, setLogoClickCount] = useState(0);
 
-  // Hidden Trigger: Click 5 times to open admin dialog
   const handleLogoClick = () => {
     setLogoClickCount(prev => {
       const next = prev + 1;
@@ -36,11 +36,9 @@ export default function KioskPage() {
       }
       return next;
     });
-    // Reset count after 3 seconds of inactivity
     setTimeout(() => setLogoClickCount(0), 3000);
   };
 
-  // Automated transition ONLY after full payment is confirmed
   useEffect(() => {
     if (appState === "payment" && packageSelected) {
       if (paymentReceived >= packageSelected) {
@@ -52,7 +50,6 @@ export default function KioskPage() {
     }
   }, [paymentReceived, appState, packageSelected]);
 
-  // Capture Countdown Logic
   useEffect(() => {
     if (appState === "capturing") {
       setCountdown(5);
@@ -75,7 +72,6 @@ export default function KioskPage() {
     setCapturedPhoto(mockPhoto);
     setIsEnhancing(true);
     
-    // Simulate AI processing
     try {
       await new Promise(r => setTimeout(r, 2000));
       setAppState("review");
@@ -93,13 +89,14 @@ export default function KioskPage() {
     setCapturedPhoto(null);
     setCountdown(null);
     setIsEnhancing(false);
+    setHasSocialConsent(null);
   }, []);
 
   const handleStart = () => setAppState("payment");
   
   const handleSelectPackage = (p: 50 | 100) => {
     setPackageSelected(p);
-    setPaymentReceived(0); // Reset payment when package changes
+    setPaymentReceived(0);
   };
 
   const handleBypassPayment = () => {
@@ -108,9 +105,13 @@ export default function KioskPage() {
     }
   };
 
+  const handleConsent = (agreed: boolean) => {
+    setHasSocialConsent(agreed);
+    setAppState("printing");
+  };
+
   return (
     <KioskLayout>
-      {/* Hidden Admin Trigger: Invisible Area over Logo */}
       <div 
         className="absolute top-12 left-0 right-0 z-[60] text-center cursor-default select-none active:opacity-80 transition-opacity"
         onClick={handleLogoClick}
@@ -123,14 +124,12 @@ export default function KioskPage() {
         </p>
       </div>
 
-      {/* Admin PIN Entry Dialog */}
       <AdminAuthDialog 
         isOpen={isAdminDialogOpen} 
         onClose={() => setIsAdminDialogOpen(false)}
         onAuthSuccess={() => setIsOwnerMode(true)}
       />
 
-      {/* Admin Controls: Only visible when Owner Mode is verified */}
       {isOwnerMode && (
         <AdminControls 
           currentStatus={appState}
@@ -142,7 +141,6 @@ export default function KioskPage() {
         />
       )}
 
-      {/* Owner Mode Active Indicator */}
       {isOwnerMode && (
         <div className="absolute top-4 left-4 z-50 flex items-center gap-2 bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter animate-pulse border border-white/20">
           <ShieldAlert className="w-3 h-3" />
@@ -161,7 +159,7 @@ export default function KioskPage() {
                </div>
             </div>
             <h2 className="font-headline font-black text-4xl mb-6">READY FOR YOUR SHOT?</h2>
-            <NeonButton onClick={handleStart} className="w-full max-w-sm">
+            <NeonButton onClick={handleStart} className="w-full max-sm:w-full">
               TAP TO START
             </NeonButton>
           </div>
@@ -207,7 +205,6 @@ export default function KioskPage() {
                 <p className="font-bold uppercase tracking-widest text-xl">Insert {packageSelected} PHP</p>
                 <p className="text-xs opacity-50 mt-2">Waiting for hardware payment signal...</p>
                 
-                {/* Regular payment simulator - hidden for customers, visible for owners via Bypass */}
                 {isOwnerMode && (
                   <NeonButton 
                     onClick={handleBypassPayment}
@@ -215,13 +212,6 @@ export default function KioskPage() {
                   >
                     OWNER BYPASS PAYMENT
                   </NeonButton>
-                )}
-                
-                {/* Debug info - only in owner mode */}
-                {isOwnerMode && (
-                   <div className="mt-4 text-[10px] text-primary/60 font-mono">
-                     STATUS: {paymentReceived}/{packageSelected} PHP
-                   </div>
                 )}
               </div>
             )}
@@ -286,7 +276,7 @@ export default function KioskPage() {
 
             <div className="grid grid-cols-2 gap-4">
                <NeonButton 
-                 onClick={() => setAppState("printing")} 
+                 onClick={() => setAppState("consent")} 
                  className="w-full !py-6"
                >
                  FINALIZE
@@ -301,31 +291,94 @@ export default function KioskPage() {
           </div>
         )}
 
-        {appState === "printing" && (
-          <div className="text-center animate-in zoom-in duration-500">
-            <div className="w-64 h-64 mx-auto mb-8 bg-white p-4">
-               <div className="w-full h-full border-8 border-black flex items-center justify-center relative">
-                  <div className="grid grid-cols-4 grid-rows-4 gap-1 w-full h-full p-2 opacity-80">
-                    {Array.from({length: 16}).map((_, i) => (
-                      <div key={i} className={cn("bg-black", Math.random() > 0.5 ? "opacity-100" : "opacity-0")} />
-                    ))}
-                  </div>
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                     <div className="bg-white p-1">
-                        <div className="w-8 h-8 bg-primary" />
-                     </div>
-                  </div>
-               </div>
+        {appState === "consent" && (
+          <div className="w-full max-w-md text-center animate-in slide-in-from-bottom-12 duration-700">
+            <div className="w-24 h-24 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-8 border-2 border-primary">
+              <Share2 className="w-12 h-12 text-primary" />
             </div>
-            <h3 className="font-headline font-black text-3xl mb-4 italic">DOWNLOAD SOFT-COPY</h3>
-            <p className="text-sm opacity-60 max-w-xs mx-auto mb-12 uppercase font-bold tracking-tighter">
-              Scan the QR code above to save your premium JNL Studio portraits. Link expires in 24 hours.
+            <h2 className="font-headline font-black text-4xl mb-4 italic uppercase">BE FEATURED!</h2>
+            <p className="text-sm opacity-80 mb-12 uppercase tracking-widest font-bold leading-relaxed">
+              May we feature your stunning JNL Studio portrait on our official Facebook page for promotional purposes?
             </p>
             
-            <div className="flex flex-col gap-4 max-w-xs mx-auto">
+            <div className="flex flex-col gap-4">
+              <NeonButton 
+                onClick={() => handleConsent(true)} 
+                className="w-full !py-8 bg-primary border-primary flex items-center justify-center gap-3"
+              >
+                <Check className="w-6 h-6" />
+                YES, SHARE IT!
+              </NeonButton>
+              
+              <button 
+                onClick={() => handleConsent(false)}
+                className="w-full border-2 border-white/20 py-6 font-headline font-black text-lg italic hover:bg-white/10 transition-colors flex items-center justify-center gap-3"
+              >
+                <X className="w-5 h-5 opacity-40" />
+                NO, KEEP IT PRIVATE
+              </button>
+            </div>
+            
+            <p className="text-[10px] opacity-40 uppercase font-bold mt-12 tracking-tighter">
+              Your privacy is our priority. We only post with your explicit consent.
+            </p>
+          </div>
+        )}
+
+        {appState === "printing" && (
+          <div className="text-center animate-in zoom-in duration-500 w-full max-w-sm">
+            <div className="space-y-12">
+              {/* Soft Copy Download */}
+              <div className="bg-white/5 p-6 border-2 border-white/10">
+                <div className="w-48 h-48 mx-auto mb-6 bg-white p-2">
+                   <div className="w-full h-full border-4 border-black flex items-center justify-center relative">
+                      <div className="grid grid-cols-4 grid-rows-4 gap-1 w-full h-full p-1 opacity-80">
+                        {Array.from({length: 16}).map((_, i) => (
+                          <div key={i} className={cn("bg-black", i % 3 === 0 ? "opacity-100" : "opacity-0")} />
+                        ))}
+                      </div>
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                         <div className="bg-white p-1 shadow-lg">
+                            <div className="w-6 h-6 bg-primary" />
+                         </div>
+                      </div>
+                   </div>
+                </div>
+                <h3 className="font-headline font-black text-2xl mb-2 italic">DOWNLOAD PHOTO</h3>
+                <p className="text-[10px] opacity-60 uppercase font-bold tracking-tighter">
+                  Scan to save your premium JNL portraits
+                </p>
+              </div>
+
+              {/* Facebook Follow */}
+              <div className="bg-primary/5 p-6 border-2 border-primary/20 relative overflow-hidden">
+                <div className="absolute -top-4 -right-4 opacity-10">
+                  <Facebook className="w-24 h-24 text-primary" />
+                </div>
+                <div className="w-40 h-40 mx-auto mb-6 bg-white p-2 relative z-10">
+                  {/* Placeholder for JNL Studio FB Page QR */}
+                  <Image 
+                    src="https://picsum.photos/seed/fb-qr/300/300" 
+                    alt="Facebook QR" 
+                    width={160} 
+                    height={160} 
+                    className="grayscale contrast-125"
+                  />
+                </div>
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <Facebook className="w-5 h-5 text-primary" />
+                  <h3 className="font-headline font-black text-xl italic uppercase">FOLLOW JNL STUDIO</h3>
+                </div>
+                <p className="text-[10px] opacity-60 uppercase font-bold tracking-tighter">
+                  Stay updated with our latest promotions
+                </p>
+              </div>
+            </div>
+            
+            <div className="mt-12 flex flex-col gap-4">
                <div className="flex items-center gap-2 justify-center text-primary text-xs font-black italic mb-4">
                  <Loader2 className="w-4 h-4 animate-spin" />
-                 PRINTER INITIALIZING...
+                 PRINTER READYING...
                </div>
                
                <NeonButton 

@@ -18,6 +18,12 @@
       "description": "JNL Studio watermark frame",
       "imageUrl": "https://picsum.photos/seed/jnl3/600/800",
       "imageHint": "minimal frame"
+    },
+    {
+      "id": "fb-follow-qr",
+      "description": "JNL Studio Facebook Page QR",
+      "imageUrl": "https://picsum.photos/seed/fb-qr/300/300",
+      "imageHint": "social qr"
     }
   ]
 }

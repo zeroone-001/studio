@@ -68,9 +68,8 @@ export default function KioskPage() {
   const [logoClickCount, setLogoClickCount] = useState(0);
   const [usbHandle, setUsbHandle] = useState<any>(null);
   const [storageError, setStorageError] = useState<string | null>(null);
-  const [isDevMode, setIsDevMode] = useState(true); // Default to Dev Mode for testing
+  const [isDevMode, setIsDevMode] = useState(true);
 
-  // Filter layouts based on package
   const availableBlueprints = useMemo(() => {
     if (!packageSelected) return [];
     return BLUEPRINTS.filter(bp => bp.package === packageSelected);
@@ -80,7 +79,6 @@ export default function KioskPage() {
     return FILTERS.slice(0, packageSelected === 100 ? 10 : 5);
   }, [packageSelected]);
 
-  // USB Storage Logic
   const setupUsbStorage = async () => {
     try {
       // @ts-ignore
@@ -93,10 +91,9 @@ export default function KioskPage() {
   };
 
   const saveToUsb = async (dataUri: string, folder: 'Originals' | 'Edited' | 'FinalOutput' | 'QRCopies') => {
-    // If in Dev Mode and no USB, just simulate success
     if (!usbHandle) {
       if (isDevMode) {
-        console.log(`[DevMode] Simulated save to ${folder}:`, dataUri.substring(0, 50) + "...");
+        console.log(`[DevMode] Simulated save to ${folder}`);
         return true;
       }
       return false;
@@ -105,15 +102,12 @@ export default function KioskPage() {
     try {
       const today = new Date().toISOString().split('T')[0];
       const sessionId = `Session_${new Date().getTime()}`;
-      
       const rootDir = await usbHandle.getDirectoryHandle('Photobooth', { create: true });
       const dateDir = await rootDir.getDirectoryHandle(today, { create: true });
       const sessionDir = await dateDir.getDirectoryHandle(sessionId, { create: true });
       const targetDir = await sessionDir.getDirectoryHandle(folder, { create: true });
-      
       const fileName = `${folder.toUpperCase()}_${new Date().getTime()}.jpg`;
       const fileHandle = await targetDir.getFileHandle(fileName, { create: true });
-      
       const response = await fetch(dataUri);
       const blob = await response.blob();
       const writable = await fileHandle.createWritable();
@@ -121,7 +115,6 @@ export default function KioskPage() {
       await writable.close();
       return true;
     } catch (e) {
-      setStorageError("USB Write Error. Please check connection.");
       return false;
     }
   };
@@ -161,26 +154,18 @@ export default function KioskPage() {
 
     for (let i = 0; i < totalShots; i++) {
       setCurrentShotIndex(i + 1);
-      
       for (let c = 3; c > 0; c--) {
         setCountdown(c);
         await new Promise(r => setTimeout(r, 1000));
       }
-      
       setCountdown(null);
       setIsProcessing(true);
-      
-      // Simulation of capture
       const mockPhoto = `https://picsum.photos/seed/jnl-${Date.now()}-${i}/1200/1600`;
       photos.push(mockPhoto);
-      
-      // Save original - handles USB or Dev Mode simulation
       await saveToUsb(mockPhoto, 'Originals');
-      
       await new Promise(r => setTimeout(r, 800)); 
       setIsProcessing(false);
     }
-
     setCapturedPhotos(photos);
     setAppState("review");
   };
@@ -235,13 +220,11 @@ export default function KioskPage() {
           onBypassPayment={() => setPaymentReceived(packageSelected || 0)}
           usbStatus={usbHandle ? "connected" : "disconnected"}
           onSetupUsb={setupUsbStorage}
-          onTestSave={() => saveToUsb("https://picsum.photos/200", "Originals")}
           isDevMode={isDevMode}
           onToggleDevMode={() => setIsDevMode(!isDevMode)}
         />
       )}
 
-      {/* Storage Warning for Customers in Production Mode */}
       {isStorageBlocked && appState === "welcome" && (
         <div className="absolute inset-0 z-[100] bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center p-12 text-center">
           <div className="w-24 h-24 bg-red-500/20 rounded-full flex items-center justify-center mb-8 border-2 border-red-500 animate-pulse">
@@ -249,34 +232,10 @@ export default function KioskPage() {
           </div>
           <h2 className="text-4xl font-black italic uppercase mb-4 text-white">Storage Required</h2>
           <p className="text-white/60 font-bold uppercase tracking-widest text-sm max-w-sm mb-12">
-            Booth is temporarily offline. Please notify the attendant to connect external storage.
+            Booth is temporarily offline. Please connect external storage.
           </p>
-          <div className="text-[10px] font-black uppercase text-white/20 tracking-[0.3em]">
-            System Status: Awaiting Media Path
-          </div>
         </div>
       )}
-
-      <div className="absolute top-4 left-4 z-50 flex flex-col gap-2">
-        {isOwnerMode && (
-          <div className="flex items-center gap-2 bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter animate-pulse border border-white/20">
-            <ShieldAlert className="w-3 h-3" />
-            OWNER TEST MODE
-          </div>
-        )}
-        {usbHandle && (
-          <div className="flex items-center gap-2 bg-green-600/40 backdrop-blur-md text-white px-3 py-1 rounded-full text-[9px] font-black uppercase border border-green-500/50">
-            <HardDrive className="w-3 h-3" />
-            USB STORAGE ACTIVE
-          </div>
-        )}
-        {isDevMode && !isOwnerMode && (
-          <div className="flex items-center gap-2 bg-blue-600/40 backdrop-blur-md text-white px-3 py-1 rounded-full text-[9px] font-black uppercase border border-blue-500/50">
-            <Usb className="w-3 h-3" />
-            DEV MODE ACTIVE
-          </div>
-        )}
-      </div>
 
       <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 overflow-y-auto pt-36 sm:pt-48 pb-20 sm:pb-24">
         
@@ -284,12 +243,11 @@ export default function KioskPage() {
           <div className="text-center animate-in fade-in zoom-in duration-700 w-full max-w-sm">
             <div className="relative w-56 h-56 sm:w-72 sm:h-72 mb-10 sm:mb-16 mx-auto">
                <div className="absolute inset-0 rounded-full border-4 border-primary/30 animate-ping" />
-               <div className="absolute inset-6 rounded-full border-2 border-primary/50" />
                <div className="absolute inset-0 flex items-center justify-center">
                   <Camera className="w-20 h-20 sm:w-28 sm:h-28 text-primary animate-neon-pulse" />
                </div>
             </div>
-            <h2 className="font-headline font-black text-3xl sm:text-5xl mb-8 uppercase tracking-tighter">READY FOR YOUR SHOT?</h2>
+            <h2 className="font-headline font-black text-3xl sm:text-5xl mb-8 uppercase tracking-tighter italic">READY FOR YOUR SHOT?</h2>
             <NeonButton 
               onClick={() => setAppState("payment")} 
               className="w-full text-xl sm:text-2xl"
@@ -313,7 +271,7 @@ export default function KioskPage() {
               >
                 <div>
                   <div className="text-4xl sm:text-5xl font-black italic">50 PHP</div>
-                  <div className="text-[10px] sm:text-sm font-bold opacity-60 uppercase mt-2">3 SHOTS • PREMIUM STYLE</div>
+                  <div className="text-[10px] sm:text-sm font-bold opacity-60 uppercase mt-2">3 SHOTS • 5 STYLES</div>
                 </div>
                 <ArrowRight className={cn("w-8 h-8", packageSelected === 50 ? "text-primary" : "text-white/20")} />
               </button>
@@ -327,7 +285,7 @@ export default function KioskPage() {
               >
                 <div>
                   <div className="text-4xl sm:text-5xl font-black italic">100 PHP</div>
-                  <div className="text-[10px] sm:text-sm font-bold opacity-60 uppercase mt-2">6 SHOTS • FULL BLUEPRINT</div>
+                  <div className="text-[10px] sm:text-sm font-bold opacity-60 uppercase mt-2">6 SHOTS • ALL STYLES</div>
                 </div>
                 <Zap className={cn("w-8 h-8", packageSelected === 100 ? "text-primary" : "text-white/20")} />
               </button>
@@ -356,11 +314,11 @@ export default function KioskPage() {
              </div>
 
              <div className="space-y-6 sm:max-h-[70vh] overflow-y-auto pr-4 scrollbar-hide">
-              <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Pre-Shot Blueprint</h2>
+              <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Pre-Shot Styling</h2>
               <div className="space-y-8">
                 <div>
                   <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
-                    <Frame className="w-4 h-4 text-primary" /> Choose Layout
+                    <Frame className="w-4 h-4 text-primary" /> Layout Options
                   </div>
                   <div className="grid grid-cols-5 gap-2">
                     {availableBlueprints.map((bp) => (
@@ -523,8 +481,8 @@ export default function KioskPage() {
               <div className="bg-white/5 p-8 border-2 border-white/10">
                 <div className="w-40 h-40 mx-auto mb-8 bg-white p-3 flex items-center justify-center"><ArrowRight className="w-12 h-12 text-black" /></div>
                 <h3 className="font-headline font-black text-2xl mb-2 italic uppercase">SCAN SOFT COPY</h3>
-                <p className="text-[10px] opacity-60 uppercase font-bold tracking-widest">
-                  {usbHandle ? "Saved to JNL USB Drive" : isDevMode ? "[Dev Mode] Simulated Save" : "Processing..."}
+                <p className="text-[10px] opacity-60 uppercase font-bold tracking-widest italic">
+                  {usbHandle ? "Saved to JNL Drive" : "[Test Mode] Simulated Save"}
                 </p>
               </div>
 
@@ -539,7 +497,6 @@ export default function KioskPage() {
               </div>
             </div>
             <div className="mt-12 flex flex-col gap-6">
-               <div className="flex items-center gap-3 justify-center text-primary text-xs font-black italic uppercase tracking-widest"><Printer className="w-5 h-5 animate-bounce" /> PREPARING PORTRAIT...</div>
                <NeonButton onClick={resetSession} className="w-full py-8">NEW SESSION</NeonButton>
             </div>
           </div>

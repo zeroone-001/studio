@@ -26,7 +26,7 @@ export default function KioskPage() {
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
   const [logoClickCount, setLogoClickCount] = useState(0);
 
-  // Logo trigger logic: Click 5 times to open admin dialog
+  // Hidden Trigger: Click 5 times to open admin dialog
   const handleLogoClick = () => {
     setLogoClickCount(prev => {
       const next = prev + 1;
@@ -40,14 +40,19 @@ export default function KioskPage() {
     setTimeout(() => setLogoClickCount(0), 3000);
   };
 
-  // Simulated Payment Detector Logic
+  // Automated transition ONLY after full payment is confirmed
   useEffect(() => {
-    if (appState === "payment" && paymentReceived >= (packageSelected || 0)) {
-      setTimeout(() => setAppState("capturing"), 1500);
+    if (appState === "payment" && packageSelected) {
+      if (paymentReceived >= packageSelected) {
+        const timer = setTimeout(() => {
+          setAppState("capturing");
+        }, 1500);
+        return () => clearTimeout(timer);
+      }
     }
   }, [paymentReceived, appState, packageSelected]);
 
-  // Capture Logic
+  // Capture Countdown Logic
   useEffect(() => {
     if (appState === "capturing") {
       setCountdown(5);
@@ -70,6 +75,7 @@ export default function KioskPage() {
     setCapturedPhoto(mockPhoto);
     setIsEnhancing(true);
     
+    // Simulate AI processing
     try {
       await new Promise(r => setTimeout(r, 2000));
       setAppState("review");
@@ -93,6 +99,7 @@ export default function KioskPage() {
   
   const handleSelectPackage = (p: 50 | 100) => {
     setPackageSelected(p);
+    setPaymentReceived(0); // Reset payment when package changes
   };
 
   const handleBypassPayment = () => {
@@ -103,9 +110,9 @@ export default function KioskPage() {
 
   return (
     <KioskLayout>
-      {/* Hidden Admin Trigger Area */}
+      {/* Hidden Admin Trigger: Invisible Area over Logo */}
       <div 
-        className="absolute top-12 left-0 right-0 z-[60] text-center cursor-pointer select-none active:scale-95 transition-transform"
+        className="absolute top-12 left-0 right-0 z-[60] text-center cursor-default select-none active:opacity-80 transition-opacity"
         onClick={handleLogoClick}
       >
         <h1 className="font-headline font-black text-6xl tracking-tighter text-white neon-glow">
@@ -116,14 +123,14 @@ export default function KioskPage() {
         </p>
       </div>
 
-      {/* Admin Auth Component */}
+      {/* Admin PIN Entry Dialog */}
       <AdminAuthDialog 
         isOpen={isAdminDialogOpen} 
         onClose={() => setIsAdminDialogOpen(false)}
         onAuthSuccess={() => setIsOwnerMode(true)}
       />
 
-      {/* Admin Controls Component */}
+      {/* Admin Controls: Only visible when Owner Mode is verified */}
       {isOwnerMode && (
         <AdminControls 
           currentStatus={appState}
@@ -137,9 +144,9 @@ export default function KioskPage() {
 
       {/* Owner Mode Active Indicator */}
       {isOwnerMode && (
-        <div className="absolute top-4 left-4 z-50 flex items-center gap-2 bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter animate-pulse">
+        <div className="absolute top-4 left-4 z-50 flex items-center gap-2 bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter animate-pulse border border-white/20">
           <ShieldAlert className="w-3 h-3" />
-          TEST MODE ACTIVE
+          OWNER TEST MODE
         </div>
       )}
 
@@ -198,25 +205,23 @@ export default function KioskPage() {
               <div className="text-center p-8 border-2 border-dashed border-white/20 bg-white/5">
                 <Wallet className="w-12 h-12 mx-auto mb-4 text-primary animate-bounce" />
                 <p className="font-bold uppercase tracking-widest text-xl">Insert {packageSelected} PHP</p>
-                <p className="text-xs opacity-50 mt-2">Validated payment detected automatically</p>
+                <p className="text-xs opacity-50 mt-2">Waiting for hardware payment signal...</p>
                 
-                {/* Regular payment simulator button (for devs, but owner bypass is better) */}
-                {!isOwnerMode && (
-                  <button 
-                    onClick={() => setPaymentReceived(packageSelected)}
-                    className="mt-6 text-[10px] text-white/10 hover:text-white/30 uppercase"
-                  >
-                    (Simulate Hardware Signal)
-                  </button>
-                )}
-                
+                {/* Regular payment simulator - hidden for customers, visible for owners via Bypass */}
                 {isOwnerMode && (
                   <NeonButton 
                     onClick={handleBypassPayment}
                     className="mt-6 w-full !py-4 bg-green-600 border-green-600 shadow-green-900/50"
                   >
-                    OWNER BYPASS
+                    OWNER BYPASS PAYMENT
                   </NeonButton>
+                )}
+                
+                {/* Debug info - only in owner mode */}
+                {isOwnerMode && (
+                   <div className="mt-4 text-[10px] text-primary/60 font-mono">
+                     STATUS: {paymentReceived}/{packageSelected} PHP
+                   </div>
                 )}
               </div>
             )}
@@ -260,7 +265,7 @@ export default function KioskPage() {
           <div className="w-full max-w-lg animate-in fade-in duration-500">
             <h2 className="font-headline font-black text-3xl mb-6 text-center italic uppercase">Looking Sharp!</h2>
             
-            <div className="relative aspect-[3/4] w-full mb-8 border-4 border-white">
+            <div className="relative aspect-[3/4] w-full mb-8 border-4 border-white shadow-2xl">
                {capturedPhoto && (
                  <Image 
                    src={capturedPhoto} 
@@ -341,4 +346,3 @@ export default function KioskPage() {
     </KioskLayout>
   );
 }
-

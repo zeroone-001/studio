@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { NeonButton } from "./neon-button";
-import { ShieldCheck, Lock } from "lucide-react";
+import { Lock } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface AdminAuthDialogProps {
   isOpen: boolean;
@@ -35,6 +36,8 @@ export function AdminAuthDialog({ isOpen, onClose, onAuthSuccess }: AdminAuthDia
     } else {
       setError(true);
       setPin("");
+      // Reset error after 1 second
+      setTimeout(() => setError(false), 1000);
     }
   };
 
@@ -59,13 +62,13 @@ export function AdminAuthDialog({ isOpen, onClose, onAuthSuccess }: AdminAuthDia
               value={pin}
               onChange={(e) => setPin(e.target.value)}
               className={cn(
-                "h-16 text-center text-3xl font-black tracking-[1em] bg-white/5 border-2 rounded-none focus-visible:ring-primary",
-                error ? "border-red-500 animate-shake" : "border-white/20"
+                "h-16 text-center text-3xl font-black tracking-[1em] bg-white/5 border-2 rounded-none focus-visible:ring-primary placeholder:text-xs placeholder:tracking-widest",
+                error ? "border-red-500 animate-bounce" : "border-white/20"
               )}
               autoFocus
             />
             {error && (
-              <p className="text-red-500 text-[10px] font-black uppercase text-center mt-2 animate-bounce">
+              <p className="text-red-500 text-[10px] font-black uppercase text-center mt-2">
                 INVALID CREDENTIALS
               </p>
             )}
@@ -81,5 +84,3 @@ export function AdminAuthDialog({ isOpen, onClose, onAuthSuccess }: AdminAuthDia
     </Dialog>
   );
 }
-
-import { cn } from "@/lib/utils";

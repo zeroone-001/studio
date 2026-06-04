@@ -269,7 +269,7 @@ export default function KioskPage() {
               <div className="space-y-4 animate-in zoom-in duration-300">
                 <div className="p-6 bg-primary text-white font-black italic uppercase border-2 border-primary shadow-[0_0_30px_rgba(255,51,153,0.4)]">
                    <div className="text-xl sm:text-2xl mb-1">
-                    {paymentReceived >= 100 ? "PREMIUM PACKAGE UNLOCKED" : "STARTER PACKAGE UNLOCKED"}
+                    {paymentReceived >= 100 ? "PREMIUM PACKAGE DETECTED" : "STARTER PACKAGE DETECTED"}
                    </div>
                    <div className="text-[10px] sm:text-xs opacity-80 tracking-widest">
                     {paymentReceived >= 100 ? "6 SHOTS • 10 FILTERS • 10 FRAMES" : "3 SHOTS • 5 FILTERS • 5 FRAMES"}

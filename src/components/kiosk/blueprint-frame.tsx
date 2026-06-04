@@ -90,7 +90,7 @@ export function BlueprintFrame({
         {/* Divider line */}
         <div 
           className="absolute left-1/2 -translate-x-1/2 h-[2px] bg-black/10"
-          style={{ top: '20px', width: '1400px' }}
+          style={{ top: '20px', width: '1480px' }}
         />
 
         {/* Quote */}
@@ -112,7 +112,6 @@ export function BlueprintFrame({
         <div className="absolute bottom-[60px] left-[60px] right-[60px] flex justify-between items-end">
           <div className="flex flex-col">
              <span className="font-headline font-black italic text-black uppercase" style={{ fontSize: '32px' }}>JNL STUDIO</span>
-             <span className="text-[14px] font-bold opacity-30 uppercase tracking-[0.3em]">Premium Portraits</span>
           </div>
           <div className="text-right">
              <span className="font-bold uppercase tracking-widest text-black/40" style={{ fontSize: '20px' }}>{displayDate}</span>

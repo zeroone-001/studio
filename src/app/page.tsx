@@ -64,6 +64,55 @@ export const QUOTES = [
   { id: "magic", text: "JNL MAGIC", label: "MAGIC" },
   { id: "iconic", text: "PURE ICONIC", label: "ICONIC" },
   { id: "best", text: "BEST DAY EVER", label: "BEST DAY" },
+  { id: "gold", text: "YOU ARE GOLD", label: "GOLD" },
+  { id: "shine", text: "KEEP SHINING", label: "SHINE" },
+  { id: "humble", text: "STAY HUMBLE", label: "HUMBLE" },
+  { id: "love", text: "RADIATE LOVE", label: "LOVE" },
+  { id: "kind", text: "BE KIND", label: "KIND" },
+  { id: "dream", text: "DREAM BIG", label: "DREAM" },
+  { id: "loud", text: "LIVE LOUD", label: "LOUD" },
+  { id: "joy", text: "CHOOSE JOY", label: "JOY" },
+  { id: "light", text: "BE THE LIGHT", label: "LIGHT" },
+  { id: "gotthis", text: "YOU GOT THIS", label: "GOT THIS" },
+  { id: "brave", text: "BOLD & BRAVE", label: "BRAVE" },
+  { id: "vibes", text: "GOOD VIBES", label: "VIBES" },
+  { id: "true", text: "STAY TRUE", label: "TRUE" },
+  { id: "fearless", text: "FEARLESS", label: "FEARLESS" },
+  { id: "make", text: "MAKE MAGIC", label: "MAKE" },
+  { id: "bliss", text: "PURE BLISS", label: "BLISS" },
+  { id: "soul", text: "ICONIC SOUL", label: "SOUL" },
+  { id: "authentic", text: "BE AUTHENTIC", label: "AUTHENTIC" },
+  { id: "limitless", text: "LIMITLESS", label: "LIMIT" },
+  { id: "curious", text: "STAY CURIOUS", label: "CURIOUS" },
+  { id: "ownvibe", text: "OWN YOUR VIBE", label: "OWN VIBE" },
+  { id: "bright", text: "SHINE BRIGHT", label: "BRIGHT" },
+  { id: "heartgold", text: "HEART OF GOLD", label: "HEART" },
+  { id: "keepgoing", text: "KEEP GOING", label: "GOING" },
+  { id: "smile", text: "JUST SMILE", label: "SMILE" },
+  { id: "today", text: "TODAY IS GOOD", label: "TODAY" },
+  { id: "inside", text: "MAGIC INSIDE", label: "INSIDE" },
+  { id: "wild", text: "STAY WILD", label: "WILD" },
+  { id: "born", text: "BORN TO SHINE", label: "BORN" },
+  { id: "braveheart", text: "BRAVE HEART", label: "HEART" },
+  { id: "dreamer", text: "DREAMER", label: "DREAMER" },
+  { id: "strong", text: "STAY STRONG", label: "STRONG" },
+  { id: "energy", text: "PURE ENERGY", label: "ENERGY" },
+  { id: "lovelife", text: "LOVE LIFE", label: "LOVE LIFE" },
+  { id: "unstoppable", text: "BE UNSTOPPABLE", label: "UNSTOP" },
+  { id: "inspired", text: "STAY INSPIRED", label: "INSPIRED" },
+  { id: "blooming", text: "KEEP BLOOMING", label: "BLOOM" },
+  { id: "radiant", text: "RADIANT VIBE", label: "RADIANT" },
+  { id: "bold", text: "BE BOLD", label: "BOLD" },
+  { id: "fully", text: "LIVE FULLY", label: "FULLY" },
+  { id: "sweet", text: "STAY SWEET", label: "SWEET" },
+  { id: "enough", text: "YOU ARE ENOUGH", label: "ENOUGH" },
+  { id: "count", text: "MAKE IT COUNT", label: "COUNT" },
+  { id: "grateful", text: "STAY GRATEFUL", label: "GRATEFUL" },
+  { id: "happiness", text: "PURE HAPPINESS", label: "HAPPY" },
+  { id: "beyond", text: "BEYOND LIMITS", label: "BEYOND" },
+  { id: "always", text: "SHINE ALWAYS", label: "ALWAYS" },
+  { id: "change", text: "BE THE CHANGE", label: "CHANGE" },
+  { id: "moments", text: "MAGIC MOMENTS", label: "MOMENTS" },
 ];
 
 export interface PlacedSticker {
@@ -469,7 +518,7 @@ export default function KioskPage() {
                     <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
                       <Quote className="w-4 h-4 text-primary" /> Quote
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2 scrollbar-hide">
                       {QUOTES.map((q) => (
                         <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("py-3 px-4 text-[10px] font-black uppercase border-2 transition-all italic", selectedQuote.id === q.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40")}>{q.label}</button>
                       ))}

@@ -217,9 +217,6 @@ export default function KioskPage() {
         <h1 className="font-headline font-black text-5xl sm:text-7xl tracking-tighter text-white neon-glow">
           JNL <span className="text-primary">STUDIO</span>
         </h1>
-        <p className="font-body font-bold text-[10px] sm:text-sm uppercase tracking-[0.4em] opacity-60 mt-2">
-          Premium Portrait Blueprint
-        </p>
       </div>
 
       <AdminAuthDialog 

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -31,27 +32,27 @@ export function KioskLayout({ children, className }: KioskLayoutProps) {
   const [meteors, setMeteors] = useState<Meteor[]>([]);
 
   useEffect(() => {
-    // Generate 120 stars for a dense, high-end celestial feel
+    // Generate 200 stars for a dense, high-end celestial feel
     setStars(
-      Array.from({ length: 120 }).map((_, i) => ({
+      Array.from({ length: 200 }).map((_, i) => ({
         id: i,
         top: `${Math.random() * 100}%`,
         left: `${Math.random() * 100}%`,
-        size: `${Math.random() * 2 + 0.5}px`,
+        size: `${Math.random() * 2 + 1}px`, // Slightly larger stars
         duration: `${(Math.random() * 4 + 2).toFixed(2)}s`,
         delay: `${(Math.random() * 10).toFixed(2)}s`,
-        opacity: Math.random() * 0.7 + 0.3, // Higher visibility
+        opacity: Math.random() * 0.8 + 0.2, // High visibility
       }))
     );
 
     // Frequent meteor showers
     setMeteors(
-      Array.from({ length: 6 }).map((_, i) => ({
+      Array.from({ length: 12 }).map((_, i) => ({
         id: i,
-        top: `${Math.random() * 40}%`,
-        right: `${Math.random() * 20}%`,
-        duration: `${(Math.random() * 3 + 4).toFixed(2)}s`,
-        delay: `${(Math.random() * 15).toFixed(2)}s`,
+        top: `${Math.random() * 50}%`,
+        right: `${Math.random() * 30}%`,
+        duration: `${(Math.random() * 2 + 3).toFixed(2)}s`, // Faster meteors
+        delay: `${(Math.random() * 20).toFixed(2)}s`,
       }))
     );
   }, []);
@@ -63,7 +64,7 @@ export function KioskLayout({ children, className }: KioskLayoutProps) {
         {stars.map((star) => (
           <div
             key={star.id}
-            className="absolute rounded-full bg-white animate-twinkle shadow-[0_0_8px_rgba(255,255,255,0.8)]"
+            className="absolute rounded-full bg-white animate-twinkle shadow-[0_0_12px_rgba(255,255,255,0.9)]"
             style={{
               top: star.top,
               left: star.left,
@@ -78,7 +79,7 @@ export function KioskLayout({ children, className }: KioskLayoutProps) {
         {meteors.map((meteor) => (
           <div
             key={meteor.id}
-            className="absolute w-[3px] h-[150px] bg-gradient-to-b from-white via-primary/40 to-transparent opacity-0 animate-meteor"
+            className="absolute w-[3px] h-[200px] bg-gradient-to-b from-white via-primary/60 to-transparent opacity-0 animate-meteor"
             style={{
               top: meteor.top,
               right: meteor.right,
@@ -87,7 +88,7 @@ export function KioskLayout({ children, className }: KioskLayoutProps) {
             }}
           />
         ))}
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 via-transparent to-primary/10" />
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/15 via-transparent to-primary/15" />
       </div>
 
       <div className={cn(

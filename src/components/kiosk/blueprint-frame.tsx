@@ -93,17 +93,6 @@ export function BlueprintFrame({
         </div>
       )}
 
-      {/* Footer: Logo & Date */}
-      <div className="absolute bottom-[120px] left-[120px] right-[120px] flex justify-between items-end">
-        <div className="text-left">
-           <div className="font-headline font-black text-2xl tracking-tighter leading-tight">JNL <span className="text-primary">STUDIO</span></div>
-           <div className="text-[10px] font-bold opacity-40 uppercase tracking-widest">Premium Portrait</div>
-        </div>
-        <div className="text-right">
-           <div className="text-sm font-black uppercase tracking-widest">{dateText || new Date().toLocaleDateString()}</div>
-        </div>
-      </div>
-
       {/* Blueprint Hint (Visible in Owner Mode Only) */}
       {isPreview && (
         <div className="absolute top-2 left-2 bg-black/50 text-white text-[8px] px-1 font-mono pointer-events-none">

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -113,11 +114,11 @@ export default function KioskPage() {
 
   // Sync blueprint selection when package is chosen
   useEffect(() => {
-    if (packageSelected && !selectedBlueprint) {
+    if (packageSelected) {
       const first = BLUEPRINTS.find(bp => bp.package === packageSelected);
       if (first) setSelectedBlueprint(first);
     }
-  }, [packageSelected, selectedBlueprint]);
+  }, [packageSelected]);
 
   // Camera Management
   const startCamera = async () => {
@@ -412,25 +413,29 @@ export default function KioskPage() {
                       onClick={() => { setPackageSelected(50); setAppState("setup"); }}
                       className="py-6 text-lg bg-zinc-800 border-white/20"
                     >
-                      STARTER (50)
+                      TEST 50 PHP
                     </NeonButton>
                     <NeonButton 
                       onClick={() => { setPackageSelected(100); setAppState("setup"); }}
                       className="py-6 text-lg"
                     >
-                      PREMIUM (100)
+                      TEST 100 PHP
                     </NeonButton>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="p-6 bg-primary text-white font-black italic uppercase border-2 border-primary">
-                       <div className="text-xl sm:text-2xl mb-1">
-                        {paymentReceived >= 100 ? "PREMIUM PACKAGE" : "STARTER PACKAGE"}
-                       </div>
-                       <div className="text-[10px] sm:text-xs opacity-80 tracking-widest uppercase">
-                        {paymentReceived >= 100 ? "6 SHOTS • 10 FILTERS • 10 FRAMES" : "3 SHOTS • 5 FILTERS • 5 FRAMES"}
-                       </div>
-                    </div>
+                    {paymentReceived === 50 && (
+                      <div className="p-6 bg-primary text-white font-black italic uppercase border-2 border-primary animate-in slide-in-from-top-4">
+                        <div className="text-xl sm:text-2xl mb-1">STARTER PACKAGE</div>
+                        <div className="text-[10px] sm:text-xs opacity-80 tracking-widest uppercase">3 SHOTS • 5 FILTERS • 5 FRAMES</div>
+                      </div>
+                    )}
+                    {paymentReceived >= 100 && (
+                      <div className="p-6 bg-primary text-white font-black italic uppercase border-2 border-primary animate-in slide-in-from-top-4">
+                        <div className="text-xl sm:text-2xl mb-1">PREMIUM PACKAGE</div>
+                        <div className="text-[10px] sm:text-xs opacity-80 tracking-widest uppercase">6 SHOTS • 10 FILTERS • 10 FRAMES</div>
+                      </div>
+                    )}
                     <NeonButton 
                       onClick={() => {
                         setPackageSelected(paymentReceived >= 100 ? 100 : 50);
@@ -732,4 +737,3 @@ export default function KioskPage() {
     </KioskLayout>
   );
 }
-

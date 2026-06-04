@@ -5,6 +5,7 @@ import React, { useMemo } from "react";
 import Image from "next/image";
 import { FrameBlueprint } from "./frame-blueprint";
 import { cn } from "@/lib/utils";
+import { STICKER_DEFS, PlacedSticker } from "@/app/page";
 
 interface BlueprintFrameProps {
   blueprint: FrameBlueprint;
@@ -14,6 +15,8 @@ interface BlueprintFrameProps {
   filterClass?: string;
   className?: string;
   isPreview?: boolean;
+  stickers?: PlacedSticker[];
+  onStickerPointerDown?: (id: string) => void;
 }
 
 export function BlueprintFrame({
@@ -24,6 +27,8 @@ export function BlueprintFrame({
   filterClass,
   className,
   isPreview = false,
+  stickers = [],
+  onStickerPointerDown,
 }: BlueprintFrameProps) {
   // Safety check to prevent crash if blueprint is undefined
   if (!blueprint || !blueprint.slots) {
@@ -47,7 +52,7 @@ export function BlueprintFrame({
   return (
     <div
       className={cn(
-        "relative bg-white text-black overflow-hidden shadow-2xl",
+        "relative bg-white text-black overflow-hidden shadow-2xl touch-none",
         className
       )}
       style={{
@@ -81,6 +86,38 @@ export function BlueprintFrame({
           </div>
         );
       })}
+
+      {/* Stickers Layer */}
+      <div className="absolute inset-0 z-40 pointer-events-none">
+        {stickers.map((s) => {
+          const def = STICKER_DEFS.find(d => d.id === s.type);
+          if (!def) return null;
+          const Icon = def.icon;
+          return (
+            <div
+              key={s.id}
+              className={cn(
+                "absolute pointer-events-auto cursor-move active:scale-110 transition-transform",
+                isPreview ? "drop-shadow-lg" : ""
+              )}
+              style={{
+                left: `${s.x}%`,
+                top: `${s.y}%`,
+                transform: `translate(-50%, -50%)`,
+                width: isPreview ? "12%" : `${s.size}px`,
+                height: isPreview ? "auto" : `${s.size}px`,
+                aspectRatio: "1/1"
+              }}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                onStickerPointerDown?.(s.id);
+              }}
+            >
+              <Icon className={cn("w-full h-full", def.color)} strokeWidth={3} />
+            </div>
+          );
+        })}
+      </div>
 
       {/* Footer Area - Fixed Positioning */}
       <div 

@@ -9,7 +9,8 @@ import { AdminControls } from "@/components/kiosk/admin-controls";
 import { 
   Camera, Zap, Wallet, ArrowRight, Loader2, ShieldAlert, Facebook, 
   Sparkles, Frame, Usb, Printer, Smile, Quote, Share2, Heart, Star, Flame,
-  AlertTriangle, HardDrive, CheckCircle2
+  AlertTriangle, HardDrive, CheckCircle2, Crown, Cat, Moon, Sun, Cloud, 
+  Coffee, Pizza, Flower2, Ghost, Rocket, Trash2, XCircle
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -31,12 +32,18 @@ const FILTERS = [
   { id: "aesthetic", label: "STYLE J", class: "saturate-[0.6] brightness-115 contrast-105" },
 ];
 
-const STICKERS = [
-  { id: "heart", icon: <Heart className="w-8 h-8 text-red-500" />, label: "HEART" },
-  { id: "star", icon: <Star className="w-8 h-8 text-yellow-400" />, label: "STAR" },
-  { id: "sparkle", icon: <Sparkles className="w-8 h-8 text-white" />, label: "SPARKLE" },
-  { id: "fire", icon: <Flame className="w-8 h-8 text-orange-500" />, label: "FIRE" },
-  { id: "camera", icon: <Camera className="w-8 h-8 text-primary" />, label: "SNAP" },
+export const STICKER_DEFS = [
+  { id: "heart", icon: Heart, color: "text-red-500" },
+  { id: "star", icon: Star, color: "text-yellow-400" },
+  { id: "sparkle", icon: Sparkles, color: "text-white" },
+  { id: "fire", icon: Flame, color: "text-orange-500" },
+  { id: "crown", icon: Crown, color: "text-yellow-300" },
+  { id: "cloud", icon: Cloud, color: "text-blue-200" },
+  { id: "sun", icon: Sun, color: "text-orange-300" },
+  { id: "moon", icon: Moon, color: "text-indigo-200" },
+  { id: "flower", icon: Flower2, color: "text-pink-400" },
+  { id: "ghost", icon: Ghost, color: "text-zinc-300" },
+  { id: "rocket", icon: Rocket, color: "text-cyan-400" },
 ];
 
 const QUOTES = [
@@ -46,6 +53,14 @@ const QUOTES = [
   { id: "iconic", text: "PURE ICONIC", label: "ICONIC" },
   { id: "best", text: "BEST DAY EVER", label: "BEST DAY" },
 ];
+
+export interface PlacedSticker {
+  id: string;
+  type: string;
+  x: number; // 0-100 percentage
+  y: number; // 0-100 percentage
+  size: number;
+}
 
 export default function KioskPage() {
   const [appState, setAppState] = useState<SessionState>("welcome");
@@ -59,9 +74,12 @@ export default function KioskPage() {
   // Customization States
   const [selectedFilter, setSelectedFilter] = useState(FILTERS[0]);
   const [selectedBlueprint, setSelectedBlueprint] = useState<FrameBlueprint | null>(null);
-  const [selectedSticker, setSelectedSticker] = useState<typeof STICKERS[0] | null>(null);
+  const [placedStickers, setPlacedStickers] = useState<PlacedSticker[]>([]);
   const [selectedQuote, setSelectedQuote] = useState(QUOTES[0]);
   
+  // Dragging logic
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+
   // Admin & Storage States
   const [isOwnerMode, setIsOwnerMode] = useState(false);
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
@@ -176,9 +194,35 @@ export default function KioskPage() {
     setIsProcessing(false);
     setSelectedBlueprint(null);
     setSelectedFilter(FILTERS[0]);
-    setSelectedSticker(null);
+    setPlacedStickers([]);
     setSelectedQuote(QUOTES[0]);
   }, []);
+
+  const addSticker = (type: string) => {
+    const newSticker: PlacedSticker = {
+      id: `sticker-${Date.now()}`,
+      type,
+      x: 50,
+      y: 40,
+      size: 80,
+    };
+    setPlacedStickers(prev => [...prev, newSticker]);
+  };
+
+  const removeSticker = (id: string) => {
+    setPlacedStickers(prev => prev.filter(s => s.id !== id));
+  };
+
+  const handleDrag = (e: React.PointerEvent, id: string) => {
+    if (!draggingId) return;
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    
+    setPlacedStickers(prev => prev.map(s => 
+      s.id === id ? { ...s, x: Math.max(5, Math.min(95, x)), y: Math.max(5, Math.min(95, y)) } : s
+    ));
+  };
 
   const isStorageBlocked = !usbHandle && !isDevMode;
 
@@ -298,6 +342,7 @@ export default function KioskPage() {
                   filterClass={selectedFilter.class}
                   isPreview
                   quoteText="YOUR SHOT HERE"
+                  stickers={[]}
                 />
              </div>
 
@@ -392,6 +437,7 @@ export default function KioskPage() {
                    photos={capturedPhotos} 
                    filterClass={selectedFilter.class}
                    isPreview
+                   stickers={[]}
                  />
                )}
             </div>
@@ -403,42 +449,80 @@ export default function KioskPage() {
         )}
 
         {appState === "decorating" && (
-          <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in duration-500">
-             <div className="relative w-full max-h-[60vh] mx-auto overflow-hidden">
-                {selectedBlueprint && (
-                   <BlueprintFrame 
-                     blueprint={selectedBlueprint} 
-                     photos={capturedPhotos} 
-                     filterClass={selectedFilter.class}
-                     isPreview
-                     quoteText={selectedQuote.text}
-                   />
-                )}
+          <div className="w-full max-w-6xl flex flex-col lg:flex-row gap-8 items-start animate-in fade-in duration-500">
+             <div className="relative flex-1 w-full max-h-[70vh] flex items-center justify-center">
+                <div 
+                  className="relative w-full h-full max-w-lg"
+                  onPointerMove={(e) => {
+                    if (draggingId) handleDrag(e, draggingId);
+                  }}
+                  onPointerUp={() => setDraggingId(null)}
+                >
+                  {selectedBlueprint && (
+                    <BlueprintFrame 
+                      blueprint={selectedBlueprint} 
+                      photos={capturedPhotos} 
+                      filterClass={selectedFilter.class}
+                      isPreview
+                      quoteText={selectedQuote.text}
+                      stickers={placedStickers}
+                      onStickerPointerDown={(id) => setDraggingId(id)}
+                    />
+                  )}
+                  <div className="absolute top-2 right-2 flex gap-2">
+                    <button 
+                      onClick={() => setPlacedStickers([])}
+                      className="bg-red-500/80 p-2 rounded-full text-white hover:bg-red-600 transition-colors"
+                      title="Clear All"
+                    >
+                      <XCircle className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
              </div>
 
-             <div className="space-y-6 sm:max-h-[70vh] overflow-y-auto pr-4 scrollbar-hide">
-                <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Final Touches</h2>
+             <div className="w-full lg:w-96 space-y-6 lg:max-h-[75vh] overflow-y-auto pr-4 scrollbar-hide">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Studio Decor</h2>
+                </div>
+
                 <div className="space-y-8">
                   <div>
                     <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
-                      <Smile className="w-4 h-4 text-primary" /> Stickers
+                      <Smile className="w-4 h-4 text-primary" /> Tap to Add Cute Stickers
                     </div>
-                    <div className="flex gap-4">
-                      {STICKERS.map((s) => (
-                        <button key={s.id} onClick={() => setSelectedSticker(s === selectedSticker ? null : s)} className={cn("w-14 h-14 flex items-center justify-center bg-white/5 border-2 rounded-lg transition-all", selectedSticker?.id === s.id ? "border-primary bg-primary/20" : "border-white/10")}>
-                          {s.icon}
+                    <div className="grid grid-cols-4 gap-3">
+                      {STICKER_DEFS.map((s) => (
+                        <button 
+                          key={s.id} 
+                          onClick={() => addSticker(s.id)} 
+                          className="aspect-square flex items-center justify-center bg-white/5 border-2 border-white/10 rounded-xl hover:border-primary transition-all active:scale-90"
+                        >
+                          <s.icon className={cn("w-8 h-8", s.color)} />
                         </button>
                       ))}
                     </div>
+                    <p className="mt-4 text-[10px] text-white/40 font-bold uppercase tracking-widest text-center italic">
+                      TIP: DRAG STICKERS ON PHOTO TO ARRANGE
+                    </p>
                   </div>
 
                   <div>
                     <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
-                      <Quote className="w-4 h-4 text-primary" /> Motivation
+                      <Quote className="w-4 h-4 text-primary" /> Motivational Label
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       {QUOTES.map((q) => (
-                        <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("py-3 px-4 text-[10px] font-black uppercase border-2 transition-all italic", selectedQuote.id === q.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40")}>{q.label}</button>
+                        <button 
+                          key={q.id} 
+                          onClick={() => setSelectedQuote(q)} 
+                          className={cn(
+                            "py-3 px-4 text-[10px] font-black uppercase border-2 transition-all italic", 
+                            selectedQuote.id === q.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40"
+                          )}
+                        >
+                          {q.label}
+                        </button>
                       ))}
                     </div>
                   </div>

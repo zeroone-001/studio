@@ -15,7 +15,7 @@ export type FrameBlueprint = {
 };
 
 export const BLUEPRINTS: FrameBlueprint[] = [
-  // 50 PHP PACKAGE (3 SHOTS) - MAXIMIZED PRINTABLE AREA
+  // ₱50 PACKAGE (3 SHOTS) - MAXIMIZED PRINTABLE AREA
   {
     id: "p50-l1",
     label: "LAYOUT A",
@@ -72,7 +72,7 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     quotePosition: { x: 60, y: 1550, w: 1480, h: 200 }
   },
 
-  // 100 PHP PACKAGE (6 SHOTS)
+  // ₱100 PACKAGE (6 SHOTS)
   {
     id: "p100-l1",
     label: "LAYOUT A",

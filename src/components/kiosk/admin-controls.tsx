@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from "react";
@@ -12,7 +11,10 @@ import {
   Image as ImageIcon, 
   Printer,
   Share2,
-  Palette
+  Palette,
+  Usb,
+  HardDrive,
+  AlertCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +27,8 @@ interface AdminControlsProps {
   onExitOwnerMode: () => void;
   hasPackage: boolean;
   onBypassPayment: () => void;
+  usbStatus: "connected" | "disconnected";
+  onSetupUsb: () => void;
 }
 
 export function AdminControls({ 
@@ -33,7 +37,9 @@ export function AdminControls({
   onReset, 
   onExitOwnerMode,
   hasPackage,
-  onBypassPayment
+  onBypassPayment,
+  usbStatus,
+  onSetupUsb
 }: AdminControlsProps) {
   const states: { id: SessionState; label: string; icon: any }[] = [
     { id: "welcome", label: "Intro", icon: PlayCircle },
@@ -46,8 +52,8 @@ export function AdminControls({
   ];
 
   return (
-    <div className="fixed bottom-16 right-4 z-[100] flex flex-col items-end gap-2">
-      <div className="bg-zinc-950/95 backdrop-blur-md border-2 border-primary/50 p-4 shadow-[0_0_30px_rgba(255,51,153,0.3)] w-64 animate-in slide-in-from-right-4 border-b-primary/80">
+    <div className="fixed bottom-16 right-4 z-[100] flex flex-col items-end gap-2 scale-90 sm:scale-100 origin-bottom-right">
+      <div className="bg-zinc-950/95 backdrop-blur-md border-2 border-primary/50 p-4 shadow-[0_0_30px_rgba(255,51,153,0.3)] w-72 animate-in slide-in-from-right-4 border-b-primary/80">
         <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/10">
           <div className="flex items-center gap-2">
             <Settings className="w-4 h-4 text-primary" />
@@ -62,13 +68,42 @@ export function AdminControls({
         </div>
 
         <div className="space-y-4">
+          {/* USB Diagnostics */}
+          <div className="bg-white/5 p-3 border border-white/10">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 text-[9px] font-black uppercase text-white/60">
+                <Usb className={cn("w-3 h-3", usbStatus === 'connected' ? "text-green-500" : "text-red-500")} />
+                External USB Storage
+              </div>
+              <div className={cn(
+                "px-2 py-0.5 rounded-full text-[8px] font-black uppercase",
+                usbStatus === 'connected' ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500"
+              )}>
+                {usbStatus}
+              </div>
+            </div>
+            <button 
+              onClick={onSetupUsb}
+              className="w-full bg-primary/10 hover:bg-primary/20 border border-primary/30 py-2 text-[10px] font-black uppercase flex items-center justify-center gap-2 transition-colors"
+            >
+              <HardDrive className="w-3 h-3" />
+              {usbStatus === 'connected' ? "Update USB Folder" : "Connect USB Storage"}
+            </button>
+            {usbStatus === 'disconnected' && (
+              <div className="mt-2 flex items-center gap-1.5 text-[8px] text-amber-500 font-bold uppercase">
+                <AlertCircle className="w-2.5 h-2.5" />
+                Required for direct saving
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 gap-2">
             <button 
               onClick={onReset}
               className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-[10px] font-black uppercase py-3 transition-colors"
             >
               <RefreshCcw className="w-3 h-3" />
-              Reset All
+              Reset Session
             </button>
             <button 
               disabled={!hasPackage || currentStatus !== 'payment'}
@@ -84,7 +119,7 @@ export function AdminControls({
           </div>
 
           <div className="space-y-1">
-            <p className="text-[9px] font-bold text-white/40 uppercase mb-2 tracking-widest">Jump to Screen:</p>
+            <p className="text-[9px] font-bold text-white/40 uppercase mb-2 tracking-widest">Quick Navigation:</p>
             <div className="grid grid-cols-1 gap-1">
               {states.map((state) => (
                 <button
@@ -99,7 +134,7 @@ export function AdminControls({
                 >
                   <state.icon className="w-3 h-3" />
                   {state.label}
-                  {currentStatus === state.id && <span className="ml-auto text-[8px] opacity-50">Active</span>}
+                  {currentStatus === state.id && <span className="ml-auto text-[8px] opacity-50">Live</span>}
                 </button>
               ))}
             </div>
@@ -107,8 +142,8 @@ export function AdminControls({
         </div>
 
         <div className="mt-4 pt-2 border-t border-white/10 flex justify-between items-center text-[8px] font-bold text-white/20 tracking-widest uppercase">
-          <span>v2.2 Build-415</span>
-          <span className="text-primary/40 italic">JNL STUDIO PRO</span>
+          <span>Storage: {usbStatus === 'connected' ? "USB-FS" : "CACHED"}</span>
+          <span className="text-primary/40 italic">JNL PRO v2.5</span>
         </div>
       </div>
     </div>

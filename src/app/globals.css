@@ -32,23 +32,30 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground selection:bg-primary/30 overflow-hidden;
+    @apply bg-background text-foreground selection:bg-primary/30 overflow-hidden touch-none;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
 @layer utilities {
   .neon-glow {
-    text-shadow: 0 0 10px rgba(255, 51, 153, 0.5), 0 0 20px rgba(255, 51, 153, 0.3);
+    text-shadow: 0 0 10px rgba(255, 51, 153, 0.8), 0 0 20px rgba(255, 51, 153, 0.4);
   }
   .neon-border {
-    box-shadow: 0 0 10px rgba(255, 51, 153, 0.5), inset 0 0 5px rgba(255, 51, 153, 0.3);
+    box-shadow: 0 0 15px rgba(255, 51, 153, 0.6), inset 0 0 8px rgba(255, 51, 153, 0.3);
   }
   .portrait-container {
-    aspect-ratio: 9 / 16;
-    max-height: 100vh;
+    width: 100vw;
+    height: 100dvh;
+    max-width: 100%;
     margin: 0 auto;
-    width: 100%;
-    max-width: 100vh;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .safe-area-spacing {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }

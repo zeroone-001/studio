@@ -10,6 +10,7 @@ interface Star {
   size: string;
   duration: string;
   delay: string;
+  opacity: number;
 }
 
 interface Meteor {
@@ -30,42 +31,45 @@ export function KioskLayout({ children, className }: KioskLayoutProps) {
   const [meteors, setMeteors] = useState<Meteor[]>([]);
 
   useEffect(() => {
-    // Generate random stars only on client side after hydration to avoid mismatch
+    // Generate 120 stars for a dense, high-end celestial feel
     setStars(
-      Array.from({ length: 40 }).map((_, i) => ({
+      Array.from({ length: 120 }).map((_, i) => ({
         id: i,
         top: `${Math.random() * 100}%`,
         left: `${Math.random() * 100}%`,
-        size: `${Math.random() * 2 + 1}px`,
-        duration: `${(Math.random() * 3 + 2).toFixed(2)}s`,
-        delay: `${(Math.random() * 5).toFixed(2)}s`,
+        size: `${Math.random() * 2 + 0.5}px`,
+        duration: `${(Math.random() * 4 + 2).toFixed(2)}s`,
+        delay: `${(Math.random() * 10).toFixed(2)}s`,
+        opacity: Math.random() * 0.7 + 0.3, // Higher visibility
       }))
     );
 
+    // Frequent meteor showers
     setMeteors(
-      Array.from({ length: 4 }).map((_, i) => ({
+      Array.from({ length: 6 }).map((_, i) => ({
         id: i,
-        top: `${Math.random() * 50}%`,
-        right: `${Math.random() * 30}%`,
-        duration: `${(Math.random() * 5 + 5).toFixed(2)}s`,
-        delay: `${(Math.random() * 10).toFixed(2)}s`,
+        top: `${Math.random() * 40}%`,
+        right: `${Math.random() * 20}%`,
+        duration: `${(Math.random() * 3 + 4).toFixed(2)}s`,
+        delay: `${(Math.random() * 15).toFixed(2)}s`,
       }))
     );
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-black flex items-center justify-center overflow-hidden">
+    <div className="fixed inset-0 bg-black flex items-center justify-center overflow-hidden touch-none select-none">
       {/* Global Background Elements */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
         {stars.map((star) => (
           <div
             key={star.id}
-            className="absolute rounded-full bg-white animate-twinkle"
+            className="absolute rounded-full bg-white animate-twinkle shadow-[0_0_8px_rgba(255,255,255,0.8)]"
             style={{
               top: star.top,
               left: star.left,
               width: star.size,
               height: star.size,
+              opacity: star.opacity,
               animationDuration: star.duration,
               animationDelay: star.delay,
             }}
@@ -74,7 +78,7 @@ export function KioskLayout({ children, className }: KioskLayoutProps) {
         {meteors.map((meteor) => (
           <div
             key={meteor.id}
-            className="absolute w-[2px] h-[100px] bg-gradient-to-b from-white to-transparent opacity-0 animate-meteor"
+            className="absolute w-[3px] h-[150px] bg-gradient-to-b from-white via-primary/40 to-transparent opacity-0 animate-meteor"
             style={{
               top: meteor.top,
               right: meteor.right,
@@ -83,12 +87,12 @@ export function KioskLayout({ children, className }: KioskLayoutProps) {
             }}
           />
         ))}
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-primary/5" />
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 via-transparent to-primary/10" />
       </div>
 
       <div className={cn(
-        "w-full h-full max-w-[1080px] bg-black/40 backdrop-blur-[2px] flex flex-col relative portrait-container z-10",
-        "safe-area-inset-top safe-area-inset-bottom",
+        "portrait-container z-10 bg-black/20 backdrop-blur-[1px]",
+        "safe-area-spacing",
         className
       )}>
         {children}

@@ -9,7 +9,7 @@ import { AdminControls } from "@/components/kiosk/admin-controls";
 import { 
   Camera, Zap, Wallet, ArrowRight, Loader2, ShieldAlert, Facebook, 
   Sparkles, Frame, Usb, Printer, Smile, Quote, Share2, Heart, Star, Flame,
-  AlertTriangle, HardDrive
+  AlertTriangle, HardDrive, CheckCircle2
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -132,17 +132,6 @@ export default function KioskPage() {
   };
 
   useEffect(() => {
-    if (appState === "payment" && packageSelected) {
-      if (paymentReceived >= packageSelected) {
-        const timer = setTimeout(() => {
-          setAppState("setup");
-        }, 1500);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [paymentReceived, appState, packageSelected]);
-
-  useEffect(() => {
     if (appState === "capturing") {
       startShotSequence();
     }
@@ -217,7 +206,10 @@ export default function KioskPage() {
           onReset={resetSession}
           onExitOwnerMode={() => setIsOwnerMode(false)}
           hasPackage={!!packageSelected}
-          onBypassPayment={() => setPaymentReceived(packageSelected || 0)}
+          onSimulateCash={(amount) => setPaymentReceived(prev => prev + amount)}
+          onBypassPayment={() => {
+            setPaymentReceived(100);
+          }}
           usbStatus={usbHandle ? "connected" : "disconnected"}
           onSetupUsb={setupUsbStorage}
           isDevMode={isDevMode}
@@ -259,43 +251,39 @@ export default function KioskPage() {
         )}
 
         {appState === "payment" && (
-          <div className="w-full max-md animate-in slide-in-from-bottom-8 duration-500">
-            <h2 className="font-headline font-black text-3xl sm:text-4xl mb-8 sm:mb-12 text-center uppercase italic">Select Package</h2>
-            <div className="grid grid-cols-1 gap-4 sm:gap-6 mb-10 sm:mb-14">
-              <button 
-                onClick={() => setPackageSelected(50)}
-                className={cn(
-                  "p-8 sm:p-10 border-2 transition-all text-left flex justify-between items-center relative overflow-hidden",
-                  packageSelected === 50 ? "border-primary bg-primary/10" : "border-white/20 hover:border-white/50"
-                )}
-              >
-                <div>
-                  <div className="text-4xl sm:text-5xl font-black italic">50 PHP</div>
-                  <div className="text-[10px] sm:text-sm font-bold opacity-60 uppercase mt-2">3 SHOTS • 5 STYLES</div>
-                </div>
-                <ArrowRight className={cn("w-8 h-8", packageSelected === 50 ? "text-primary" : "text-white/20")} />
-              </button>
-
-              <button 
-                onClick={() => setPackageSelected(100)}
-                className={cn(
-                  "p-8 sm:p-10 border-2 transition-all text-left flex justify-between items-center relative overflow-hidden",
-                  packageSelected === 100 ? "border-primary bg-primary/10" : "border-white/20 hover:border-white/50"
-                )}
-              >
-                <div>
-                  <div className="text-4xl sm:text-5xl font-black italic">100 PHP</div>
-                  <div className="text-[10px] sm:text-sm font-bold opacity-60 uppercase mt-2">6 SHOTS • ALL STYLES</div>
-                </div>
-                <Zap className={cn("w-8 h-8", packageSelected === 100 ? "text-primary" : "text-white/20")} />
-              </button>
+          <div className="w-full max-w-md animate-in slide-in-from-bottom-8 duration-500 text-center">
+            <div className="mb-10 sm:mb-12">
+               <div className="w-28 h-28 sm:w-32 sm:h-32 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-dashed border-primary/30 animate-pulse">
+                  <Wallet className="w-12 h-12 sm:w-16 sm:h-16 text-primary" />
+               </div>
+               <h2 className="font-headline font-black text-3xl sm:text-4xl mb-2 italic uppercase">INSERT CASH</h2>
+               <p className="text-[10px] sm:text-sm opacity-60 uppercase font-bold tracking-widest">AWAITING 50 OR 100 PHP BILL</p>
             </div>
 
-            {packageSelected && (
-              <div className="text-center p-8 sm:p-12 border-2 border-dashed border-white/20 bg-white/5">
-                <Wallet className="w-12 h-12 mx-auto mb-6 text-primary animate-bounce" />
-                <p className="font-bold uppercase tracking-widest text-2xl">Insert {packageSelected} PHP</p>
-                <p className="text-[10px] opacity-50 mt-4 font-bold uppercase tracking-wider italic">Awaiting Bill Detection...</p>
+            <div className="bg-white/5 border-2 border-white/10 p-8 sm:p-10 mb-8 sm:mb-10">
+               <div className="text-5xl sm:text-6xl font-black italic text-primary mb-2">{paymentReceived} <span className="text-2xl text-white">PHP</span></div>
+               <div className="text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">Total Amount Detected</div>
+            </div>
+
+            {paymentReceived >= 50 && (
+              <div className="space-y-4 animate-in zoom-in duration-300">
+                <div className="p-6 bg-primary text-white font-black italic uppercase border-2 border-primary shadow-[0_0_30px_rgba(255,51,153,0.4)]">
+                   <div className="text-xl sm:text-2xl mb-1">
+                    {paymentReceived >= 100 ? "PREMIUM PACKAGE UNLOCKED" : "STARTER PACKAGE UNLOCKED"}
+                   </div>
+                   <div className="text-[10px] sm:text-xs opacity-80 tracking-widest">
+                    {paymentReceived >= 100 ? "6 SHOTS • 10 FILTERS • 10 FRAMES" : "3 SHOTS • 5 FILTERS • 5 FRAMES"}
+                   </div>
+                </div>
+                <NeonButton 
+                  onClick={() => {
+                    setPackageSelected(paymentReceived >= 100 ? 100 : 50);
+                    setAppState("setup");
+                  }}
+                  className="w-full py-6 sm:py-8 text-xl sm:text-2xl"
+                >
+                  START SESSION
+                </NeonButton>
               </div>
             )}
           </div>
@@ -462,7 +450,7 @@ export default function KioskPage() {
         )}
 
         {appState === "consent" && (
-          <div className="w-full max-w-md text-center animate-in slide-in-from-bottom-12 duration-700">
+          <div className="w-full max-md text-center animate-in slide-in-from-bottom-12 duration-700">
             <div className="w-24 h-24 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-10 border-2 border-primary">
               <Share2 className="w-12 h-12 text-primary" />
             </div>

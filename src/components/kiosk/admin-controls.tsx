@@ -21,7 +21,8 @@ import {
   Database,
   Code2,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  PlusCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS } from "./frame-blueprint";
@@ -35,6 +36,7 @@ interface AdminControlsProps {
   onReset: () => void;
   onExitOwnerMode: () => void;
   hasPackage: boolean;
+  onSimulateCash: (amount: number) => void;
   onBypassPayment: () => void;
   usbStatus: "connected" | "disconnected";
   onSetupUsb: () => void;
@@ -49,6 +51,7 @@ export function AdminControls({
   onReset, 
   onExitOwnerMode,
   hasPackage,
+  onSimulateCash,
   onBypassPayment,
   usbStatus,
   onSetupUsb,
@@ -83,10 +86,10 @@ export function AdminControls({
     <div className="fixed bottom-16 right-4 z-[100] flex flex-col items-end gap-2 scale-90 sm:scale-100 origin-bottom-right">
       
       {showBlueprints && (
-        <div className="bg-zinc-950 border-2 border-primary p-6 w-[80vw] h-[80vh] overflow-y-auto mb-4 animate-in fade-in zoom-in slide-in-from-right-10">
+        <div className="fixed inset-0 z-[110] bg-zinc-950 p-6 overflow-y-auto animate-in fade-in zoom-in">
           <div className="flex justify-between items-center mb-6">
             <h3 className="font-headline font-black text-2xl italic uppercase text-primary">Frame Blueprint Viewer</h3>
-            <button onClick={() => setShowBlueprints(false)} className="bg-white/10 p-2 text-xs font-bold uppercase">Close Viewer</button>
+            <button onClick={() => setShowBlueprints(false)} className="bg-white/10 p-2 text-xs font-bold uppercase border-2 border-white/20">Close Viewer</button>
           </div>
           
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
@@ -121,7 +124,6 @@ export function AdminControls({
         </div>
 
         <div className="space-y-4">
-          {/* Dev Mode Toggle */}
           <div className="bg-blue-600/10 border border-blue-500/30 p-3 flex items-center justify-between">
             <div className="flex items-center gap-2 text-[9px] font-black uppercase text-blue-400">
               <Code2 className="w-3 h-3" />
@@ -133,10 +135,28 @@ export function AdminControls({
           </div>
 
           <div className="bg-white/5 p-3 border border-white/10 space-y-3">
+            <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Bill Validator Sim:</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button 
+                onClick={() => onSimulateCash(50)}
+                className="bg-primary/20 border border-primary/40 py-2 text-[9px] font-black uppercase flex items-center justify-center gap-1 hover:bg-primary/40 transition-colors"
+              >
+                <PlusCircle className="w-3 h-3" /> Add 50
+              </button>
+              <button 
+                onClick={() => onSimulateCash(100)}
+                className="bg-primary/20 border border-primary/40 py-2 text-[9px] font-black uppercase flex items-center justify-center gap-1 hover:bg-primary/40 transition-colors"
+              >
+                <PlusCircle className="w-3 h-3" /> Add 100
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white/5 p-3 border border-white/10 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-[9px] font-black uppercase text-white/60">
                 <Usb className={cn("w-3 h-3", usbStatus === 'connected' ? "text-green-500" : "text-red-500")} />
-                USB Storage Status
+                Storage Status
               </div>
               <div className={cn(
                 "px-2 py-0.5 rounded-full text-[8px] font-black uppercase",
@@ -183,15 +203,11 @@ export function AdminControls({
               Reset All
             </button>
             <button 
-              disabled={!hasPackage || currentStatus !== 'payment'}
               onClick={onBypassPayment}
-              className={cn(
-                "flex items-center justify-center gap-2 text-[10px] font-black uppercase py-3 transition-colors",
-                hasPackage && currentStatus === 'payment' ? "bg-green-600 hover:bg-green-500 text-white" : "bg-white/5 text-white/20 cursor-not-allowed"
-              )}
+              className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-500 text-white text-[10px] font-black uppercase py-3 transition-colors"
             >
               <CreditCard className="w-3 h-3" />
-              Pay Bypass
+              Bypass Cash
             </button>
           </div>
 

@@ -24,7 +24,8 @@ import {
   ToggleRight,
   PlusCircle,
   Smile,
-  ShieldAlert
+  ShieldAlert,
+  Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS } from "./frame-blueprint";

@@ -13,6 +13,7 @@ interface JnlLogoProps {
 export function JnlLogo({ variant = "hero", color = "light", className }: JnlLogoProps) {
   const isHero = variant === "hero";
   const isIcon = variant === "icon";
+  const isWatermark = variant === "watermark";
   
   const colors = {
     light: { main: "white", accent: "#FF3399" },
@@ -40,30 +41,33 @@ export function JnlLogo({ variant = "hero", color = "light", className }: JnlLog
   return (
     <div className={cn("flex flex-col items-center select-none", className)}>
       {/* Custom Monogram Icon */}
-      <div className={cn("relative mb-2", isHero ? "w-24 h-24" : "w-10 h-10")}>
-        <svg viewBox="0 0 100 100" className="w-full h-full">
-          <rect x="5" y="5" width="90" height="90" fill="none" stroke={activeColors.main} strokeWidth="0.5" opacity="0.5" transform="rotate(45 50 50)" />
-          <path 
-            d="M35 35 V60 C35 65 38 68 42 68 M50 32 V68 M58 32 V68 H68" 
-            fill="none" 
-            stroke={activeColors.accent} 
-            strokeWidth="3" 
-            strokeLinecap="round" 
-            className={isHero ? "animate-pulse" : ""}
-          />
-        </svg>
-      </div>
+      {!isWatermark && (
+        <div className={cn("relative mb-2", isHero ? "w-24 h-24" : "w-10 h-10")}>
+          <svg viewBox="0 0 100 100" className="w-full h-full">
+            <rect x="5" y="5" width="90" height="90" fill="none" stroke={activeColors.main} strokeWidth="0.5" opacity="0.5" transform="rotate(45 50 50)" />
+            <path 
+              d="M35 35 V60 C35 65 38 68 42 68 M50 32 V68 M58 32 V68 H68" 
+              fill="none" 
+              stroke={activeColors.accent} 
+              strokeWidth="3" 
+              strokeLinecap="round" 
+              className={isHero ? "animate-pulse" : ""}
+            />
+          </svg>
+        </div>
+      )}
 
       {/* Main Typography */}
       <div className="text-center">
         <h1 
           className={cn(
-            "font-headline font-black tracking-[-0.05em] uppercase italic leading-none",
-            isHero ? "text-6xl" : "text-xl"
+            "font-headline font-black tracking-tight uppercase italic leading-none flex items-center justify-center",
+            isHero ? "text-6xl gap-4" : isWatermark ? "text-lg gap-1.5" : "text-xl gap-2"
           )}
           style={{ color: activeColors.main }}
         >
-          JNL <span style={{ color: activeColors.accent }}>STUDIO</span>
+          <span>JNL</span>
+          <span style={{ color: activeColors.accent }}>STUDIO</span>
         </h1>
         {variant !== "watermark" && (
           <p 

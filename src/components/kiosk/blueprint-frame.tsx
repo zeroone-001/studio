@@ -51,7 +51,7 @@ export function BlueprintFrame({
 
   const CANVAS_W = 1600;
   const CANVAS_H = 2560;
-  const FOOTER_Y = 2440; // Even lower to save more space
+  const FOOTER_Y = 2460; // Moved lower to maximize photo area and save paper
 
   const displayDate = useMemo(() => {
     if (dateText) return dateText;
@@ -91,7 +91,7 @@ export function BlueprintFrame({
       ))}
 
       {/* Stickers Editor Layer (Only in Preview) */}
-      {isPreview ? (
+      {isPreview && (
         <div className="absolute inset-0 z-40 pointer-events-none">
           {stickers.map((s) => (
             <StickerEditor
@@ -105,30 +105,46 @@ export function BlueprintFrame({
             />
           ))}
         </div>
-      ) : (
-        /* Static Rendering for Export */
+      )}
+
+      {/* Static Rendering for Export (Non-Interactive) */}
+      {!isPreview && (
         <div className="absolute inset-0 z-40 pointer-events-none">
-          {stickers.map((s) => {
-            // Static render logic for final save (no handles)
-            return null; // Logic implemented in canvas save utility elsewhere
-          })}
+          {stickers.map((s) => (
+            <div
+              key={s.id}
+              className="absolute"
+              style={{
+                left: `${s.x}%`,
+                top: `${s.y}%`,
+                width: `${s.size}%`,
+                aspectRatio: "1/1",
+                transform: `translate(-50%, -50%) rotate(${s.rotation}deg)`,
+              }}
+            >
+              {/* Note: In a production export this would be rendered to a real canvas */}
+              {/* For now we just maintain the structure for visual consistency */}
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Minimal Footer branding */}
+      {/* Compact Branding Footer */}
       <div 
         className="absolute left-0 right-0 bottom-0 bg-white"
         style={{ top: `${(FOOTER_Y / CANVAS_H) * 100}%` }}
       >
-        <div className="absolute left-1/2 -translate-x-1/2 h-[1px] bg-black/5" style={{ top: '8px', width: '1500px' }} />
+        <div className="absolute left-1/2 -translate-x-1/2 h-[1.5px] bg-black/10" style={{ top: '0px', width: '1500px' }} />
+        
         {quoteText && (
-          <div className="absolute left-0 right-0 flex items-center justify-center" style={{ top: '10px' }}>
-            <span className="font-headline font-black italic uppercase text-black/80" style={{ fontSize: '18px' }}>{quoteText}</span>
+          <div className="absolute left-0 right-0 flex items-center justify-center" style={{ top: '8px' }}>
+            <span className="font-headline font-black italic uppercase text-black/70" style={{ fontSize: '14px', letterSpacing: '0.1em' }}>{quoteText}</span>
           </div>
         )}
-        <div className="absolute bottom-[15px] left-[50px] right-[50px] flex justify-between items-end">
+
+        <div className="absolute bottom-[20px] left-[60px] right-[60px] flex justify-between items-end">
           <JnlLogo variant="watermark" color="dark" className="!items-start" />
-          <span className="font-bold uppercase tracking-[0.2em] text-black/40" style={{ fontSize: '12px' }}>{displayDate}</span>
+          <span className="font-bold uppercase tracking-[0.3em] text-black/40" style={{ fontSize: '11px' }}>{displayDate}</span>
         </div>
       </div>
     </div>

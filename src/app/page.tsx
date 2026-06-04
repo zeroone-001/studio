@@ -272,8 +272,8 @@ export default function KioskPage() {
           className="fixed bottom-6 left-0 right-0 z-[60] text-center cursor-default select-none opacity-40 hover:opacity-100 transition-opacity"
           onClick={handleLogoClick}
         >
-          <p className="font-headline font-black text-[10px] sm:text-xs tracking-[0.3em] text-white uppercase italic">
-            JNL <span className="text-primary">STUDIO</span>
+          <p className="font-headline font-black text-[10px] sm:text-xs tracking-[0.4em] text-white uppercase italic flex items-center justify-center gap-2">
+            <span>JNL</span> <span className="text-primary">STUDIO</span>
           </p>
         </div>
       )}
@@ -472,7 +472,6 @@ export default function KioskPage() {
           </div>
         )}
 
-        {/* Other states (capturing, review, consent, printing) omitted for brevity but preserved in full implementation */}
         {appState === "capturing" && (
           <div className="w-full h-full flex flex-col items-center justify-center">
             <div className="relative aspect-[3/4] max-h-[65vh] w-full max-w-lg bg-zinc-900 overflow-hidden shadow-[0_0_60px_rgba(255,51,153,0.4)] border-4 border-white">

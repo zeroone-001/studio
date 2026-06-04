@@ -539,9 +539,9 @@ export default function KioskPage() {
         )}
 
         {appState === "review" && (
-          <div className="w-full max-w-lg animate-in fade-in duration-500">
-            <h2 className="font-headline font-black text-3xl mb-6 text-center italic uppercase">Looking Sharp!</h2>
-            <div className="w-full mb-8 mx-auto">
+          <div className="w-full max-lg animate-in fade-in duration-500 text-center">
+            <h2 className="font-headline font-black text-3xl mb-6 italic uppercase">Looking Sharp!</h2>
+            <div className="w-full max-w-[450px] mb-8 mx-auto">
                {selectedBlueprint && (
                  <BlueprintFrame 
                    blueprint={selectedBlueprint} 
@@ -552,7 +552,7 @@ export default function KioskPage() {
                  />
                )}
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
                <NeonButton onClick={() => setAppState("decorating")} className="w-full py-8 text-xl">DECORATE</NeonButton>
                <button onClick={() => setAppState("setup")} className="w-full border-2 border-white font-headline font-black text-xl py-8 italic hover:bg-white hover:text-black transition-colors uppercase">RETAKE</button>
             </div>
@@ -563,7 +563,7 @@ export default function KioskPage() {
           <div className="w-full max-w-6xl flex flex-col lg:flex-row gap-8 items-start animate-in fade-in duration-500">
              <div className="relative flex-1 w-full max-h-[70vh] flex items-center justify-center">
                 <div 
-                  className="relative w-full h-full max-w-lg"
+                  className="relative w-full h-full max-w-[450px]"
                   onPointerMove={(e) => {
                     if (draggingId) handleDrag(e, draggingId);
                   }}

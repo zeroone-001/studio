@@ -9,7 +9,7 @@ import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
   Wallet, Sparkles, Frame, Quote, Trash2, Cat, Moon, Sun, 
   Coffee, Pizza, Flower2, Crown, Layers, CameraIcon, Flashlight, User, HeartIcon, Maximize2,
-  ShieldCheck, QrCode, Facebook, CheckCircle2, Printer, ArrowRight, X
+  ShieldCheck, QrCode, Facebook, CheckCircle2, Printer, Share2, Heart, MessageCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -83,6 +83,7 @@ export default function KioskPage() {
   const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
   const [currentShotIndex, setCurrentShotIndex] = useState(0);
   const [printProgress, setPrintProgress] = useState(0);
+  const [promotionalConsent, setPromotionalConsent] = useState<boolean | null>(null);
   
   // Camera Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -217,6 +218,7 @@ export default function KioskPage() {
     setSelectedQuote(QUOTES[0]);
     setSelectedStickerId(null);
     setPrintProgress(0);
+    setPromotionalConsent(null);
   }, []);
 
   const handleLogoClick = () => {
@@ -457,14 +459,20 @@ export default function KioskPage() {
           <div className="w-full max-w-xl animate-in slide-in-from-bottom-8 duration-500 text-center">
             <div className="mb-10">
                <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-primary/30">
-                  <ShieldCheck className="w-12 h-12 text-primary" />
+                  <Share2 className="w-12 h-12 text-primary" />
                </div>
-               <h2 className="font-headline font-black text-4xl mb-4 italic uppercase">Privacy Consent</h2>
-               <p className="text-sm opacity-60 uppercase font-bold tracking-widest leading-relaxed">Do you allow JNL Studio to store a digital copy of your photo for QR code retrieval?</p>
+               <h2 className="font-headline font-black text-4xl mb-4 italic uppercase leading-none">Promotional <br />Consent</h2>
+               <p className="text-sm opacity-60 uppercase font-bold tracking-widest leading-relaxed px-4">May we post your photo on the JNL Studio FB Page for promotional highlights?</p>
             </div>
-            <div className="space-y-4">
-               <NeonButton onClick={() => setAppState("printing")} className="w-full py-8 text-xl">I AGREE</NeonButton>
-               <button onClick={() => setAppState("printing")} className="w-full border-2 border-white/20 font-headline font-black text-lg py-6 italic uppercase hover:bg-white/10 text-white/40 transition-all">NO, JUST PRINT</button>
+            <div className="grid grid-cols-1 gap-4 px-4">
+               <button onClick={() => { setPromotionalConsent(true); setAppState("printing"); }} className="w-full bg-primary py-8 text-xl font-headline font-black italic uppercase text-white shadow-[0_0_20px_rgba(255,51,153,0.4)] flex flex-col items-center justify-center gap-1 group transition-all">
+                  <span>YES, GO FOR IT!</span>
+                  <span className="text-[10px] opacity-60 tracking-widest group-hover:opacity-100">(Saves to JNL Studio FB Gallery)</span>
+               </button>
+               <button onClick={() => { setPromotionalConsent(false); setAppState("printing"); }} className="w-full border-2 border-white/20 font-headline font-black text-lg py-6 italic uppercase hover:bg-white/10 text-white/40 transition-all flex flex-col items-center justify-center gap-1">
+                  <span>NO, KEEP IT PRIVATE</span>
+                  <span className="text-[10px] opacity-40 tracking-widest">(Delete from server after download)</span>
+               </button>
             </div>
           </div>
         )}
@@ -500,7 +508,7 @@ export default function KioskPage() {
                          <span className="text-[10px] font-black uppercase text-green-500 tracking-widest">Print Successful</span>
                       </div>
                       <h2 className="font-headline font-black text-5xl italic uppercase leading-none">Capture <br /><span className="text-primary">Complete</span></h2>
-                      <p className="text-sm opacity-60 font-bold uppercase tracking-widest max-w-sm">Thank you for visiting JNL Studio! Your premium physical print is ready for collection.</p>
+                      <p className="text-sm opacity-60 font-bold uppercase tracking-widest max-w-sm">Thank you for visiting JNL Studio! Scan below to download your soft copy and follow our journey.</p>
                       <NeonButton onClick={resetSession} className="w-full lg:w-auto px-16 !py-8 text-xl">FINISH</NeonButton>
                    </div>
 
@@ -511,9 +519,9 @@ export default function KioskPage() {
                          </div>
                          <div className="space-y-1">
                             <h3 className="font-headline font-black text-sm uppercase italic">SOFT COPY</h3>
-                            <p className="text-[8px] font-bold opacity-40 uppercase tracking-widest">Download digital portrait</p>
+                            <p className="text-[8px] font-bold opacity-40 uppercase tracking-widest">Digital Download</p>
                          </div>
-                         <div className="aspect-square w-32 bg-white p-2 rounded-lg">
+                         <div className="aspect-square w-32 bg-white p-2 rounded-lg shadow-[0_0_20px_rgba(255,255,255,0.2)]">
                             <img src="https://picsum.photos/seed/softcopy/200/200" alt="Soft Copy QR" className="w-full h-full object-cover" />
                          </div>
                       </div>
@@ -524,9 +532,9 @@ export default function KioskPage() {
                          </div>
                          <div className="space-y-1">
                             <h3 className="font-headline font-black text-sm uppercase italic">FOLLOW US</h3>
-                            <p className="text-[8px] font-bold opacity-40 uppercase tracking-widest">JNL Studio Facebook</p>
+                            <p className="text-[8px] font-bold opacity-40 uppercase tracking-widest leading-tight">Like, Share & Follow on FB</p>
                          </div>
-                         <div className="aspect-square w-32 bg-white p-2 rounded-lg">
+                         <div className="aspect-square w-32 bg-white p-2 rounded-lg shadow-[0_0_20px_rgba(255,255,255,0.1)]">
                             <img src="https://picsum.photos/seed/fb-qr/200/200" alt="Facebook QR" className="w-full h-full object-cover" />
                          </div>
                       </div>

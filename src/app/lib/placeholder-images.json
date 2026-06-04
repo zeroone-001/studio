@@ -1,0 +1,23 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "kiosk-welcome",
+      "description": "Premium studio background",
+      "imageUrl": "https://picsum.photos/seed/jnl1/1080/1920",
+      "imageHint": "studio background"
+    },
+    {
+      "id": "sample-portrait",
+      "description": "Sample studio portrait for preview",
+      "imageUrl": "https://picsum.photos/seed/jnl2/600/800",
+      "imageHint": "fashion portrait"
+    },
+    {
+      "id": "frame-overlay",
+      "description": "JNL Studio watermark frame",
+      "imageUrl": "https://picsum.photos/seed/jnl3/600/800",
+      "imageHint": "minimal frame"
+    }
+  ]
+}

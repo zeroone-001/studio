@@ -23,7 +23,8 @@ import {
   ToggleLeft,
   ToggleRight,
   PlusCircle,
-  Smile
+  Smile,
+  ShieldAlert
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS } from "./frame-blueprint";
@@ -65,8 +66,9 @@ export function AdminControls({
     { id: "capturing", label: "Camera", icon: Camera },
     { id: "review", label: "Review", icon: ImageIcon },
     { id: "decorating", label: "Decor", icon: ImageIcon },
+    { id: "consent", label: "Privacy", icon: ShieldAlert },
+    { id: "printing", label: "Print/QR", icon: Printer },
     { id: "test-stickers", label: "Gesture Test", icon: Smile },
-    { id: "printing", label: "Final", icon: Printer },
   ];
 
   return (
@@ -96,8 +98,8 @@ export function AdminControls({
             <button onClick={() => onSimulateCash(50)} className="bg-primary/20 border border-primary/40 py-2 text-[9px] font-black uppercase flex items-center justify-center gap-1">
               <PlusCircle className="w-3 h-3" /> Add 50
             </button>
-            <button onClick={() => onSimulateCash(100)} className="bg-primary/20 border border-primary/40 py-2 text-[9px] font-black uppercase flex items-center justify-center gap-1">
-              <PlusCircle className="w-3 h-3" /> Add 100
+            <button onClick={onBypassPayment} className="bg-primary/20 border border-primary/40 py-2 text-[9px] font-black uppercase flex items-center justify-center gap-1">
+              <Zap className="w-3 h-3" /> Bypass
             </button>
           </div>
 

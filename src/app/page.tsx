@@ -167,8 +167,15 @@ export default function KioskPage() {
       }
       return next;
     });
-    setTimeout(() => setLogoClickCount(0), 3000);
   };
+
+  // Hidden trigger click window
+  useEffect(() => {
+    if (logoClickCount > 0) {
+      const timer = setTimeout(() => setLogoClickCount(0), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [logoClickCount]);
 
   useEffect(() => {
     if (appState === "setup" || appState === "capturing") {
@@ -282,7 +289,7 @@ export default function KioskPage() {
           onExitOwnerMode={() => setIsOwnerMode(false)}
           hasPackage={!!packageSelected}
           onSimulateCash={(amount) => setPaymentReceived(prev => prev + amount)}
-          onBypassPayment={() => setPaymentReceived(100)}
+          onBypassPayment={() => { setPaymentReceived(100); setPackageSelected(100); setAppState("setup"); }}
           usbStatus={usbHandle ? "connected" : "disconnected"}
           onSetupUsb={() => setUsbHandle({})} // Mock handle
           isDevMode={isDevMode}
@@ -329,7 +336,7 @@ export default function KioskPage() {
               <NeonButton 
                 onClick={() => setAppState("payment")} 
                 className="w-[75%] sm:w-[80%] text-2xl py-10"
-                disabled={isStorageBlocked}
+                disabled={isStorageBlocked && !isOwnerMode}
               >
                 READY?
               </NeonButton>

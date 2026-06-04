@@ -4,7 +4,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { STICKER_DEFS, PlacedSticker } from "@/app/page";
-import { X, RotateCw, Maximize2 } from "lucide-react";
+import { X, RotateCw, Maximize2, Layers } from "lucide-react";
 
 interface StickerEditorProps {
   sticker: PlacedSticker;
@@ -12,6 +12,7 @@ interface StickerEditorProps {
   onUpdate: (id: string, updates: Partial<PlacedSticker>) => void;
   onDelete: (id: string) => void;
   onSelect: (id: string) => void;
+  onBringToFront: (id: string) => void;
   canvasRect: DOMRect | null;
 }
 
@@ -21,6 +22,7 @@ export function StickerEditor({
   onUpdate, 
   onDelete, 
   onSelect,
+  onBringToFront,
   canvasRect 
 }: StickerEditorProps) {
   const def = STICKER_DEFS.find(d => d.id === sticker.type);
@@ -45,6 +47,7 @@ export function StickerEditor({
 
   const handleRotateStart = (e: React.PointerEvent) => {
     e.stopPropagation();
+    onSelect(sticker.id);
     setIsRotating(true);
     if (!canvasRect) return;
     
@@ -57,6 +60,7 @@ export function StickerEditor({
 
   const handleResizeStart = (e: React.PointerEvent) => {
     e.stopPropagation();
+    onSelect(sticker.id);
     setIsResizing(true);
     startPos.current = { x: e.clientX, y: e.clientY };
     startSize.current = sticker.size;
@@ -71,8 +75,8 @@ export function StickerEditor({
         const dy = ((e.clientY - startPos.current.y) / canvasRect.height) * 100;
         
         onUpdate(sticker.id, {
-          x: Math.max(5, Math.min(95, sticker.x + dx)),
-          y: Math.max(5, Math.min(95, sticker.y + dy))
+          x: Math.max(2, Math.min(98, sticker.x + dx)),
+          y: Math.max(2, Math.min(98, sticker.y + dy))
         });
         startPos.current = { x: e.clientX, y: e.clientY };
       }
@@ -92,13 +96,17 @@ export function StickerEditor({
         const dx = e.clientX - startPos.current.x;
         const dy = e.clientY - startPos.current.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        const sizeDiff = (dist / canvasRect.width) * 100;
+        const sizeFactor = (dist / canvasRect.width) * 100;
         
-        // Directional check: if moving away from center, increase size
-        const isGrowing = dx > 0 || dy > 0;
-        const newSize = isGrowing 
-          ? Math.min(50, startSize.current + sizeDiff)
-          : Math.max(5, startSize.current - sizeDiff);
+        // Use vector direction relative to sticker center to determine grow/shrink
+        const centerX = canvasRect.left + (sticker.x / 100) * canvasRect.width;
+        const centerY = canvasRect.top + (sticker.y / 100) * canvasRect.height;
+        const isMovingAway = Math.sqrt(Math.pow(e.clientX - centerX, 2) + Math.pow(e.clientY - centerY, 2)) > 
+                             Math.sqrt(Math.pow(startPos.current.x - centerX, 2) + Math.pow(startPos.current.y - centerY, 2));
+
+        const newSize = isMovingAway 
+          ? Math.min(45, startSize.current + sizeFactor * 0.5)
+          : Math.max(5, startSize.current - sizeFactor * 0.5);
 
         onUpdate(sticker.id, { size: newSize });
       }
@@ -137,8 +145,8 @@ export function StickerEditor({
       onPointerDown={handlePointerDown}
     >
       <div className={cn(
-        "w-full h-full transition-transform",
-        isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded-lg animate-neon-pulse"
+        "w-full h-full transition-shadow",
+        isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded-lg animate-neon-pulse shadow-[0_0_20px_rgba(255,51,153,0.6)]"
       )}>
         <Icon className={cn("w-full h-full drop-shadow-lg", def.color)} strokeWidth={2.5} />
       </div>
@@ -148,26 +156,34 @@ export function StickerEditor({
           {/* Delete Handle */}
           <button
             onPointerDown={(e) => { e.stopPropagation(); onDelete(sticker.id); }}
-            className="absolute -top-4 -right-4 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white shadow-xl border-2 border-white active:scale-90"
+            className="absolute -top-6 -right-6 w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white shadow-2xl border-2 border-white active:scale-90 z-[60]"
           >
-            <X className="w-4 h-4" strokeWidth={4} />
+            <X className="w-5 h-5" strokeWidth={4} />
           </button>
 
           {/* Rotate Handle */}
           <div
             onPointerDown={handleRotateStart}
-            className="absolute -top-4 -left-4 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-xl border-2 border-white cursor-pointer active:scale-90"
+            className="absolute -top-6 -left-6 w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-2xl border-2 border-white cursor-pointer active:scale-90 z-[60]"
           >
-            <RotateCw className="w-4 h-4" strokeWidth={3} />
+            <RotateCw className="w-5 h-5" strokeWidth={3} />
           </div>
 
           {/* Resize Handle */}
           <div
             onPointerDown={handleResizeStart}
-            className="absolute -bottom-4 -right-4 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white shadow-xl border-2 border-white cursor-se-resize active:scale-90"
+            className="absolute -bottom-6 -right-6 w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white shadow-2xl border-2 border-white cursor-se-resize active:scale-90 z-[60]"
           >
-            <Maximize2 className="w-4 h-4" strokeWidth={3} />
+            <Maximize2 className="w-5 h-5" strokeWidth={3} />
           </div>
+
+          {/* Layer Control */}
+          <button
+            onPointerDown={(e) => { e.stopPropagation(); onBringToFront(sticker.id); }}
+            className="absolute -bottom-6 -left-6 w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center text-white shadow-2xl border-2 border-white active:scale-90 z-[60]"
+          >
+            <Layers className="w-5 h-5" strokeWidth={3} />
+          </button>
         </>
       )}
     </div>

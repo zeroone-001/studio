@@ -22,6 +22,7 @@ interface BlueprintFrameProps {
   onUpdateSticker?: (id: string, updates: Partial<PlacedSticker>) => void;
   onRemoveSticker?: (id: string) => void;
   onSelectSticker?: (id: string) => void;
+  onBringToFront?: (id: string) => void;
 }
 
 export function BlueprintFrame({
@@ -37,6 +38,7 @@ export function BlueprintFrame({
   onUpdateSticker,
   onRemoveSticker,
   onSelectSticker,
+  onBringToFront,
 }: BlueprintFrameProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [canvasRect, setCanvasRect] = useState<DOMRect | null>(null);
@@ -51,7 +53,7 @@ export function BlueprintFrame({
 
   const CANVAS_W = 1600;
   const CANVAS_H = 2560;
-  const FOOTER_Y = 2460; // Moved lower to maximize photo area and save paper
+  const FOOTER_Y = 2420; // High photo coverage to save paper
 
   const displayDate = useMemo(() => {
     if (dateText) return dateText;
@@ -102,6 +104,7 @@ export function BlueprintFrame({
               onUpdate={(id, up) => onUpdateSticker?.(id, up)}
               onDelete={(id) => onRemoveSticker?.(id)}
               onSelect={(id) => onSelectSticker?.(id)}
+              onBringToFront={(id) => onBringToFront?.(id)}
             />
           ))}
         </div>
@@ -122,8 +125,9 @@ export function BlueprintFrame({
                 transform: `translate(-50%, -50%) rotate(${s.rotation}deg)`,
               }}
             >
-              {/* Note: In a production export this would be rendered to a real canvas */}
-              {/* For now we just maintain the structure for visual consistency */}
+              <div className="w-full h-full">
+                {/* Visual placeholder for non-preview mode */}
+              </div>
             </div>
           ))}
         </div>
@@ -134,17 +138,20 @@ export function BlueprintFrame({
         className="absolute left-0 right-0 bottom-0 bg-white"
         style={{ top: `${(FOOTER_Y / CANVAS_H) * 100}%` }}
       >
-        <div className="absolute left-1/2 -translate-x-1/2 h-[1.5px] bg-black/10" style={{ top: '0px', width: '1500px' }} />
+        <div className="absolute left-1/2 -translate-x-1/2 h-[1px] bg-black/5" style={{ top: '0px', width: '1500px' }} />
         
         {quoteText && (
-          <div className="absolute left-0 right-0 flex items-center justify-center" style={{ top: '8px' }}>
-            <span className="font-headline font-black italic uppercase text-black/70" style={{ fontSize: '14px', letterSpacing: '0.1em' }}>{quoteText}</span>
+          <div className="absolute left-0 right-0 flex items-center justify-center" style={{ top: '6px' }}>
+            <span className="font-headline font-black italic uppercase text-black/60" style={{ fontSize: '13px', letterSpacing: '0.1em' }}>{quoteText}</span>
           </div>
         )}
 
-        <div className="absolute bottom-[20px] left-[60px] right-[60px] flex justify-between items-end">
-          <JnlLogo variant="watermark" color="dark" className="!items-start" />
-          <span className="font-bold uppercase tracking-[0.3em] text-black/40" style={{ fontSize: '11px' }}>{displayDate}</span>
+        <div className="absolute bottom-[12px] left-[50px] right-[50px] flex justify-between items-end">
+          <div className="flex flex-col items-start gap-0">
+             <span className="font-headline font-black italic uppercase text-black" style={{ fontSize: '20px', letterSpacing: '-0.02em' }}>JNL <span className="text-[#FF3399]">STUDIO</span></span>
+             <span className="font-bold uppercase tracking-[0.4em] text-black/40" style={{ fontSize: '7px' }}>PHOTOBOOTH</span>
+          </div>
+          <span className="font-bold uppercase tracking-[0.3em] text-black/40" style={{ fontSize: '14px' }}>{displayDate}</span>
         </div>
       </div>
     </div>

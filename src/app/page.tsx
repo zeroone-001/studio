@@ -12,12 +12,13 @@ import {
   Sparkles, Frame, Usb, Printer, Smile, Quote, Share2, Heart, Star, Flame,
   AlertTriangle, HardDrive, CheckCircle2, Crown, Cat, Moon, Sun, Cloud, 
   Coffee, Pizza, Flower2, Ghost, Rocket, Trash2, XCircle, RefreshCw, Maximize2,
-  RotateCcw
+  RotateCcw, Layers
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
 import { BlueprintFrame } from "@/components/kiosk/blueprint-frame";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "test-stickers";
 
@@ -35,20 +36,24 @@ export const FILTERS = [
 ];
 
 export const STICKER_DEFS = [
-  { id: "heart", icon: Heart, color: "text-red-500" },
-  { id: "star", icon: Star, color: "text-yellow-400" },
-  { id: "sparkle", icon: Sparkles, color: "text-white" },
-  { id: "fire", icon: Flame, color: "text-orange-500" },
-  { id: "crown", icon: Crown, color: "text-yellow-300" },
-  { id: "cloud", icon: Cloud, color: "text-blue-200" },
-  { id: "sun", icon: Sun, color: "text-orange-300" },
-  { id: "moon", icon: Moon, color: "text-indigo-200" },
-  { id: "flower", icon: Flower2, color: "text-pink-400" },
-  { id: "ghost", icon: Ghost, color: "text-zinc-300" },
-  { id: "rocket", icon: Rocket, color: "text-cyan-400" },
-  { id: "cat", icon: Cat, color: "text-orange-200" },
-  { id: "pizza", icon: Pizza, color: "text-yellow-600" },
-  { id: "coffee", icon: Coffee, color: "text-amber-900" },
+  // TRENDY
+  { id: "heart", icon: Heart, color: "text-red-500", category: "TRENDY" },
+  { id: "star", icon: Star, color: "text-yellow-400", category: "TRENDY" },
+  { id: "sparkle", icon: Sparkles, color: "text-white", category: "TRENDY" },
+  { id: "fire", icon: Flame, color: "text-orange-500", category: "TRENDY" },
+  // CUTE
+  { id: "cat", icon: Cat, color: "text-orange-200", category: "CUTE" },
+  { id: "ghost", icon: Ghost, color: "text-zinc-300", category: "CUTE" },
+  { id: "rocket", icon: Rocket, color: "text-cyan-400", category: "CUTE" },
+  { id: "pizza", icon: Pizza, color: "text-yellow-600", category: "CUTE" },
+  // ELEMENTS
+  { id: "flower", icon: Flower2, color: "text-pink-400", category: "ELEMENTS" },
+  { id: "cloud", icon: Cloud, color: "text-blue-200", category: "ELEMENTS" },
+  { id: "sun", icon: Sun, color: "text-orange-300", category: "ELEMENTS" },
+  { id: "moon", icon: Moon, color: "text-indigo-200", category: "ELEMENTS" },
+  // VIBE
+  { id: "crown", icon: Crown, color: "text-yellow-300", category: "VIBE" },
+  { id: "coffee", icon: Coffee, color: "text-amber-900", category: "VIBE" },
 ];
 
 export const QUOTES = [
@@ -89,6 +94,7 @@ export default function KioskPage() {
   const [placedStickers, setPlacedStickers] = useState<PlacedSticker[]>([]);
   const [selectedQuote, setSelectedQuote] = useState(QUOTES[0]);
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
+  const [activeStickerCategory, setActiveStickerCategory] = useState("TRENDY");
 
   // Admin & Storage States
   const [isOwnerMode, setIsOwnerMode] = useState(false);
@@ -255,6 +261,14 @@ export default function KioskPage() {
   const removeSticker = (id: string) => {
     setPlacedStickers(prev => prev.filter(s => s.id !== id));
     if (selectedStickerId === id) setSelectedStickerId(null);
+  };
+
+  const bringStickerToFront = (id: string) => {
+    setPlacedStickers(prev => {
+      const sticker = prev.find(s => s.id === id);
+      if (!sticker) return prev;
+      return [...prev.filter(s => s.id !== id), sticker];
+    });
   };
 
   const isStorageBlocked = !usbHandle && !isDevMode;
@@ -446,6 +460,7 @@ export default function KioskPage() {
                       onUpdateSticker={updateSticker}
                       onRemoveSticker={removeSticker}
                       onSelectSticker={setSelectedStickerId}
+                      onBringToFront={bringStickerToFront}
                     />
                   )}
                 </div>
@@ -460,22 +475,26 @@ export default function KioskPage() {
                 </div>
 
                 <div className="space-y-8">
-                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-relaxed">
-                    TAP TO ADD STICKERS. DRAG TO MOVE. USE HANDLES TO ROTATE AND RESIZE LIVE.
-                  </p>
-
-                  <div>
-                    <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
-                      <Smile className="w-4 h-4 text-primary" /> Trendy Pack
-                    </div>
-                    <div className="grid grid-cols-4 gap-3">
-                      {STICKER_DEFS.map((s) => (
+                  <Tabs defaultValue="TRENDY" onValueChange={setActiveStickerCategory} className="w-full">
+                    <TabsList className="w-full grid grid-cols-4 bg-white/5 border border-white/10 mb-4 h-12">
+                      {["TRENDY", "CUTE", "ELEMENTS", "VIBE"].map((cat) => (
+                        <TabsTrigger 
+                          key={cat} 
+                          value={cat} 
+                          className="text-[9px] font-black tracking-tighter data-[state=active]:bg-primary data-[state=active]:text-white"
+                        >
+                          {cat}
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                    <div className="grid grid-cols-4 gap-3 max-h-48 overflow-y-auto pr-2 scrollbar-hide">
+                      {STICKER_DEFS.filter(s => s.category === activeStickerCategory).map((s) => (
                         <button key={s.id} onClick={() => addSticker(s.id)} className="aspect-square flex items-center justify-center bg-white/5 border-2 border-white/10 rounded-xl hover:border-primary active:scale-90 transition-all">
                           <s.icon className={cn("w-8 h-8", s.color)} />
                         </button>
                       ))}
                     </div>
-                  </div>
+                  </Tabs>
 
                   <div>
                     <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
@@ -489,6 +508,10 @@ export default function KioskPage() {
                       ))}
                     </div>
                   </div>
+
+                  <p className="text-[9px] font-bold text-white/30 uppercase tracking-[0.2em] leading-relaxed">
+                    GESTURE EDITING: DRAG TO MOVE. USE HANDLES TO SCALE & ROTATE LIVE.
+                  </p>
                 </div>
 
                 <NeonButton 

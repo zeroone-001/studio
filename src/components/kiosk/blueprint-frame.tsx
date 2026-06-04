@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useMemo } from "react";
@@ -17,6 +16,7 @@ interface BlueprintFrameProps {
   className?: string;
   isPreview?: boolean;
   stickers?: PlacedSticker[];
+  selectedStickerId?: string | null;
   onStickerPointerDown?: (id: string) => void;
   onRemoveSticker?: (id: string) => void;
 }
@@ -30,6 +30,7 @@ export function BlueprintFrame({
   className,
   isPreview = false,
   stickers = [],
+  selectedStickerId = null,
   onStickerPointerDown,
   onRemoveSticker,
 }: BlueprintFrameProps) {
@@ -98,19 +99,21 @@ export function BlueprintFrame({
           const def = STICKER_DEFS.find(d => d.id === s.type);
           if (!def) return null;
           const Icon = def.icon;
+          const isSelected = selectedStickerId === s.id;
+          
           return (
             <div
               key={s.id}
               className={cn(
-                "absolute pointer-events-auto cursor-move active:scale-110 transition-transform group",
-                isPreview ? "drop-shadow-lg" : ""
+                "absolute pointer-events-auto cursor-move active:scale-105 transition-all group",
+                isPreview ? "drop-shadow-lg" : "",
+                isSelected && isPreview ? "ring-2 ring-primary ring-offset-2 rounded-lg z-50 animate-neon-pulse" : ""
               )}
               style={{
                 left: `${s.x}%`,
                 top: `${s.y}%`,
                 transform: `translate(-50%, -50%)`,
-                width: isPreview ? "15%" : `${s.size}px`,
-                height: isPreview ? "auto" : `${s.size}px`,
+                width: `${s.size}%`,
                 aspectRatio: "1/1"
               }}
               onPointerDown={(e) => {
@@ -121,7 +124,7 @@ export function BlueprintFrame({
               <Icon className={cn("w-full h-full", def.color)} strokeWidth={3} />
               
               {/* Delete Option (Visible only in preview/decoration mode) */}
-              {isPreview && onRemoveSticker && (
+              {isPreview && onRemoveSticker && isSelected && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -183,3 +186,4 @@ export function BlueprintFrame({
     </div>
   );
 }
+

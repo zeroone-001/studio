@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -10,12 +9,13 @@ import {
   Camera, Zap, Wallet, ArrowRight, Loader2, ShieldAlert, Facebook, 
   Sparkles, Frame, Usb, Printer, Smile, Quote, Share2, Heart, Star, Flame,
   AlertTriangle, HardDrive, CheckCircle2, Crown, Cat, Moon, Sun, Cloud, 
-  Coffee, Pizza, Flower2, Ghost, Rocket, Trash2, XCircle, RefreshCw
+  Coffee, Pizza, Flower2, Ghost, Rocket, Trash2, XCircle, RefreshCw, Maximize2
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
 import { BlueprintFrame } from "@/components/kiosk/blueprint-frame";
+import { Slider } from "@/components/ui/slider";
 
 type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing";
 
@@ -46,7 +46,7 @@ export const STICKER_DEFS = [
   { id: "rocket", icon: Rocket, color: "text-cyan-400" },
   { id: "cat", icon: Cat, color: "text-orange-200" },
   { id: "pizza", icon: Pizza, color: "text-yellow-600" },
-  { id: "coffee", icon: Coffee, color: "text-brown-400" },
+  { id: "coffee", icon: Coffee, color: "text-amber-900" },
 ];
 
 export const QUOTES = [
@@ -85,6 +85,7 @@ export default function KioskPage() {
   const [selectedBlueprint, setSelectedBlueprint] = useState<FrameBlueprint | null>(null);
   const [placedStickers, setPlacedStickers] = useState<PlacedSticker[]>([]);
   const [selectedQuote, setSelectedQuote] = useState(QUOTES[0]);
+  const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   
   // Dragging logic
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -105,6 +106,10 @@ export default function KioskPage() {
   const availableFilters = useMemo(() => {
     return FILTERS.slice(0, packageSelected === 100 ? 10 : 5);
   }, [packageSelected]);
+
+  const selectedSticker = useMemo(() => {
+    return placedStickers.find(s => s.id === selectedStickerId);
+  }, [placedStickers, selectedStickerId]);
 
   // Sync blueprint selection when package is chosen
   useEffect(() => {
@@ -273,6 +278,7 @@ export default function KioskPage() {
     setSelectedFilter(FILTERS[0]);
     setPlacedStickers([]);
     setSelectedQuote(QUOTES[0]);
+    setSelectedStickerId(null);
   }, []);
 
   const addSticker = (type: string) => {
@@ -281,13 +287,21 @@ export default function KioskPage() {
       type,
       x: 50,
       y: 40,
-      size: 80,
+      size: 15, // Default 15% width
     };
     setPlacedStickers(prev => [...prev, newSticker]);
+    setSelectedStickerId(newSticker.id);
   };
 
   const removeSticker = (id: string) => {
     setPlacedStickers(prev => prev.filter(s => s.id !== id));
+    if (selectedStickerId === id) setSelectedStickerId(null);
+  };
+
+  const updateStickerSize = (id: string, newSize: number) => {
+    setPlacedStickers(prev => prev.map(s => 
+      s.id === id ? { ...s, size: newSize } : s
+    ));
   };
 
   const handleDrag = (e: React.PointerEvent, id: string) => {
@@ -580,7 +594,11 @@ export default function KioskPage() {
                       isPreview
                       quoteText={selectedQuote.text}
                       stickers={placedStickers}
-                      onStickerPointerDown={(id) => setDraggingId(id)}
+                      selectedStickerId={selectedStickerId}
+                      onStickerPointerDown={(id) => {
+                        setDraggingId(id);
+                        setSelectedStickerId(id);
+                      }}
                       onRemoveSticker={(id) => removeSticker(id)}
                     />
                   )}
@@ -591,7 +609,10 @@ export default function KioskPage() {
                 <div className="flex items-center justify-between">
                   <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Studio Decor</h2>
                   <button 
-                    onClick={() => setPlacedStickers([])}
+                    onClick={() => {
+                      setPlacedStickers([]);
+                      setSelectedStickerId(null);
+                    }}
                     className="flex items-center gap-2 text-[10px] font-black uppercase text-red-500 bg-red-500/10 px-3 py-1.5 border border-red-500/20"
                   >
                     <Trash2 className="w-3 h-3" /> Clear All
@@ -599,6 +620,28 @@ export default function KioskPage() {
                 </div>
 
                 <div className="space-y-8">
+                  {selectedSticker && (
+                    <div className="bg-white/5 p-4 border border-white/10 space-y-4 animate-in slide-in-from-right-4 duration-300">
+                      <div className="flex items-center justify-between text-[10px] font-black uppercase text-primary tracking-widest">
+                         <div className="flex items-center gap-2">
+                           <Maximize2 className="w-3 h-3" /> Adjustment
+                         </div>
+                         <span>{Math.round(selectedSticker.size)}%</span>
+                      </div>
+                      <Slider 
+                        value={[selectedSticker.size]}
+                        min={5}
+                        max={40}
+                        step={1}
+                        onValueChange={([val]) => updateStickerSize(selectedStickerId!, val)}
+                        className="py-2"
+                      />
+                      <p className="text-[8px] text-white/30 font-bold uppercase tracking-widest italic text-center">
+                        Selected: {STICKER_DEFS.find(d => d.id === selectedSticker.type)?.id}
+                      </p>
+                    </div>
+                  )}
+
                   <div>
                     <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
                       <Smile className="w-4 h-4 text-primary" /> Trendy Sticker Pack
@@ -615,7 +658,7 @@ export default function KioskPage() {
                       ))}
                     </div>
                     <p className="mt-4 text-[10px] text-white/40 font-bold uppercase tracking-widest text-center italic">
-                      TIP: DRAG TO MOVE • TAP 'X' TO DELETE
+                      TIP: DRAG TO MOVE • USE SLIDER TO RESIZE
                     </p>
                   </div>
 
@@ -689,3 +732,4 @@ export default function KioskPage() {
     </KioskLayout>
   );
 }
+

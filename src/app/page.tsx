@@ -19,16 +19,16 @@ import { BlueprintFrame } from "@/components/kiosk/blueprint-frame";
 type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing";
 
 const FILTERS = [
-  { id: "none", label: "STYLE A", class: "" },
-  { id: "bw", label: "STYLE B", class: "grayscale" },
-  { id: "sepia", label: "STYLE C", class: "sepia contrast-125" },
-  { id: "vivid", label: "STYLE D", class: "saturate-150 contrast-110" },
-  { id: "cool", label: "STYLE E", class: "hue-rotate-180 brightness-110" },
-  { id: "noir", label: "STYLE F", class: "grayscale contrast-200 brightness-75" },
-  { id: "soft", label: "STYLE G", class: "blur-[0.5px] brightness-110 contrast-90" },
-  { id: "warm", label: "STYLE H", class: "sepia-[0.3] saturate-125" },
-  { id: "hard", label: "STYLE I", class: "contrast-150 brightness-90" },
-  { id: "glow", label: "STYLE J", class: "brightness-125 saturate-150 contrast-110" },
+  { id: "natural", label: "STYLE A", class: "contrast-110 brightness-105 saturate-110" },
+  { id: "silver", label: "STYLE B", class: "grayscale contrast-125 brightness-110" },
+  { id: "vintage", label: "STYLE C", class: "sepia-[0.4] saturate-150 contrast-110 brightness-105" },
+  { id: "dreamy", label: "STYLE D", class: "brightness-115 contrast-90 saturate-125 blur-[0.3px]" },
+  { id: "nordic", label: "STYLE E", class: "hue-rotate-[15deg] saturate-75 brightness-110 contrast-105" },
+  { id: "noir", label: "STYLE F", class: "grayscale contrast-150 brightness-90" },
+  { id: "radiant", label: "STYLE G", class: "brightness-125 contrast-110 saturate-150" },
+  { id: "autumn", label: "STYLE H", class: "sepia-[0.2] hue-rotate-[-10deg] saturate-150 contrast-110" },
+  { id: "pacific", label: "STYLE I", class: "hue-rotate-[180deg] saturate-50 brightness-110 contrast-110" },
+  { id: "aesthetic", label: "STYLE J", class: "saturate-[0.6] brightness-115 contrast-105" },
 ];
 
 const STICKERS = [
@@ -298,7 +298,7 @@ export default function KioskPage() {
         )}
 
         {appState === "payment" && (
-          <div className="w-full max-w-md animate-in slide-in-from-bottom-8 duration-500">
+          <div className="w-full max-md animate-in slide-in-from-bottom-8 duration-500">
             <h2 className="font-headline font-black text-3xl sm:text-4xl mb-8 sm:mb-12 text-center uppercase italic">Select Package</h2>
             <div className="grid grid-cols-1 gap-4 sm:gap-6 mb-10 sm:mb-14">
               <button 
@@ -377,11 +377,20 @@ export default function KioskPage() {
 
                 <div>
                   <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
-                    <Sparkles className="w-4 h-4 text-primary" /> Portrait Style
+                    <Sparkles className="w-4 h-4 text-primary" /> Aesthetic Filter
                   </div>
                   <div className="grid grid-cols-5 gap-2">
                     {availableFilters.map((f) => (
-                      <button key={f.id} onClick={() => setSelectedFilter(f)} className={cn("aspect-square flex items-center justify-center text-[8px] font-black uppercase border-2 transition-all italic p-1", selectedFilter.id === f.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40 hover:border-white/30")}>{f.label}</button>
+                      <button 
+                        key={f.id} 
+                        onClick={() => setSelectedFilter(f)} 
+                        className={cn(
+                          "aspect-square flex items-center justify-center text-[8px] font-black uppercase border-2 transition-all italic p-1 text-center", 
+                          selectedFilter.id === f.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40 hover:border-white/30"
+                        )}
+                      >
+                        {f.label}
+                      </button>
                     ))}
                   </div>
                 </div>

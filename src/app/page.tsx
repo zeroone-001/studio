@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { KioskLayout } from "@/components/kiosk/kiosk-layout";
 import { NeonButton } from "@/components/kiosk/neon-button";
-import { HealthMonitor } from "@/components/kiosk/health-monitor";
 import { AdminAuthDialog } from "@/components/kiosk/admin-auth-dialog";
 import { AdminControls } from "@/components/kiosk/admin-controls";
 import { Camera, Zap, Wallet, ArrowRight, Loader2, ShieldAlert, Facebook, Check, X, Share2, Sparkles, Frame } from "lucide-react";
@@ -406,7 +405,7 @@ export default function KioskPage() {
                 onClick={() => handleConsent(false)}
                 className="w-full border-2 border-white/20 py-4 sm:py-6 font-headline font-black text-sm sm:text-lg italic hover:bg-white/10 transition-colors flex items-center justify-center gap-2 sm:gap-3 uppercase"
               >
-                <X className="w-4 h-4 sm:w-5 sm:h-5 opacity-40" />
+                <X className="w-4 h-4 sm:w-5 h-5 opacity-40" />
                 NO, KEEP IT PRIVATE
               </button>
             </div>
@@ -455,7 +454,7 @@ export default function KioskPage() {
                   />
                 </div>
                 <div className="flex items-center justify-center gap-2 mb-1 sm:mb-2">
-                  <Facebook className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                  <Facebook className="w-4 h-4 sm:w-5 h-5 text-primary" />
                   <h3 className="font-headline font-black text-lg sm:text-xl italic uppercase tracking-tighter">FOLLOW JNL STUDIO</h3>
                 </div>
                 <p className="text-[8px] sm:text-[10px] opacity-60 uppercase font-bold tracking-tighter">
@@ -480,8 +479,6 @@ export default function KioskPage() {
           </div>
         )}
       </div>
-
-      <HealthMonitor />
 
       <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-primary via-transparent to-primary opacity-20 pointer-events-none" />
       <div className="absolute top-0 right-0 w-1 h-full bg-gradient-to-b from-primary via-transparent to-primary opacity-20 pointer-events-none" />

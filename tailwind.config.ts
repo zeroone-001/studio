@@ -66,11 +66,11 @@ export default {
         'neon-pulse': {
           '0%, 100%': {
             opacity: '1',
-            filter: 'drop-shadow(0 0 15px hsl(var(--primary)))',
+            filter: 'drop-shadow(0 0 15px #FF3399)',
           },
           '50%': {
             opacity: '0.7',
-            filter: 'drop-shadow(0 0 5px hsl(var(--primary)))',
+            filter: 'drop-shadow(0 0 5px #FF3399)',
           },
         },
         'twinkle': {

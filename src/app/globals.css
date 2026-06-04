@@ -39,10 +39,10 @@
 
 @layer utilities {
   .neon-glow {
-    text-shadow: 0 0 10px hsla(331, 100%, 60%, 0.5), 0 0 20px hsla(331, 100%, 60%, 0.3);
+    text-shadow: 0 0 10px rgba(255, 51, 153, 0.5), 0 0 20px rgba(255, 51, 153, 0.3);
   }
   .neon-border {
-    box-shadow: 0 0 10px hsla(331, 100%, 60%, 0.5), inset 0 0 5px hsla(331, 100%, 60%, 0.3);
+    box-shadow: 0 0 10px rgba(255, 51, 153, 0.5), inset 0 0 5px rgba(255, 51, 153, 0.3);
   }
   .portrait-container {
     aspect-ratio: 9 / 16;

@@ -312,7 +312,11 @@ export default function KioskPage() {
           onExitOwnerMode={() => setIsOwnerMode(false)}
           hasPackage={!!packageSelected}
           onSimulateCash={(amount) => setPaymentReceived(prev => prev + amount)}
-          onBypassPayment={() => { setPaymentReceived(100); setPackageSelected(100); setAppState("setup"); }}
+          onBypassPayment={(pkg) => { 
+            setPaymentReceived(pkg); 
+            setPackageSelected(pkg); 
+            setAppState("setup"); 
+          }}
           usbStatus={usbHandle ? "connected" : "disconnected"}
           onSetupUsb={() => setUsbHandle({})} // Mock handle
           isDevMode={isDevMode}

@@ -28,8 +28,6 @@ import {
   Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { BLUEPRINTS } from "./frame-blueprint";
-import { BlueprintFrame } from "./blueprint-frame";
 
 type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "test-stickers";
 
@@ -40,7 +38,7 @@ interface AdminControlsProps {
   onExitOwnerMode: () => void;
   hasPackage: boolean;
   onSimulateCash: (amount: number) => void;
-  onBypassPayment: () => void;
+  onBypassPayment: (pkg: 50 | 100) => void;
   usbStatus: "connected" | "disconnected";
   onSetupUsb: () => void;
   isDevMode: boolean;
@@ -95,13 +93,16 @@ export function AdminControls({
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => onSimulateCash(50)} className="bg-primary/20 border border-primary/40 py-2 text-[9px] font-black uppercase flex items-center justify-center gap-1">
-              <PlusCircle className="w-3 h-3" /> Add 50
-            </button>
-            <button onClick={onBypassPayment} className="bg-primary/20 border border-primary/40 py-2 text-[9px] font-black uppercase flex items-center justify-center gap-1">
-              <Zap className="w-3 h-3" /> Bypass
-            </button>
+          <div className="space-y-2">
+             <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Test Bypasses:</p>
+             <div className="grid grid-cols-2 gap-2">
+               <button onClick={() => onBypassPayment(50)} className="bg-primary/20 border border-primary/40 py-2 text-[9px] font-black uppercase flex items-center justify-center gap-1">
+                 <Zap className="w-3 h-3" /> P50 Test
+               </button>
+               <button onClick={() => onBypassPayment(100)} className="bg-primary/20 border border-primary/40 py-2 text-[9px] font-black uppercase flex items-center justify-center gap-1">
+                 <Zap className="w-3 h-3" /> P100 Test
+               </button>
+             </div>
           </div>
 
           <button onClick={onSetupUsb} className="w-full bg-white/5 hover:bg-white/10 border border-white/10 py-2 text-[10px] font-black uppercase flex items-center justify-center gap-2 transition-colors">
@@ -109,7 +110,7 @@ export function AdminControls({
           </button>
 
           <div className="space-y-1">
-            <p className="text-[9px] font-bold text-white/40 uppercase mb-2 tracking-widest">Navigation:</p>
+            <p className="text-[9px] font-bold text-white/40 uppercase mb-2 tracking-widest">Quick Nav:</p>
             <div className="grid grid-cols-2 gap-1">
               {states.map((state) => (
                 <button
@@ -128,6 +129,10 @@ export function AdminControls({
               ))}
             </div>
           </div>
+          
+          <button onClick={onReset} className="w-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 py-2 text-[10px] font-black uppercase flex items-center justify-center gap-2 text-red-500 transition-colors">
+            <RefreshCcw className="w-3 h-3" /> Global Reset
+          </button>
         </div>
       </div>
     </div>

@@ -10,7 +10,7 @@ import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
   Wallet, Sparkles, Frame, Quote, Trash2, Cat, Moon, Sun, 
   Coffee, Pizza, Flower2, Crown, Layers, CameraIcon, Flashlight, User, HeartIcon,
-  ShieldCheck, QrCode, Facebook, CheckCircle2, Printer, Share2
+  ShieldCheck, QrCode, Facebook, CheckCircle2, Printer, Share2, Usb
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -134,6 +134,7 @@ export default function KioskPage() {
   const [currentShotIndex, setCurrentShotIndex] = useState(0);
   const [printProgress, setPrintProgress] = useState(0);
   const [promotionalConsent, setPromotionalConsent] = useState<boolean | null>(null);
+  const [isSavingToUsb, setIsSavingToUsb] = useState(false);
   
   // Camera Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -199,6 +200,18 @@ export default function KioskPage() {
     }
   }, [appState, printProgress]);
 
+  // USB Auto-Save Logic
+  useEffect(() => {
+    if (appState === "printing" && promotionalConsent === true && usbHandle) {
+      setIsSavingToUsb(true);
+      // Simulate physical file write to the mounted USB drive
+      const timer = setTimeout(() => {
+        setIsSavingToUsb(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [appState, promotionalConsent, usbHandle]);
+
   const resetSession = useCallback(() => {
     stopCamera();
     setAppState("welcome");
@@ -215,6 +228,7 @@ export default function KioskPage() {
     setSelectedStickerId(null);
     setPrintProgress(0);
     setPromotionalConsent(null);
+    setIsSavingToUsb(false);
   }, []);
 
   useEffect(() => {
@@ -560,17 +574,21 @@ export default function KioskPage() {
                       <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
                       <div className="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin" />
                       <div className="absolute inset-0 flex items-center justify-center">
-                         <Printer className="w-12 h-12 text-primary animate-pulse" />
+                         {isSavingToUsb ? <Usb className="w-12 h-12 text-primary animate-bounce" /> : <Printer className="w-12 h-12 text-primary animate-pulse" />}
                       </div>
                    </div>
                    <div className="space-y-2">
-                      <h2 className="font-headline font-black text-3xl italic uppercase">Printing Portrait...</h2>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Please wait for the photo to exit the slot</p>
+                      <h2 className="font-headline font-black text-3xl italic uppercase">
+                        {isSavingToUsb ? "Syncing to USB Gallery..." : "Printing Portrait..."}
+                      </h2>
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">
+                        {isSavingToUsb ? "Saving approved promotional copy" : "Please wait for the photo to exit the slot"}
+                      </p>
                    </div>
                    <div className="max-w-md mx-auto">
                       <Progress value={printProgress} className="h-3 bg-white/5 border border-white/10" />
                       <div className="flex justify-between mt-2 text-[10px] font-black uppercase opacity-60">
-                         <span>Preparing Frame</span>
+                         <span>{isSavingToUsb ? "Writing File..." : "Preparing Frame"}</span>
                          <span>{printProgress}%</span>
                       </div>
                    </div>

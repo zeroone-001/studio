@@ -68,6 +68,7 @@ export default function KioskPage() {
   const [logoClickCount, setLogoClickCount] = useState(0);
   const [usbHandle, setUsbHandle] = useState<any>(null);
   const [storageError, setStorageError] = useState<string | null>(null);
+  const [isDevMode, setIsDevMode] = useState(true); // Default to Dev Mode for testing
 
   // Filter layouts based on package
   const availableBlueprints = useMemo(() => BLUEPRINTS.filter(bp => bp.package === packageSelected), [packageSelected]);
@@ -86,7 +87,15 @@ export default function KioskPage() {
   };
 
   const saveToUsb = async (dataUri: string, folder: 'Originals' | 'Edited' | 'FinalOutput' | 'QRCopies') => {
-    if (!usbHandle) return false;
+    // If in Dev Mode and no USB, just simulate success
+    if (!usbHandle) {
+      if (isDevMode) {
+        console.log(`[DevMode] Simulated save to ${folder}:`, dataUri.substring(0, 50) + "...");
+        return true;
+      }
+      return false;
+    }
+
     try {
       const today = new Date().toISOString().split('T')[0];
       const sessionId = `Session_${new Date().getTime()}`;
@@ -159,10 +168,8 @@ export default function KioskPage() {
       const mockPhoto = `https://picsum.photos/seed/jnl-${Date.now()}-${i}/1200/1600`;
       photos.push(mockPhoto);
       
-      // Save original to USB in background if available
-      if (usbHandle) {
-        saveToUsb(mockPhoto, 'Originals');
-      }
+      // Save original - handles USB or Dev Mode simulation
+      await saveToUsb(mockPhoto, 'Originals');
       
       await new Promise(r => setTimeout(r, 800)); 
       setIsProcessing(false);
@@ -174,14 +181,9 @@ export default function KioskPage() {
 
   const handleFinalize = async () => {
     setAppState("printing");
-    // In a real app, we would generate the final canvas image here and save it
-    if (usbHandle && capturedPhotos.length > 0) {
+    if (capturedPhotos.length > 0) {
       await saveToUsb(capturedPhotos[0], 'FinalOutput');
     }
-    // Cleanup temporary photos from memory after saving
-    setTimeout(() => {
-       // Reset only non-persistent state if needed
-    }, 5000);
   };
 
   const resetSession = useCallback(() => {
@@ -197,6 +199,8 @@ export default function KioskPage() {
     setSelectedSticker(null);
     setSelectedQuote(QUOTES[0]);
   }, []);
+
+  const isStorageBlocked = !usbHandle && !isDevMode;
 
   return (
     <KioskLayout>
@@ -229,21 +233,23 @@ export default function KioskPage() {
           usbStatus={usbHandle ? "connected" : "disconnected"}
           onSetupUsb={setupUsbStorage}
           onTestSave={() => saveToUsb("https://picsum.photos/200", "Originals")}
+          isDevMode={isDevMode}
+          onToggleDevMode={() => setIsDevMode(!isDevMode)}
         />
       )}
 
-      {/* Storage Warning for Owner */}
-      {!usbHandle && !isOwnerMode && appState === "welcome" && (
+      {/* Storage Warning for Customers in Production Mode */}
+      {isStorageBlocked && appState === "welcome" && (
         <div className="absolute inset-0 z-[100] bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center p-12 text-center">
           <div className="w-24 h-24 bg-red-500/20 rounded-full flex items-center justify-center mb-8 border-2 border-red-500 animate-pulse">
             <AlertTriangle className="w-12 h-12 text-red-500" />
           </div>
-          <h2 className="text-4xl font-black italic uppercase mb-4">Storage Required</h2>
+          <h2 className="text-4xl font-black italic uppercase mb-4 text-white">Storage Required</h2>
           <p className="text-white/60 font-bold uppercase tracking-widest text-sm max-w-sm mb-12">
-            Booth is offline. Please connect external USB storage to begin sessions.
+            Booth is temporarily offline. Please notify the attendant to connect external storage.
           </p>
           <div className="text-[10px] font-black uppercase text-white/20 tracking-[0.3em]">
-            Awaiting Owner Configuration
+            System Status: Awaiting Media Path
           </div>
         </div>
       )}
@@ -259,6 +265,12 @@ export default function KioskPage() {
           <div className="flex items-center gap-2 bg-green-600/40 backdrop-blur-md text-white px-3 py-1 rounded-full text-[9px] font-black uppercase border border-green-500/50">
             <HardDrive className="w-3 h-3" />
             USB STORAGE ACTIVE
+          </div>
+        )}
+        {isDevMode && !isOwnerMode && (
+          <div className="flex items-center gap-2 bg-blue-600/40 backdrop-blur-md text-white px-3 py-1 rounded-full text-[9px] font-black uppercase border border-blue-500/50">
+            <Usb className="w-3 h-3" />
+            DEV MODE ACTIVE
           </div>
         )}
       </div>
@@ -278,7 +290,7 @@ export default function KioskPage() {
             <NeonButton 
               onClick={() => setAppState("payment")} 
               className="w-full text-xl sm:text-2xl"
-              disabled={!usbHandle && !isOwnerMode}
+              disabled={isStorageBlocked}
             >
               TAP TO START
             </NeonButton>
@@ -499,7 +511,9 @@ export default function KioskPage() {
               <div className="bg-white/5 p-8 border-2 border-white/10">
                 <div className="w-40 h-40 mx-auto mb-8 bg-white p-3 flex items-center justify-center"><ArrowRight className="w-12 h-12 text-black" /></div>
                 <h3 className="font-headline font-black text-2xl mb-2 italic uppercase">SCAN SOFT COPY</h3>
-                <p className="text-[10px] opacity-60 uppercase font-bold tracking-widest">Saved to JNL USB Drive</p>
+                <p className="text-[10px] opacity-60 uppercase font-bold tracking-widest">
+                  {usbHandle ? "Saved to JNL USB Drive" : isDevMode ? "[Dev Mode] Simulated Save" : "Processing..."}
+                </p>
               </div>
 
               <div className="bg-primary/5 p-8 border-2 border-primary/20">

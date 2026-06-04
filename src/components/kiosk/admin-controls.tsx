@@ -18,7 +18,10 @@ import {
   AlertCircle,
   LayoutGrid,
   CheckCircle2,
-  Database
+  Database,
+  Code2,
+  ToggleLeft,
+  ToggleRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS } from "./frame-blueprint";
@@ -36,6 +39,8 @@ interface AdminControlsProps {
   usbStatus: "connected" | "disconnected";
   onSetupUsb: () => void;
   onTestSave?: () => void;
+  isDevMode: boolean;
+  onToggleDevMode: () => void;
 }
 
 export function AdminControls({ 
@@ -47,7 +52,9 @@ export function AdminControls({
   onBypassPayment,
   usbStatus,
   onSetupUsb,
-  onTestSave
+  onTestSave,
+  isDevMode,
+  onToggleDevMode
 }: AdminControlsProps) {
   const [showBlueprints, setShowBlueprints] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
@@ -114,6 +121,17 @@ export function AdminControls({
         </div>
 
         <div className="space-y-4">
+          {/* Dev Mode Toggle */}
+          <div className="bg-blue-600/10 border border-blue-500/30 p-3 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-[9px] font-black uppercase text-blue-400">
+              <Code2 className="w-3 h-3" />
+              Development Mode
+            </div>
+            <button onClick={onToggleDevMode} className="text-blue-400">
+              {isDevMode ? <ToggleRight className="w-6 h-6" /> : <ToggleLeft className="w-6 h-6 opacity-40" />}
+            </button>
+          </div>
+
           <div className="bg-white/5 p-3 border border-white/10 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-[9px] font-black uppercase text-white/60">

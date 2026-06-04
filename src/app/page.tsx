@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { KioskLayout } from "@/components/kiosk/kiosk-layout";
 import { NeonButton } from "@/components/kiosk/neon-button";
 import { AdminAuthDialog } from "@/components/kiosk/admin-auth-dialog";
@@ -10,7 +10,7 @@ import {
   Camera, Zap, Wallet, ArrowRight, Loader2, ShieldAlert, Facebook, 
   Sparkles, Frame, Usb, Printer, Smile, Quote, Share2, Heart, Star, Flame,
   AlertTriangle, HardDrive, CheckCircle2, Crown, Cat, Moon, Sun, Cloud, 
-  Coffee, Pizza, Flower2, Ghost, Rocket, Trash2, XCircle
+  Coffee, Pizza, Flower2, Ghost, Rocket, Trash2, XCircle, RefreshCw
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -57,8 +57,8 @@ const QUOTES = [
 export interface PlacedSticker {
   id: string;
   type: string;
-  x: number; // 0-100 percentage
-  y: number; // 0-100 percentage
+  x: number; 
+  y: number; 
   size: number;
 }
 
@@ -71,6 +71,12 @@ export default function KioskPage() {
   const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
   const [currentShotIndex, setCurrentShotIndex] = useState(0);
   
+  // Camera Refs
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+
   // Customization States
   const [selectedFilter, setSelectedFilter] = useState(FILTERS[0]);
   const [selectedBlueprint, setSelectedBlueprint] = useState<FrameBlueprint | null>(null);
@@ -96,6 +102,51 @@ export default function KioskPage() {
   const availableFilters = useMemo(() => {
     return FILTERS.slice(0, packageSelected === 100 ? 10 : 5);
   }, [packageSelected]);
+
+  // Camera Management
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          facingMode: "user",
+          width: { ideal: 1280 },
+          height: { ideal: 1706 } // Portrait-first ideal aspect
+        },
+        audio: false
+      });
+      setCameraStream(stream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      setCameraError(null);
+    } catch (err) {
+      console.error("Camera Error:", err);
+      setCameraError("Unable to access device camera. Please check permissions.");
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+  };
+
+  const takePhoto = (): string | null => {
+    if (!videoRef.current || !canvasRef.current) return null;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const context = canvas.getContext('2d');
+    
+    if (context) {
+      // Use original video dimensions to maintain quality
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL('image/jpeg', 0.9);
+    }
+    return null;
+  };
 
   const setupUsbStorage = async () => {
     try {
@@ -150,6 +201,14 @@ export default function KioskPage() {
   };
 
   useEffect(() => {
+    if (appState === "setup" || appState === "capturing") {
+      startCamera();
+    } else if (appState === "review" || appState === "welcome") {
+      stopCamera();
+    }
+  }, [appState]);
+
+  useEffect(() => {
     if (appState === "capturing") {
       startShotSequence();
     }
@@ -167,9 +226,17 @@ export default function KioskPage() {
       }
       setCountdown(null);
       setIsProcessing(true);
-      const mockPhoto = `https://picsum.photos/seed/jnl-${Date.now()}-${i}/1200/1600`;
-      photos.push(mockPhoto);
-      await saveToUsb(mockPhoto, 'Originals');
+      
+      const shot = takePhoto();
+      if (shot) {
+        photos.push(shot);
+        await saveToUsb(shot, 'Originals');
+      } else {
+        // Fallback for dev if camera fails
+        const mock = `https://picsum.photos/seed/jnl-${Date.now()}-${i}/1200/1600`;
+        photos.push(mock);
+      }
+      
       await new Promise(r => setTimeout(r, 800)); 
       setIsProcessing(false);
     }
@@ -180,11 +247,13 @@ export default function KioskPage() {
   const handleFinalize = async () => {
     setAppState("printing");
     if (capturedPhotos.length > 0) {
+      // In a real app, we'd render the whole blueprint to a canvas here
       await saveToUsb(capturedPhotos[0], 'FinalOutput');
     }
   };
 
   const resetSession = useCallback(() => {
+    stopCamera();
     setAppState("welcome");
     setPaymentReceived(0);
     setPackageSelected(null);
@@ -215,7 +284,9 @@ export default function KioskPage() {
 
   const handleDrag = (e: React.PointerEvent, id: string) => {
     if (!draggingId) return;
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const container = e.currentTarget as HTMLElement;
+    const rect = container.getBoundingClientRect();
+    
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
     
@@ -228,6 +299,8 @@ export default function KioskPage() {
 
   return (
     <KioskLayout>
+      <canvas ref={canvasRef} className="hidden" />
+      
       <div 
         className="absolute top-12 left-0 right-0 z-[60] text-center cursor-default select-none active:opacity-80 transition-opacity"
         onClick={handleLogoClick}
@@ -335,15 +408,26 @@ export default function KioskPage() {
 
         {appState === "setup" && (
           <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in duration-500">
-             <div className="relative w-full max-h-[60vh] mx-auto overflow-hidden">
-                <BlueprintFrame 
-                  blueprint={(selectedBlueprint || availableBlueprints[0]) as FrameBlueprint} 
-                  photos={[]} 
-                  filterClass={selectedFilter.class}
-                  isPreview
-                  quoteText="YOUR SHOT HERE"
-                  stickers={[]}
+             <div className="relative w-full aspect-[3/4] max-h-[60vh] mx-auto overflow-hidden bg-zinc-900 border-2 border-white/20">
+                <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  playsInline 
+                  muted 
+                  className={cn("w-full h-full object-cover grayscale", selectedFilter.class)}
                 />
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="border-2 border-white/10 w-[80%] h-[80%] rounded-2xl flex items-center justify-center">
+                    <span className="text-white/20 font-black italic uppercase tracking-[0.5em] text-xs">Mirror Preview</span>
+                  </div>
+                </div>
+                {cameraError && (
+                  <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center p-6 text-center">
+                    <AlertTriangle className="w-12 h-12 text-red-500 mb-4" />
+                    <p className="text-xs text-white/60 font-bold uppercase">{cameraError}</p>
+                    <button onClick={startCamera} className="mt-4 flex items-center gap-2 text-primary text-[10px] font-black uppercase"><RefreshCw className="w-3 h-3" /> Retry Camera</button>
+                  </div>
+                )}
              </div>
 
              <div className="space-y-6 sm:max-h-[70vh] overflow-y-auto pr-4 scrollbar-hide">
@@ -406,7 +490,13 @@ export default function KioskPage() {
         {appState === "capturing" && (
           <div className="w-full h-full flex flex-col items-center justify-center">
             <div className="relative aspect-[3/4] max-h-[65vh] w-full max-w-lg bg-zinc-900 overflow-hidden shadow-[0_0_60px_rgba(255,51,153,0.4)] border-4 border-white">
-               <div className={cn("absolute inset-0 bg-[url('https://picsum.photos/seed/live-jnl/1200/1600')] bg-cover bg-center", selectedFilter.class)} />
+               <video 
+                 ref={videoRef} 
+                 autoPlay 
+                 playsInline 
+                 muted 
+                 className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)}
+               />
                {countdown !== null && (
                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-20">
                     <span className="text-[10rem] font-headline font-black italic text-white animate-bounce drop-shadow-[0_0_40px_rgba(255,51,153,0.9)]">{countdown}</span>

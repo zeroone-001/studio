@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo, useRef, useState, useEffect } from "react";
@@ -23,7 +24,7 @@ interface BlueprintFrameProps {
   onBringToFront?: (id: string) => void;
 }
 
-export function BlueprintFrame({
+export const BlueprintFrame = React.memo(({
   blueprint,
   photos,
   quoteText,
@@ -37,7 +38,7 @@ export function BlueprintFrame({
   onRemoveSticker,
   onSelectSticker,
   onBringToFront,
-}: BlueprintFrameProps) {
+}: BlueprintFrameProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [canvasRect, setCanvasRect] = useState<DOMRect | null>(null);
 
@@ -157,4 +158,6 @@ export function BlueprintFrame({
       </div>
     </div>
   );
-}
+});
+
+BlueprintFrame.displayName = "BlueprintFrame";

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -230,11 +231,23 @@ export default function KioskPage() {
     setIsAdminDialogOpen(true);
   };
 
-  const addSticker = (type: string) => {
+  const addSticker = useCallback((type: string) => {
     const newSticker: PlacedSticker = { id: `sticker-${Date.now()}`, type, x: 50, y: 40, size: 15, rotation: 0 };
     setPlacedStickers(prev => [...prev, newSticker]);
     setSelectedStickerId(newSticker.id);
-  };
+  }, []);
+
+  const handleUpdateSticker = useCallback((id: string, updates: Partial<PlacedSticker>) => {
+    setPlacedStickers(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
+  }, []);
+
+  const handleRemoveSticker = useCallback((id: string) => {
+    setPlacedStickers(prev => prev.filter(s => s.id !== id));
+  }, []);
+
+  const handleBringToFront = useCallback((id: string) => {
+    setPlacedStickers(prev => [...prev.filter(s => s.id !== id), prev.find(s => s.id === id)!]);
+  }, []);
 
   const isStorageBlocked = !usbHandle && !isDevMode;
 
@@ -242,7 +255,6 @@ export default function KioskPage() {
     <KioskLayout>
       <canvas ref={canvasRef} className="hidden" />
       
-      {/* Small Bottom Branding for UI Pages */}
       {appState !== "welcome" && (
         <div className="fixed bottom-6 left-6 right-6 z-[60] flex justify-between items-center opacity-40 hover:opacity-100 transition-opacity pointer-events-none">
           <div className="cursor-pointer pointer-events-auto" onClick={handleLogoClick}>
@@ -279,7 +291,6 @@ export default function KioskPage() {
         />
       )}
 
-      {/* Main Content Area - Auto Adjusts to Portrait Viewports */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 overflow-y-auto pt-36 sm:pt-48 pb-20 sm:pb-24 scrollbar-hide">
         
         {appState === "welcome" && (
@@ -411,10 +422,10 @@ export default function KioskPage() {
                       quoteText={selectedQuote.text}
                       stickers={placedStickers}
                       selectedStickerId={selectedStickerId}
-                      onUpdateSticker={(id, updates) => setPlacedStickers(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))}
-                      onRemoveSticker={(id) => setPlacedStickers(prev => prev.filter(s => s.id !== id))}
+                      onUpdateSticker={handleUpdateSticker}
+                      onRemoveSticker={handleRemoveSticker}
                       onSelectSticker={setSelectedStickerId}
-                      onBringToFront={(id) => setPlacedStickers(prev => [...prev.filter(s => s.id !== id), prev.find(s => s.id === id)!])}
+                      onBringToFront={handleBringToFront}
                     />
                   )}
                 </div>

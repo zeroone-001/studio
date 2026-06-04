@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { STICKER_DEFS, PlacedSticker } from "@/app/page";
 import { X, RotateCw, Maximize2, Layers } from "lucide-react";
@@ -16,7 +16,7 @@ interface StickerEditorProps {
   canvasRect: DOMRect | null;
 }
 
-export function StickerEditor({ 
+export const StickerEditor = React.memo(({ 
   sticker, 
   isSelected, 
   onUpdate, 
@@ -24,109 +24,138 @@ export function StickerEditor({
   onSelect,
   onBringToFront,
   canvasRect 
-}: StickerEditorProps) {
+}: StickerEditorProps) => {
   const def = STICKER_DEFS.find(d => d.id === sticker.type);
   if (!def) return null;
   const StickerIcon = def.icon;
 
-  const [isDragging, setIsDragging] = useState(false);
-  const [isRotating, setIsRotating] = useState(false);
-  const [isResizing, setIsResizing] = useState(false);
-  
+  // Interaction State - Local only for high-performance visual updates
+  const [isInteracting, setIsInteracting] = useState(false);
+  const [localTransform, setLocalTransform] = useState({
+    x: sticker.x,
+    y: sticker.y,
+    size: sticker.size,
+    rotation: sticker.rotation
+  });
+
+  const interactionType = useRef<'drag' | 'rotate' | 'resize' | null>(null);
   const startPos = useRef({ x: 0, y: 0 });
-  const startSize = useRef(0);
-  const startRotation = useRef(0);
-  const startAngle = useRef(0);
+  const startValue = useRef({ x: 0, y: 0, size: 0, rotation: 0, angle: 0 });
+
+  // Reset local state when sticker changes from outside (e.g. selection)
+  useEffect(() => {
+    if (!isInteracting) {
+      setLocalTransform({
+        x: sticker.x,
+        y: sticker.y,
+        size: sticker.size,
+        rotation: sticker.rotation
+      });
+    }
+  }, [sticker, isInteracting]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     e.stopPropagation();
     onSelect(sticker.id);
-    setIsDragging(true);
+    setIsInteracting(true);
+    interactionType.current = 'drag';
     startPos.current = { x: e.clientX, y: e.clientY };
+    startValue.current = { ...localTransform, angle: 0 };
   };
 
   const handleRotateStart = (e: React.PointerEvent) => {
     e.stopPropagation();
     onSelect(sticker.id);
-    setIsRotating(true);
+    setIsInteracting(true);
+    interactionType.current = 'rotate';
     if (!canvasRect) return;
     
-    const centerX = canvasRect.left + (sticker.x / 100) * canvasRect.width;
-    const centerY = canvasRect.top + (sticker.y / 100) * canvasRect.height;
+    const centerX = canvasRect.left + (localTransform.x / 100) * canvasRect.width;
+    const centerY = canvasRect.top + (localTransform.y / 100) * canvasRect.height;
     
-    startAngle.current = Math.atan2(e.clientY - centerY, e.clientX - centerX);
-    startRotation.current = sticker.rotation || 0;
+    startValue.current = { 
+      ...localTransform, 
+      angle: Math.atan2(e.clientY - centerY, e.clientX - centerX) 
+    };
   };
 
   const handleResizeStart = (e: React.PointerEvent) => {
     e.stopPropagation();
     onSelect(sticker.id);
-    setIsResizing(true);
+    setIsInteracting(true);
+    interactionType.current = 'resize';
     startPos.current = { x: e.clientX, y: e.clientY };
-    startSize.current = sticker.size;
+    startValue.current = { ...localTransform, angle: 0 };
   };
 
   useEffect(() => {
+    if (!isInteracting) return;
+
     const handlePointerMove = (e: PointerEvent) => {
       if (!canvasRect) return;
 
-      if (isDragging) {
+      if (interactionType.current === 'drag') {
         const dx = ((e.clientX - startPos.current.x) / canvasRect.width) * 100;
         const dy = ((e.clientY - startPos.current.y) / canvasRect.height) * 100;
         
-        onUpdate(sticker.id, {
-          x: Math.max(2, Math.min(98, sticker.x + dx)),
-          y: Math.max(2, Math.min(98, sticker.y + dy))
-        });
-        startPos.current = { x: e.clientX, y: e.clientY };
+        setLocalTransform(prev => ({
+          ...prev,
+          x: Math.max(2, Math.min(98, startValue.current.x + dx)),
+          y: Math.max(2, Math.min(98, startValue.current.y + dy))
+        }));
       }
 
-      if (isRotating) {
-        const centerX = canvasRect.left + (sticker.x / 100) * canvasRect.width;
-        const centerY = canvasRect.top + (sticker.y / 100) * canvasRect.height;
+      if (interactionType.current === 'rotate') {
+        const centerX = canvasRect.left + (localTransform.x / 100) * canvasRect.width;
+        const centerY = canvasRect.top + (localTransform.y / 100) * canvasRect.height;
         const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX);
-        const rotationDiff = (currentAngle - startAngle.current) * (180 / Math.PI);
+        const rotationDiff = (currentAngle - startValue.current.angle) * (180 / Math.PI);
         
-        onUpdate(sticker.id, {
-          rotation: (startRotation.current + rotationDiff) % 360
-        });
+        setLocalTransform(prev => ({
+          ...prev,
+          rotation: (startValue.current.rotation + rotationDiff) % 360
+        }));
       }
 
-      if (isResizing) {
+      if (interactionType.current === 'resize') {
         const dx = e.clientX - startPos.current.x;
         const dy = e.clientY - startPos.current.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         const sizeFactor = (dist / canvasRect.width) * 100;
         
-        const centerX = canvasRect.left + (sticker.x / 100) * canvasRect.width;
-        const centerY = canvasRect.top + (sticker.y / 100) * canvasRect.height;
+        const centerX = canvasRect.left + (localTransform.x / 100) * canvasRect.width;
+        const centerY = canvasRect.top + (localTransform.y / 100) * canvasRect.height;
         const isMovingAway = Math.sqrt(Math.pow(e.clientX - centerX, 2) + Math.pow(e.clientY - centerY, 2)) > 
                              Math.sqrt(Math.pow(startPos.current.x - centerX, 2) + Math.pow(startPos.current.y - centerY, 2));
 
         const newSize = isMovingAway 
-          ? Math.min(45, startSize.current + sizeFactor * 0.5)
-          : Math.max(5, startSize.current - sizeFactor * 0.5);
+          ? Math.min(45, startValue.current.size + sizeFactor * 0.8)
+          : Math.max(5, startValue.current.size - sizeFactor * 0.8);
 
-        onUpdate(sticker.id, { size: newSize });
+        setLocalTransform(prev => ({ ...prev, size: newSize }));
       }
     };
 
     const handlePointerUp = () => {
-      setIsDragging(false);
-      setIsRotating(false);
-      setIsResizing(false);
+      setIsInteracting(false);
+      interactionType.current = null;
+      // Sync local changes to parent only on release for butter-smooth performance
+      onUpdate(sticker.id, {
+        x: localTransform.x,
+        y: localTransform.y,
+        size: localTransform.size,
+        rotation: localTransform.rotation
+      });
     };
 
-    if (isDragging || isRotating || isResizing) {
-      window.addEventListener("pointermove", handlePointerMove);
-      window.addEventListener("pointerup", handlePointerUp);
-    }
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
 
     return () => {
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
     };
-  }, [isDragging, isRotating, isResizing, sticker, canvasRect, onUpdate]);
+  }, [isInteracting, localTransform, canvasRect, sticker.id, onUpdate]);
 
   return (
     <div
@@ -135,16 +164,17 @@ export function StickerEditor({
         isSelected ? "z-50" : "z-40"
       )}
       style={{
-        left: `${sticker.x}%`,
-        top: `${sticker.y}%`,
-        width: `${sticker.size}%`,
+        left: `${localTransform.x}%`,
+        top: `${localTransform.y}%`,
+        width: `${localTransform.size}%`,
         aspectRatio: "1/1",
-        transform: `translate(-50%, -50%) rotate(${sticker.rotation}deg)`,
+        transform: `translate3d(-50%, -50%, 0) rotate(${localTransform.rotation}deg)`,
+        willChange: isInteracting ? "transform, left, top, width" : "auto"
       }}
       onPointerDown={handlePointerDown}
     >
       <div className={cn(
-        "w-full h-full transition-shadow",
+        "w-full h-full transition-shadow duration-200",
         isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded-lg animate-neon-pulse shadow-[0_0_20px_rgba(255,51,153,0.6)]"
       )}>
         <StickerIcon className={cn("w-full h-full drop-shadow-lg", def.color)} />
@@ -187,4 +217,6 @@ export function StickerEditor({
       )}
     </div>
   );
-}
+});
+
+StickerEditor.displayName = "StickerEditor";

@@ -103,6 +103,14 @@ export default function KioskPage() {
     return FILTERS.slice(0, packageSelected === 100 ? 10 : 5);
   }, [packageSelected]);
 
+  // Sync blueprint selection when package is chosen
+  useEffect(() => {
+    if (packageSelected && !selectedBlueprint) {
+      const first = BLUEPRINTS.find(bp => bp.package === packageSelected);
+      if (first) setSelectedBlueprint(first);
+    }
+  }, [packageSelected, selectedBlueprint]);
+
   // Camera Management
   const startCamera = async () => {
     try {
@@ -110,7 +118,7 @@ export default function KioskPage() {
         video: { 
           facingMode: "user",
           width: { ideal: 1280 },
-          height: { ideal: 1706 } // Portrait-first ideal aspect
+          height: { ideal: 1706 }
         },
         audio: false
       });
@@ -365,7 +373,7 @@ export default function KioskPage() {
         )}
 
         {appState === "payment" && (
-          <div className="w-full max-w-md animate-in slide-in-from-bottom-8 duration-500 text-center">
+          <div className="w-full max-md animate-in slide-in-from-bottom-8 duration-500 text-center">
             <div className="mb-10 sm:mb-12">
                <div className="w-28 h-28 sm:w-32 sm:h-32 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-dashed border-primary/30 animate-pulse">
                   <Wallet className="w-12 h-12 sm:w-16 sm:h-16 text-primary" />
@@ -382,32 +390,27 @@ export default function KioskPage() {
             {paymentReceived >= 50 && (
               <div className="space-y-4 animate-in zoom-in duration-300">
                 {isOwnerMode ? (
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="p-4 bg-zinc-900 border border-white/10 text-xs font-black italic uppercase text-white/40 mb-2">
-                      Owner Mode: Choose Test Package
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <NeonButton 
-                        onClick={() => { setPackageSelected(50); setAppState("setup"); }}
-                        className="py-6 text-lg bg-zinc-800 border-white/20 hover:bg-zinc-700"
-                      >
-                        STARTER (50)
-                      </NeonButton>
-                      <NeonButton 
-                        onClick={() => { setPackageSelected(100); setAppState("setup"); }}
-                        className="py-6 text-lg"
-                      >
-                        PREMIUM (100)
-                      </NeonButton>
-                    </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <NeonButton 
+                      onClick={() => { setPackageSelected(50); setAppState("setup"); }}
+                      className="py-6 text-lg bg-zinc-800 border-white/20"
+                    >
+                      STARTER (50)
+                    </NeonButton>
+                    <NeonButton 
+                      onClick={() => { setPackageSelected(100); setAppState("setup"); }}
+                      className="py-6 text-lg"
+                    >
+                      PREMIUM (100)
+                    </NeonButton>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="p-6 bg-primary text-white font-black italic uppercase border-2 border-primary shadow-[0_0_30px_rgba(255,51,153,0.4)]">
+                    <div className="p-6 bg-primary text-white font-black italic uppercase border-2 border-primary">
                        <div className="text-xl sm:text-2xl mb-1">
-                        {paymentReceived >= 100 ? "PREMIUM PACKAGE DETECTED" : "STARTER PACKAGE DETECTED"}
+                        {paymentReceived >= 100 ? "PREMIUM PACKAGE" : "STARTER PACKAGE"}
                        </div>
-                       <div className="text-[10px] sm:text-xs opacity-80 tracking-widest">
+                       <div className="text-[10px] sm:text-xs opacity-80 tracking-widest uppercase">
                         {paymentReceived >= 100 ? "6 SHOTS • 10 FILTERS • 10 FRAMES" : "3 SHOTS • 5 FILTERS • 5 FRAMES"}
                        </div>
                     </div>
@@ -435,7 +438,7 @@ export default function KioskPage() {
                   autoPlay 
                   playsInline 
                   muted 
-                  className={cn("w-full h-full object-cover grayscale", selectedFilter.class)}
+                  className={cn("w-full h-full object-cover", selectedFilter.class)}
                 />
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="border-2 border-white/10 w-[80%] h-[80%] rounded-2xl flex items-center justify-center">
@@ -465,7 +468,7 @@ export default function KioskPage() {
                         onClick={() => setSelectedBlueprint(bp)} 
                         className={cn(
                           "aspect-square flex items-center justify-center text-[10px] font-black uppercase border-2 transition-all italic", 
-                          (selectedBlueprint?.id || availableBlueprints[0]?.id) === bp.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40 hover:border-white/30"
+                          selectedBlueprint?.id === bp.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40 hover:border-white/30"
                         )}
                       >
                         {bp.label.split(' ')[1]}
@@ -496,10 +499,7 @@ export default function KioskPage() {
               </div>
 
               <NeonButton 
-                onClick={() => {
-                  if (!selectedBlueprint) setSelectedBlueprint(availableBlueprints[0] || null);
-                  setAppState("capturing");
-                }} 
+                onClick={() => setAppState("capturing")} 
                 className="w-full !py-8 mt-6"
               >
                 START SHOOTING

@@ -1,7 +1,6 @@
-
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { 
   Settings, 
   RefreshCcw, 
@@ -11,18 +10,11 @@ import {
   Camera, 
   Image as ImageIcon, 
   Printer,
-  Share2,
   Palette,
   Usb,
-  HardDrive,
-  AlertCircle,
-  LayoutGrid,
-  CheckCircle2,
-  Database,
   Code2,
   ToggleLeft,
   ToggleRight,
-  PlusCircle,
   Smile,
   ShieldAlert,
   Zap
@@ -50,8 +42,6 @@ export function AdminControls({
   onJumpTo, 
   onReset, 
   onExitOwnerMode,
-  hasPackage,
-  onSimulateCash,
   onBypassPayment,
   usbStatus,
   onSetupUsb,

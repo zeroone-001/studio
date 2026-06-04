@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -8,13 +7,9 @@ import { AdminAuthDialog } from "@/components/kiosk/admin-auth-dialog";
 import { AdminControls } from "@/components/kiosk/admin-controls";
 import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
-  Camera, Zap, Wallet, ArrowRight, Loader2, ShieldAlert, Facebook, 
-  Sparkles, Frame, Usb, Printer, Smile, Quote, Share2, Heart, Star, Flame,
-  AlertTriangle, HardDrive, CheckCircle2, Crown, Cat, Moon, Sun, Cloud, 
-  Coffee, Pizza, Flower2, Ghost, Rocket, Trash2, XCircle, RefreshCw, Maximize2,
-  RotateCcw, Layers, CameraIcon, ImageIcon, Flashlight, User, HeartIcon
+  Wallet, Sparkles, Frame, Quote, Trash2, Cat, Moon, Sun, 
+  Coffee, Pizza, Flower2, Crown, Layers, CameraIcon, Flashlight, User, HeartIcon, Maximize2
 } from "lucide-react";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
 import { BlueprintFrame } from "@/components/kiosk/blueprint-frame";
@@ -56,7 +51,7 @@ export const STICKER_DEFS = [
   { id: "cloud", icon: Kawaii.KawaiiCloud, color: "", category: "AESTHETIC" },
   { id: "sparkle", icon: Kawaii.PastelSparkle, color: "", category: "AESTHETIC" },
   { id: "moon", icon: Moon, color: "text-indigo-200", category: "AESTHETIC" },
-  { id: "star", icon: Star, color: "text-yellow-300", category: "AESTHETIC" },
+  { id: "sun", icon: Sun, color: "text-yellow-300", category: "AESTHETIC" },
   { id: "crown", icon: Crown, color: "text-yellow-400", category: "AESTHETIC" },
   { id: "flower", icon: Flower2, color: "text-pink-400", category: "AESTHETIC" },
   // TEXT STICKERS
@@ -141,9 +136,7 @@ export default function KioskPage() {
         audio: false
       });
       setCameraStream(stream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
+      if (videoRef.current) videoRef.current.srcObject = stream;
       setCameraError(null);
     } catch (err) {
       console.error("Camera Error:", err);
@@ -184,7 +177,6 @@ export default function KioskPage() {
     });
   };
 
-  // Hidden trigger click window
   useEffect(() => {
     if (logoClickCount > 0) {
       const timer = setTimeout(() => setLogoClickCount(0), 3000);
@@ -220,12 +212,7 @@ export default function KioskPage() {
       setIsProcessing(true);
       
       const shot = takePhoto();
-      if (shot) {
-        photos.push(shot);
-      } else {
-        const mock = `https://picsum.photos/seed/jnl-${Date.now()}-${i}/1200/1600`;
-        photos.push(mock);
-      }
+      photos.push(shot || `https://picsum.photos/seed/jnl-${Date.now()}-${i}/1200/1600`);
       
       await new Promise(r => setTimeout(r, 800)); 
       setIsProcessing(false);
@@ -286,7 +273,7 @@ export default function KioskPage() {
     <KioskLayout>
       <canvas ref={canvasRef} className="hidden" />
       
-      {/* Small Text Logo & Date - All Other Screens */}
+      {/* Small Text Logo & Date - Bottom Branding Fix */}
       {appState !== "welcome" && (
         <div className="fixed bottom-6 left-6 right-6 z-[60] flex justify-between items-center opacity-40 hover:opacity-100 transition-opacity pointer-events-none">
           <div className="cursor-pointer pointer-events-auto" onClick={handleLogoClick}>
@@ -321,7 +308,7 @@ export default function KioskPage() {
             setAppState("setup"); 
           }}
           usbStatus={usbHandle ? "connected" : "disconnected"}
-          onSetupUsb={() => setUsbHandle({})} // Mock handle
+          onSetupUsb={() => setUsbHandle({})}
           isDevMode={isDevMode}
           onToggleDevMode={() => setIsDevMode(!isDevMode)}
         />
@@ -340,7 +327,7 @@ export default function KioskPage() {
             </div>
             
             {/* 2. MAIN TITLE */}
-            <div className="flex justify-center mb-[30px] w-full px-4 overflow-hidden">
+            <div className="flex justify-center mb-[30px] w-full px-4">
               <h1 className="font-headline font-black text-5xl sm:text-7xl tracking-tight uppercase italic text-center whitespace-nowrap flex items-center gap-4">
                 <span className="text-white">JNL</span>
                 <span className="text-primary">STUDIO</span>
@@ -389,40 +376,17 @@ export default function KioskPage() {
                <div className="text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">TOTAL DETECTED</div>
             </div>
 
-            {isOwnerMode ? (
-              <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto">
-                <NeonButton 
-                  onClick={() => {
-                    setPackageSelected(50);
-                    setAppState("setup");
-                  }}
-                  className="w-full py-6 text-base"
-                >
-                  TEST ₱50 PKG
-                </NeonButton>
-                <NeonButton 
-                  onClick={() => {
-                    setPackageSelected(100);
-                    setAppState("setup");
-                  }}
-                  className="w-full py-6 text-base"
-                >
-                  TEST ₱100 PKG
-                </NeonButton>
-              </div>
-            ) : paymentReceived >= 50 ? (
-              <div className="space-y-4">
-                <NeonButton 
-                  onClick={() => {
-                    setPackageSelected(paymentReceived >= 100 ? 100 : 50);
-                    setAppState("setup");
-                  }}
-                  className="w-full py-6 text-xl"
-                >
-                  START SESSION
-                </NeonButton>
-              </div>
-            ) : null}
+            <div className="grid grid-cols-1 gap-4 max-w-sm mx-auto">
+              {isOwnerMode && (
+                <>
+                  <NeonButton onClick={() => { setPackageSelected(50); setPaymentReceived(50); setAppState("setup"); }} className="w-full py-6 text-base">TEST ₱50 PKG</NeonButton>
+                  <NeonButton onClick={() => { setPackageSelected(100); setPaymentReceived(100); setAppState("setup"); }} className="w-full py-6 text-base">TEST ₱100 PKG</NeonButton>
+                </>
+              )}
+              {paymentReceived >= 50 && (
+                <NeonButton onClick={() => { setPackageSelected(paymentReceived >= 100 ? 100 : 50); setAppState("setup"); }} className="w-full py-6 text-xl">START SESSION</NeonButton>
+              )}
+            </div>
           </div>
         )}
 
@@ -441,41 +405,25 @@ export default function KioskPage() {
                   </div>
                   <div className="grid grid-cols-5 gap-2">
                     {availableBlueprints.map((bp) => (
-                      <button 
-                        key={bp.id} 
-                        onClick={() => setSelectedBlueprint(bp)} 
-                        className={cn(
-                          "aspect-square flex items-center justify-center text-[10px] font-black border-2 transition-all italic", 
-                          selectedBlueprint?.id === bp.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40"
-                        )}
-                      >
+                      <button key={bp.id} onClick={() => setSelectedBlueprint(bp)} className={cn("aspect-square flex items-center justify-center text-[10px] font-black border-2 transition-all italic", selectedBlueprint?.id === bp.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40")}>
                         {bp.label.split(' ')[1]}
                       </button>
                     ))}
                   </div>
                 </div>
-
                 <div>
                   <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
                     <Sparkles className="w-4 h-4 text-primary" /> Filters
                   </div>
                   <div className="grid grid-cols-5 gap-2">
                     {availableFilters.map((f) => (
-                      <button 
-                        key={f.id} 
-                        onClick={() => setSelectedFilter(f)} 
-                        className={cn(
-                          "aspect-square flex items-center justify-center text-[8px] font-black border-2 transition-all italic p-1", 
-                          selectedFilter.id === f.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40"
-                        )}
-                      >
+                      <button key={f.id} onClick={() => setSelectedFilter(f)} className={cn("aspect-square flex items-center justify-center text-[8px] font-black border-2 transition-all italic p-1", selectedFilter.id === f.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40")}>
                         {f.label}
                       </button>
                     ))}
                   </div>
                 </div>
               </div>
-
               <NeonButton onClick={() => setAppState("capturing")} className="w-full !py-8 mt-6">SHOOT</NeonButton>
             </div>
           </div>
@@ -502,26 +450,18 @@ export default function KioskPage() {
                   )}
                 </div>
              </div>
-
              <div className="w-full lg:w-96 space-y-6 lg:max-h-[75vh] overflow-y-auto pr-4 scrollbar-hide">
                 <div className="flex items-center justify-between">
-                  <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Sticker Studio</h2>
+                  <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Decoration</h2>
                   <button onClick={() => { setPlacedStickers([]); setSelectedStickerId(null); }} className="text-[10px] font-black uppercase text-red-500 bg-red-500/10 px-3 py-1.5 border border-red-500/20">
                     <Trash2 className="w-3 h-3 inline mr-2" /> Clear All
                   </button>
                 </div>
-
                 <div className="space-y-8">
                   <Tabs defaultValue="HEARTS" onValueChange={setActiveStickerCategory} className="w-full">
                     <TabsList className="w-full grid grid-cols-5 bg-white/5 border border-white/10 mb-4 h-12">
                       {["HEARTS", "CUTE", "PHOTO", "AESTHETIC", "TEXT"].map((cat) => (
-                        <TabsTrigger 
-                          key={cat} 
-                          value={cat} 
-                          className="text-[8px] font-black tracking-tighter data-[state=active]:bg-primary data-[state=active]:text-white"
-                        >
-                          {cat}
-                        </TabsTrigger>
+                        <TabsTrigger key={cat} value={cat} className="text-[8px] font-black tracking-tighter data-[state=active]:bg-primary data-[state=active]:text-white">{cat}</TabsTrigger>
                       ))}
                     </TabsList>
                     <div className="grid grid-cols-4 gap-3 max-h-48 overflow-y-auto pr-2 scrollbar-hide">
@@ -532,31 +472,22 @@ export default function KioskPage() {
                       ))}
                     </div>
                   </Tabs>
-
                   <div>
                     <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
                       <Quote className="w-4 h-4 text-primary" /> Quote
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       {QUOTES.map((q) => (
-                        <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("py-3 px-4 text-[10px] font-black uppercase border-2 transition-all italic", selectedQuote.id === q.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40")}>
-                          {q.label}
-                        </button>
+                        <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("py-3 px-4 text-[10px] font-black uppercase border-2 transition-all italic", selectedQuote.id === q.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40")}>{q.label}</button>
                       ))}
                     </div>
                   </div>
-
-                  <p className="text-[9px] font-bold text-white/30 uppercase tracking-[0.2em] leading-relaxed">
-                    GESTURE EDITING: DRAG TO MOVE. USE HANDLES TO SCALE & ROTATE LIVE.
-                  </p>
+                  <div className="bg-white/5 border border-white/10 p-4 rounded-xl flex items-center gap-4">
+                    <Maximize2 className="w-5 h-5 text-primary" />
+                    <p className="text-[10px] font-bold text-white/60 uppercase leading-relaxed tracking-wider">Drag stickers to move. Use handles to scale & rotate live.</p>
+                  </div>
                 </div>
-
-                <NeonButton 
-                  onClick={() => appState === "test-stickers" ? setAppState("welcome") : setAppState("consent")} 
-                  className="w-full !py-8 mt-6"
-                >
-                  {appState === "test-stickers" ? "FINISH TEST" : "DONE"}
-                </NeonButton>
+                <NeonButton onClick={() => appState === "test-stickers" ? setAppState("welcome") : setAppState("consent")} className="w-full !py-8 mt-6">{appState === "test-stickers" ? "FINISH TEST" : "DONE"}</NeonButton>
              </div>
           </div>
         )}

@@ -139,7 +139,6 @@ export default function KioskPage() {
     const context = canvas.getContext('2d');
     
     if (context) {
-      // Use original video dimensions to maintain quality
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -232,7 +231,6 @@ export default function KioskPage() {
         photos.push(shot);
         await saveToUsb(shot, 'Originals');
       } else {
-        // Fallback for dev if camera fails
         const mock = `https://picsum.photos/seed/jnl-${Date.now()}-${i}/1200/1600`;
         photos.push(mock);
       }
@@ -247,7 +245,6 @@ export default function KioskPage() {
   const handleFinalize = async () => {
     setAppState("printing");
     if (capturedPhotos.length > 0) {
-      // In a real app, we'd render the whole blueprint to a canvas here
       await saveToUsb(capturedPhotos[0], 'FinalOutput');
     }
   };
@@ -384,23 +381,47 @@ export default function KioskPage() {
 
             {paymentReceived >= 50 && (
               <div className="space-y-4 animate-in zoom-in duration-300">
-                <div className="p-6 bg-primary text-white font-black italic uppercase border-2 border-primary shadow-[0_0_30px_rgba(255,51,153,0.4)]">
-                   <div className="text-xl sm:text-2xl mb-1">
-                    {paymentReceived >= 100 ? "PREMIUM PACKAGE DETECTED" : "STARTER PACKAGE DETECTED"}
-                   </div>
-                   <div className="text-[10px] sm:text-xs opacity-80 tracking-widest">
-                    {paymentReceived >= 100 ? "6 SHOTS • 10 FILTERS • 10 FRAMES" : "3 SHOTS • 5 FILTERS • 5 FRAMES"}
-                   </div>
-                </div>
-                <NeonButton 
-                  onClick={() => {
-                    setPackageSelected(paymentReceived >= 100 ? 100 : 50);
-                    setAppState("setup");
-                  }}
-                  className="w-full py-6 sm:py-8 text-xl sm:text-2xl"
-                >
-                  START SESSION
-                </NeonButton>
+                {isOwnerMode ? (
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="p-4 bg-zinc-900 border border-white/10 text-xs font-black italic uppercase text-white/40 mb-2">
+                      Owner Mode: Choose Test Package
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <NeonButton 
+                        onClick={() => { setPackageSelected(50); setAppState("setup"); }}
+                        className="py-6 text-lg bg-zinc-800 border-white/20 hover:bg-zinc-700"
+                      >
+                        STARTER (50)
+                      </NeonButton>
+                      <NeonButton 
+                        onClick={() => { setPackageSelected(100); setAppState("setup"); }}
+                        className="py-6 text-lg"
+                      >
+                        PREMIUM (100)
+                      </NeonButton>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="p-6 bg-primary text-white font-black italic uppercase border-2 border-primary shadow-[0_0_30px_rgba(255,51,153,0.4)]">
+                       <div className="text-xl sm:text-2xl mb-1">
+                        {paymentReceived >= 100 ? "PREMIUM PACKAGE DETECTED" : "STARTER PACKAGE DETECTED"}
+                       </div>
+                       <div className="text-[10px] sm:text-xs opacity-80 tracking-widest">
+                        {paymentReceived >= 100 ? "6 SHOTS • 10 FILTERS • 10 FRAMES" : "3 SHOTS • 5 FILTERS • 5 FRAMES"}
+                       </div>
+                    </div>
+                    <NeonButton 
+                      onClick={() => {
+                        setPackageSelected(paymentReceived >= 100 ? 100 : 50);
+                        setAppState("setup");
+                      }}
+                      className="w-full py-6 sm:py-8 text-xl sm:text-2xl"
+                    >
+                      START SESSION
+                    </NeonButton>
+                  </div>
+                )}
               </div>
             )}
           </div>

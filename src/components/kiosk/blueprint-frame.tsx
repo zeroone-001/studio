@@ -43,7 +43,7 @@ export function BlueprintFrame({
 
   const CANVAS_W = 1600;
   const CANVAS_H = 2560;
-  const FOOTER_Y = 2420; 
+  const FOOTER_Y = 2420; // Bottom footer line
 
   const displayDate = useMemo(() => {
     if (dateText) return dateText;
@@ -80,6 +80,7 @@ export function BlueprintFrame({
         </div>
       ))}
 
+      {/* Stickers Layer */}
       <div className="absolute inset-0 z-40 pointer-events-none">
         {stickers.map((s) => {
           const def = STICKER_DEFS.find(d => d.id === s.type);
@@ -110,23 +111,18 @@ export function BlueprintFrame({
               
               {isPreview && isSelected && (
                 <>
-                  {/* Delete Button (Top-Right) */}
                   <button
                     onClick={(e) => { e.stopPropagation(); onRemoveSticker?.(s.id); }}
                     className="absolute -top-4 -right-4 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white shadow-lg active:scale-90 border-2 border-white z-[60]"
                   >
                     <X className="w-4 h-4" strokeWidth={4} />
                   </button>
-                  
-                  {/* Rotate Button (Top-Left) */}
                   <button
                     onClick={(e) => { e.stopPropagation(); onRotateSticker?.(s.id); }}
                     className="absolute -top-4 -left-4 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-lg active:scale-90 border-2 border-white z-[60]"
                   >
                     <RotateCcw className="w-4 h-4" strokeWidth={4} />
                   </button>
-
-                  {/* Resize Button (Bottom-Right) */}
                   <button
                     onClick={(e) => { e.stopPropagation(); onResizeSticker?.(s.id); }}
                     className="absolute -bottom-4 -right-4 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg active:scale-90 border-2 border-white z-[60]"
@@ -140,6 +136,7 @@ export function BlueprintFrame({
         })}
       </div>
 
+      {/* Footer Branding Area - Minimized Space */}
       <div 
         className="absolute left-0 right-0 bottom-0 bg-white"
         style={{ top: `${(FOOTER_Y / CANVAS_H) * 100}%` }}
@@ -147,12 +144,12 @@ export function BlueprintFrame({
         <div className="absolute left-1/2 -translate-x-1/2 h-[1px] bg-black/5" style={{ top: '10px', width: '1500px' }} />
         {quoteText && (
           <div className="absolute left-0 right-0 flex items-center justify-center px-8" style={{ top: '15px', height: '40px' }}>
-            <span className="font-headline font-black italic uppercase text-center leading-none text-black/80" style={{ fontSize: '32px' }}>{quoteText}</span>
+            <span className="font-headline font-black italic uppercase text-center leading-none text-black/80" style={{ fontSize: '24px' }}>{quoteText}</span>
           </div>
         )}
         <div className="absolute bottom-[20px] left-[60px] right-[60px] flex justify-between items-center">
-          <span className="font-headline font-black italic text-black/60 uppercase" style={{ fontSize: '20px' }}>JNL STUDIO</span>
-          <span className="font-bold uppercase tracking-[0.2em] text-black/30" style={{ fontSize: '14px' }}>{displayDate}</span>
+          <span className="font-headline font-black italic text-black/70 uppercase" style={{ fontSize: '20px' }}>JNL STUDIO</span>
+          <span className="font-bold uppercase tracking-[0.2em] text-black/40" style={{ fontSize: '14px' }}>{displayDate}</span>
         </div>
       </div>
     </div>

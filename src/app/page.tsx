@@ -20,7 +20,7 @@ import { BlueprintFrame } from "@/components/kiosk/blueprint-frame";
 
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing";
 
-const FILTERS = [
+export const FILTERS = [
   { id: "natural", label: "STYLE A", class: "contrast-110 brightness-105 saturate-110" },
   { id: "silver", label: "STYLE B", class: "grayscale contrast-125 brightness-110" },
   { id: "vintage", label: "STYLE C", class: "sepia-[0.4] saturate-150 contrast-110 brightness-105" },
@@ -318,14 +318,29 @@ export default function KioskPage() {
     <KioskLayout>
       <canvas ref={canvasRef} className="hidden" />
       
-      <div 
-        className="absolute top-12 left-0 right-0 z-[60] text-center cursor-default select-none active:opacity-80 transition-opacity"
-        onClick={handleLogoClick}
-      >
-        <h1 className="font-headline font-black text-5xl sm:text-7xl tracking-tighter text-white neon-glow">
-          JNL <span className="text-primary">STUDIO</span>
-        </h1>
-      </div>
+      {/* Floating Logo - Welcome Screen Only */}
+      {appState === "welcome" && (
+        <div 
+          className="absolute top-12 left-0 right-0 z-[60] text-center cursor-default select-none active:opacity-80 transition-opacity animate-in fade-in duration-700"
+          onClick={handleLogoClick}
+        >
+          <h1 className="font-headline font-black text-5xl sm:text-7xl tracking-tighter text-white neon-glow">
+            JNL <span className="text-primary">STUDIO</span>
+          </h1>
+        </div>
+      )}
+
+      {/* Small Text Logo - All Other Screens */}
+      {appState !== "welcome" && (
+        <div 
+          className="fixed bottom-6 left-0 right-0 z-[60] text-center cursor-default select-none opacity-40 hover:opacity-100 transition-opacity"
+          onClick={handleLogoClick}
+        >
+          <p className="font-headline font-black text-[10px] sm:text-xs tracking-[0.3em] text-white uppercase italic">
+            JNL <span className="text-primary">STUDIO</span>
+          </p>
+        </div>
+      )}
 
       <AdminAuthDialog 
         isOpen={isAdminDialogOpen} 
@@ -391,7 +406,7 @@ export default function KioskPage() {
                <div className="text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">TOTAL DETECTED</div>
             </div>
 
-            {paymentReceived >= 50 && (
+            {(paymentReceived >= 50 || isOwnerMode) && (
               <div className="space-y-4">
                 {isOwnerMode ? (
                   <div className="grid grid-cols-2 gap-3">
@@ -567,7 +582,7 @@ export default function KioskPage() {
                 <div className="space-y-8">
                   <div>
                     <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
-                      <Smile className="w-4 h-4 text-primary" /> Sticker Pack
+                      <Smile className="w-4 h-4 text-primary" /> Trendy Stickers
                     </div>
                     <div className="grid grid-cols-4 gap-3">
                       {STICKER_DEFS.map((s) => (
@@ -577,6 +592,25 @@ export default function KioskPage() {
                       ))}
                     </div>
                   </div>
+
+                  {selectedStickerId && (
+                    <div className="p-4 bg-white/5 border border-white/10 rounded-xl animate-in slide-in-from-top-2">
+                      <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-[10px] tracking-widest">
+                        <Maximize2 className="w-3 h-3 text-primary" /> Adjust Size
+                      </div>
+                      <input 
+                        type="range" 
+                        min="5" 
+                        max="40" 
+                        value={placedStickers.find(s => s.id === selectedStickerId)?.size || 15}
+                        onChange={(e) => {
+                          const newSize = parseInt(e.target.value);
+                          setPlacedStickers(prev => prev.map(s => s.id === selectedStickerId ? { ...s, size: newSize } : s));
+                        }}
+                        className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+                      />
+                    </div>
+                  )}
 
                   <div>
                     <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">

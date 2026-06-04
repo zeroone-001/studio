@@ -1,11 +1,12 @@
+
 "use client";
 
 import React, { useMemo } from "react";
 import Image from "next/image";
 import { FrameBlueprint } from "./frame-blueprint";
 import { cn } from "@/lib/utils";
-import { STICKER_DEFS, PlacedSticker, QUOTES } from "@/app/page";
-import { X } from "lucide-react";
+import { STICKER_DEFS, PlacedSticker } from "@/app/page";
+import { X, RotateCcw, Maximize2 } from "lucide-react";
 
 interface BlueprintFrameProps {
   blueprint: FrameBlueprint;
@@ -19,6 +20,8 @@ interface BlueprintFrameProps {
   selectedStickerId?: string | null;
   onStickerPointerDown?: (id: string) => void;
   onRemoveSticker?: (id: string) => void;
+  onRotateSticker?: (id: string) => void;
+  onResizeSticker?: (id: string) => void;
 }
 
 export function BlueprintFrame({
@@ -33,20 +36,13 @@ export function BlueprintFrame({
   selectedStickerId = null,
   onStickerPointerDown,
   onRemoveSticker,
+  onRotateSticker,
+  onResizeSticker,
 }: BlueprintFrameProps) {
-  // Safety check to prevent crash if blueprint is undefined
-  if (!blueprint || !blueprint.slots) {
-    return (
-      <div className={cn("bg-zinc-900 flex items-center justify-center text-white/20 text-[10px] font-black uppercase italic", className)} style={{ aspectRatio: '1600/2560' }}>
-        Awaiting Blueprint...
-      </div>
-    );
-  }
+  if (!blueprint || !blueprint.slots) return null;
 
-  // 1600 x 2560 canvas scale factor
   const CANVAS_W = 1600;
   const CANVAS_H = 2560;
-  // FOOTER START (Higher value means less footer space, more photo space)
   const FOOTER_Y = 2420; 
 
   const displayDate = useMemo(() => {
@@ -56,44 +52,34 @@ export function BlueprintFrame({
 
   return (
     <div
-      className={cn(
-        "relative bg-white text-black overflow-hidden shadow-2xl touch-none",
-        className
-      )}
+      className={cn("relative bg-white text-black overflow-hidden shadow-2xl touch-none", className)}
       style={{
         aspectRatio: `${CANVAS_W} / ${CANVAS_H}`,
         width: isPreview ? "100%" : `${CANVAS_W}px`,
         height: isPreview ? "auto" : `${CANVAS_H}px`,
       }}
     >
-      {/* Photo Slots */}
-      {blueprint.slots.map((slot, index) => {
-        const photo = photos[index] || "https://picsum.photos/seed/placeholder/800/1200";
-        return (
-          <div
-            key={index}
-            className="absolute bg-zinc-100 overflow-hidden"
-            style={{
-              left: `${(slot.x / CANVAS_W) * 100}%`,
-              top: `${(slot.y / CANVAS_H) * 100}%`,
-              width: `${(slot.w / CANVAS_W) * 100}%`,
-              height: `${(slot.h / CANVAS_H) * 100}%`,
-            }}
-          >
-            <div className="relative w-full h-full">
-              <Image
-                src={photo}
-                alt={`Shot ${index + 1}`}
-                fill
-                className={cn("object-cover", filterClass)}
-                sizes="(max-width: 768px) 100vw, 800px"
-              />
-            </div>
-          </div>
-        );
-      })}
+      {blueprint.slots.map((slot, index) => (
+        <div
+          key={index}
+          className="absolute bg-zinc-100 overflow-hidden"
+          style={{
+            left: `${(slot.x / CANVAS_W) * 100}%`,
+            top: `${(slot.y / CANVAS_H) * 100}%`,
+            width: `${(slot.w / CANVAS_W) * 100}%`,
+            height: `${(slot.h / CANVAS_H) * 100}%`,
+          }}
+        >
+          <Image
+            src={photos[index] || "https://picsum.photos/seed/placeholder/800/1200"}
+            alt={`Shot ${index + 1}`}
+            fill
+            className={cn("object-cover", filterClass)}
+            sizes="1000px"
+          />
+        </div>
+      ))}
 
-      {/* Stickers Layer */}
       <div className="absolute inset-0 z-40 pointer-events-none">
         {stickers.map((s) => {
           const def = STICKER_DEFS.find(d => d.id === s.type);
@@ -105,14 +91,13 @@ export function BlueprintFrame({
             <div
               key={s.id}
               className={cn(
-                "absolute pointer-events-auto cursor-move active:scale-105 transition-all group",
-                isPreview ? "drop-shadow-lg" : "",
-                isSelected && isPreview ? "ring-2 ring-primary ring-offset-2 rounded-lg z-50 animate-neon-pulse" : ""
+                "absolute pointer-events-auto cursor-move transition-all group",
+                isSelected && isPreview ? "ring-2 ring-primary ring-offset-1 rounded-lg z-50 animate-neon-pulse" : ""
               )}
               style={{
                 left: `${s.x}%`,
                 top: `${s.y}%`,
-                transform: `translate(-50%, -50%)`,
+                transform: `translate(-50%, -50%) rotate(${s.rotation || 0}deg)`,
                 width: `${s.size}%`,
                 aspectRatio: "1/1"
               }}
@@ -123,67 +108,53 @@ export function BlueprintFrame({
             >
               <Icon className={cn("w-full h-full", def.color)} strokeWidth={3} />
               
-              {/* Delete Option (Visible only in preview/decoration mode) */}
-              {isPreview && onRemoveSticker && isSelected && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemoveSticker(s.id);
-                  }}
-                  className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform z-50 border-2 border-white"
-                >
-                  <X className="w-3.5 h-3.5" strokeWidth={4} />
-                </button>
+              {isPreview && isSelected && (
+                <>
+                  {/* Delete Button (Top-Right) */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onRemoveSticker?.(s.id); }}
+                    className="absolute -top-4 -right-4 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white shadow-lg active:scale-90 border-2 border-white z-[60]"
+                  >
+                    <X className="w-4 h-4" strokeWidth={4} />
+                  </button>
+                  
+                  {/* Rotate Button (Top-Left) */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onRotateSticker?.(s.id); }}
+                    className="absolute -top-4 -left-4 w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-lg active:scale-90 border-2 border-white z-[60]"
+                  >
+                    <RotateCcw className="w-4 h-4" strokeWidth={4} />
+                  </button>
+
+                  {/* Resize Button (Bottom-Right) */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onResizeSticker?.(s.id); }}
+                    className="absolute -bottom-4 -right-4 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg active:scale-90 border-2 border-white z-[60]"
+                  >
+                    <Maximize2 className="w-4 h-4" strokeWidth={4} />
+                  </button>
+                </>
               )}
             </div>
           );
         })}
       </div>
 
-      {/* Footer Area - Optimized for minimal space / save paper */}
       <div 
         className="absolute left-0 right-0 bottom-0 bg-white"
         style={{ top: `${(FOOTER_Y / CANVAS_H) * 100}%` }}
       >
-        {/* Very subtle Divider line */}
-        <div 
-          className="absolute left-1/2 -translate-x-1/2 h-[1px] bg-black/5"
-          style={{ top: '10px', width: '1500px' }}
-        />
-
-        {/* Small Quote */}
-        {quoteText && quoteText.length > 0 && (
-          <div 
-            className="absolute left-0 right-0 flex items-center justify-center px-8"
-            style={{ top: '15px', height: '40px' }}
-          >
-            <span 
-              className="font-headline font-black italic uppercase text-center leading-none text-black/80"
-              style={{ fontSize: '32px' }}
-            >
-              {quoteText}
-            </span>
+        <div className="absolute left-1/2 -translate-x-1/2 h-[1px] bg-black/5" style={{ top: '10px', width: '1500px' }} />
+        {quoteText && (
+          <div className="absolute left-0 right-0 flex items-center justify-center px-8" style={{ top: '15px', height: '40px' }}>
+            <span className="font-headline font-black italic uppercase text-center leading-none text-black/80" style={{ fontSize: '32px' }}>{quoteText}</span>
           </div>
         )}
-
-        {/* Small Branding & Tiny Date */}
         <div className="absolute bottom-[20px] left-[60px] right-[60px] flex justify-between items-center">
-          <div>
-             <span className="font-headline font-black italic text-black/60 uppercase tracking-tighter" style={{ fontSize: '20px' }}>JNL STUDIO</span>
-          </div>
-          <div className="text-right">
-             <span className="font-bold uppercase tracking-[0.2em] text-black/30" style={{ fontSize: '14px' }}>{displayDate}</span>
-          </div>
+          <span className="font-headline font-black italic text-black/60 uppercase" style={{ fontSize: '20px' }}>JNL STUDIO</span>
+          <span className="font-bold uppercase tracking-[0.2em] text-black/30" style={{ fontSize: '14px' }}>{displayDate}</span>
         </div>
       </div>
-
-      {/* Blueprint ID (Preview Only) */}
-      {isPreview && (
-        <div className="absolute top-2 left-2 bg-black/50 text-white text-[8px] px-1 font-mono pointer-events-none z-50">
-          {blueprint.id}
-        </div>
-      )}
     </div>
   );
 }
-

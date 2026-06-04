@@ -430,12 +430,34 @@ export default function KioskPage() {
               <div className="space-y-8">
                 <div>
                   <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
-                    <Frame className="w-4 h-4 text-primary" /> Layout
+                    <Frame className="w-4 h-4 text-primary" /> Select Layout
                   </div>
                   <div className="grid grid-cols-5 gap-2">
                     {availableBlueprints.map((bp) => (
-                      <button key={bp.id} onClick={() => setSelectedBlueprint(bp)} className={cn("aspect-square flex items-center justify-center text-[10px] font-black border-2 transition-all italic", selectedBlueprint?.id === bp.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40")}>
-                        {bp.label.split(' ')[1]}
+                      <button 
+                        key={bp.id} 
+                        onClick={() => setSelectedBlueprint(bp)} 
+                        className={cn(
+                          "aspect-[3/4] relative border-2 transition-all p-1.5", 
+                          selectedBlueprint?.id === bp.id ? "bg-primary/20 border-primary" : "bg-white/5 border-white/10"
+                        )}
+                      >
+                        {/* Mini Blueprint Preview */}
+                        <div className="relative w-full h-full bg-zinc-800/50">
+                          {bp.slots.map((slot, i) => (
+                            <div 
+                              key={i} 
+                              className="absolute bg-white/20 border border-white/10"
+                              style={{
+                                left: `${(slot.x / 1600) * 100}%`,
+                                top: `${(slot.y / 2560) * 100}%`,
+                                width: `${(slot.w / 1600) * 100}%`,
+                                height: `${(slot.h / 2560) * 100}%`,
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <span className="absolute bottom-1 right-1 text-[8px] font-black text-white/40">{bp.label.split(' ')[1]}</span>
                       </button>
                     ))}
                   </div>
@@ -612,8 +634,8 @@ export default function KioskPage() {
                             <h3 className="font-headline font-black text-xl uppercase italic tracking-wide">SOFT COPY</h3>
                             <p className="text-[10px] font-bold opacity-40 uppercase tracking-[0.2em]">High-Resolution Download</p>
                          </div>
-                         <div className="aspect-square w-48 sm:w-56 bg-white p-3 rounded-2xl shadow-[0_0_40px_rgba(255,255,255,0.15)] transition-transform hover:scale-105">
-                            <img src="https://picsum.photos/seed/softcopy/400/400" alt="Soft Copy QR" className="w-full h-full object-cover" />
+                         <div className="aspect-square w-48 sm:w-64 bg-white p-4 rounded-2xl shadow-[0_0_40px_rgba(255,255,255,0.15)] transition-transform hover:scale-105">
+                            <img src="https://picsum.photos/seed/softcopy/500/500" alt="Soft Copy QR" className="w-full h-full object-cover" />
                          </div>
                       </div>
 
@@ -625,8 +647,8 @@ export default function KioskPage() {
                             <h3 className="font-headline font-black text-xl uppercase italic tracking-wide">FOLLOW US</h3>
                             <p className="text-[10px] font-bold opacity-40 uppercase tracking-[0.2em]">Like & Share JNL Studio</p>
                          </div>
-                         <div className="aspect-square w-48 sm:w-56 bg-white p-3 rounded-2xl shadow-[0_0_40px_rgba(255,255,255,0.05)] transition-transform hover:scale-105">
-                            <img src="https://picsum.photos/seed/fb-qr/400/400" alt="Facebook QR" className="w-full h-full object-cover" />
+                         <div className="aspect-square w-48 sm:w-64 bg-white p-4 rounded-2xl shadow-[0_0_40px_rgba(255,255,255,0.05)] transition-transform hover:scale-105">
+                            <img src="https://picsum.photos/seed/fb-qr/500/500" alt="Facebook QR" className="w-full h-full object-cover" />
                          </div>
                       </div>
                    </div>
@@ -640,3 +662,4 @@ export default function KioskPage() {
     </KioskLayout>
   );
 }
+

@@ -71,8 +71,14 @@ export default function KioskPage() {
   const [isDevMode, setIsDevMode] = useState(true); // Default to Dev Mode for testing
 
   // Filter layouts based on package
-  const availableBlueprints = useMemo(() => BLUEPRINTS.filter(bp => bp.package === packageSelected), [packageSelected]);
-  const availableFilters = useMemo(() => FILTERS.slice(0, packageSelected === 100 ? 10 : 5), [packageSelected]);
+  const availableBlueprints = useMemo(() => {
+    if (!packageSelected) return [];
+    return BLUEPRINTS.filter(bp => bp.package === packageSelected);
+  }, [packageSelected]);
+
+  const availableFilters = useMemo(() => {
+    return FILTERS.slice(0, packageSelected === 100 ? 10 : 5);
+  }, [packageSelected]);
 
   // USB Storage Logic
   const setupUsbStorage = async () => {
@@ -344,7 +350,7 @@ export default function KioskPage() {
           <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in duration-500">
              <div className="relative w-full max-h-[60vh] mx-auto overflow-hidden">
                 <BlueprintFrame 
-                  blueprint={selectedBlueprint || availableBlueprints[0]} 
+                  blueprint={(selectedBlueprint || availableBlueprints[0]) as FrameBlueprint} 
                   photos={[]} 
                   filterClass={selectedFilter.class}
                   isPreview
@@ -366,7 +372,7 @@ export default function KioskPage() {
                         onClick={() => setSelectedBlueprint(bp)} 
                         className={cn(
                           "aspect-square flex items-center justify-center text-[10px] font-black uppercase border-2 transition-all italic", 
-                          (selectedBlueprint?.id || availableBlueprints[0].id) === bp.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40 hover:border-white/30"
+                          (selectedBlueprint?.id || availableBlueprints[0]?.id) === bp.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40 hover:border-white/30"
                         )}
                       >
                         {bp.label.split(' ')[1]}
@@ -398,7 +404,7 @@ export default function KioskPage() {
 
               <NeonButton 
                 onClick={() => {
-                  if (!selectedBlueprint) setSelectedBlueprint(availableBlueprints[0]);
+                  if (!selectedBlueprint) setSelectedBlueprint(availableBlueprints[0] || null);
                   setAppState("capturing");
                 }} 
                 className="w-full !py-8 mt-6"

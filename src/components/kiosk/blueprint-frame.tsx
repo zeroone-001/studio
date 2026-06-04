@@ -25,6 +25,15 @@ export function BlueprintFrame({
   className,
   isPreview = false,
 }: BlueprintFrameProps) {
+  // Safety check to prevent crash if blueprint is undefined
+  if (!blueprint || !blueprint.slots) {
+    return (
+      <div className={cn("bg-zinc-900 flex items-center justify-center text-white/20 text-[10px] font-black uppercase italic", className)} style={{ aspectRatio: '1600/2560' }}>
+        Awaiting Blueprint...
+      </div>
+    );
+  }
+
   // 1600 x 2560 canvas scale factor
   const CANVAS_W = 1600;
   const CANVAS_H = 2560;

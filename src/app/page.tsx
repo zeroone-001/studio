@@ -52,6 +52,7 @@ export default function KioskPage() {
       }
       return next;
     });
+    // Reset logo click count after 3 seconds of inactivity
     setTimeout(() => setLogoClickCount(0), 3000);
   };
 
@@ -89,6 +90,7 @@ export default function KioskPage() {
     setIsEnhancing(true);
     
     try {
+      // Simulate processing
       await new Promise(r => setTimeout(r, 2000));
       setAppState("review");
     } catch (e) {
@@ -130,6 +132,7 @@ export default function KioskPage() {
 
   return (
     <KioskLayout>
+      {/* Hidden Owner Trigger on Logo */}
       <div 
         className="absolute top-8 sm:top-12 left-0 right-0 z-[60] text-center cursor-default select-none active:opacity-80 transition-opacity"
         onClick={handleLogoClick}
@@ -159,6 +162,7 @@ export default function KioskPage() {
         />
       )}
 
+      {/* Owner Badge */}
       {isOwnerMode && (
         <div className="absolute top-4 left-4 z-50 flex items-center gap-2 bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter animate-pulse border border-white/20">
           <ShieldAlert className="w-3 h-3" />

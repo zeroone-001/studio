@@ -140,7 +140,7 @@ export default function KioskPage() {
 
   useEffect(() => {
     if (appState === "capturing") {
-      setCountdown(5);
+      setCountdown(3);
       const timer = setInterval(() => {
         setCountdown((prev) => {
           if (prev === 1) {

@@ -7,11 +7,25 @@ import { NeonButton } from "@/components/kiosk/neon-button";
 import { HealthMonitor } from "@/components/kiosk/health-monitor";
 import { AdminAuthDialog } from "@/components/kiosk/admin-auth-dialog";
 import { AdminControls } from "@/components/kiosk/admin-controls";
-import { Camera, Zap, Wallet, ArrowRight, Loader2, ShieldAlert, Facebook, Check, X, Share2 } from "lucide-react";
+import { Camera, Zap, Wallet, ArrowRight, Loader2, ShieldAlert, Facebook, Check, X, Share2, Sparkles, Frame } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
-type SessionState = "welcome" | "payment" | "capturing" | "review" | "consent" | "printing";
+type SessionState = "welcome" | "payment" | "capturing" | "review" | "editing" | "consent" | "printing";
+
+const FILTERS = [
+  { id: "none", label: "NORMAL", class: "" },
+  { id: "bw", label: "B&W", class: "grayscale" },
+  { id: "sepia", label: "VINTAGE", class: "sepia contrast-125" },
+  { id: "vivid", label: "VIVID", class: "saturate-150 contrast-110" },
+];
+
+const FRAMES = [
+  { id: "none", label: "NO FRAME", border: "border-transparent" },
+  { id: "neon", label: "NEON GLOW", border: "border-primary shadow-[0_0_20px_rgba(255,51,153,0.5)]" },
+  { id: "vintage", label: "CLASSIC WHITE", border: "border-[16px] border-white" },
+  { id: "minimal", label: "MINIMALIST", border: "border-2 border-white/20" },
+];
 
 export default function KioskPage() {
   const [appState, setAppState] = useState<SessionState>("welcome");
@@ -21,6 +35,10 @@ export default function KioskPage() {
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [hasSocialConsent, setHasSocialConsent] = useState<boolean | null>(null);
+  
+  // Customization States
+  const [selectedFilter, setSelectedFilter] = useState(FILTERS[0]);
+  const [selectedFrame, setSelectedFrame] = useState(FRAMES[0]);
   
   // Admin Mode States
   const [isOwnerMode, setIsOwnerMode] = useState(false);
@@ -90,6 +108,8 @@ export default function KioskPage() {
     setCountdown(null);
     setIsEnhancing(false);
     setHasSocialConsent(null);
+    setSelectedFilter(FILTERS[0]);
+    setSelectedFrame(FRAMES[0]);
   }, []);
 
   const handleStart = () => setAppState("payment");
@@ -148,7 +168,7 @@ export default function KioskPage() {
         </div>
       )}
 
-      <div className="flex-1 flex flex-col items-center justify-center p-8">
+      <div className="flex-1 flex flex-col items-center justify-center p-8 overflow-y-auto pt-40 pb-20">
         {appState === "welcome" && (
           <div className="text-center animate-in fade-in zoom-in duration-700">
             <div className="relative w-64 h-64 mb-12 mx-auto">
@@ -158,8 +178,8 @@ export default function KioskPage() {
                   <Camera className="w-24 h-24 text-primary animate-neon-pulse" />
                </div>
             </div>
-            <h2 className="font-headline font-black text-4xl mb-6">READY FOR YOUR SHOT?</h2>
-            <NeonButton onClick={handleStart} className="w-full max-sm:w-full">
+            <h2 className="font-headline font-black text-4xl mb-6 uppercase">READY FOR YOUR SHOT?</h2>
+            <NeonButton onClick={handleStart} className="w-full">
               TAP TO START
             </NeonButton>
           </div>
@@ -235,8 +255,8 @@ export default function KioskPage() {
                {isEnhancing && (
                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-30">
                     <Loader2 className="w-16 h-16 text-primary animate-spin mb-4" />
-                    <p className="font-headline font-black text-xl italic tracking-widest animate-pulse">OPTIMIZING PORTRAIT...</p>
-                    <p className="text-[10px] uppercase opacity-60 mt-2">AI Smart Filtering & Skin-tone Preservation</p>
+                    <p className="font-headline font-black text-xl italic tracking-widest animate-pulse uppercase">OPTIMIZING PORTRAIT...</p>
+                    <p className="text-[10px] uppercase opacity-60 mt-2 font-bold">AI Smart Filtering & Skin-tone Preservation</p>
                  </div>
                )}
             </div>
@@ -255,7 +275,7 @@ export default function KioskPage() {
           <div className="w-full max-w-lg animate-in fade-in duration-500">
             <h2 className="font-headline font-black text-3xl mb-6 text-center italic uppercase">Looking Sharp!</h2>
             
-            <div className="relative aspect-[3/4] w-full mb-8 border-4 border-white shadow-2xl">
+            <div className="relative aspect-[3/4] w-full mb-8 border-4 border-white shadow-2xl overflow-hidden">
                {capturedPhoto && (
                  <Image 
                    src={capturedPhoto} 
@@ -276,17 +296,90 @@ export default function KioskPage() {
 
             <div className="grid grid-cols-2 gap-4">
                <NeonButton 
-                 onClick={() => setAppState("consent")} 
+                 onClick={() => setAppState("editing")} 
                  className="w-full !py-6"
                >
-                 FINALIZE
+                 CUSTOMIZE
                </NeonButton>
                <button 
                  onClick={() => setAppState("capturing")}
-                 className="w-full border-2 border-white font-headline font-black text-lg py-6 italic hover:bg-white hover:text-black transition-colors"
+                 className="w-full border-2 border-white font-headline font-black text-lg py-6 italic hover:bg-white hover:text-black transition-colors uppercase"
                >
                  RETAKE
                </button>
+            </div>
+          </div>
+        )}
+
+        {appState === "editing" && (
+          <div className="w-full max-w-lg animate-in fade-in duration-500">
+            <h2 className="font-headline font-black text-3xl mb-6 text-center italic uppercase">Style Your Shot</h2>
+            
+            <div className="relative aspect-[3/4] w-full mb-8 flex items-center justify-center bg-zinc-900 border border-white/10 p-4">
+              <div className={cn("relative w-full h-full transition-all duration-500", selectedFrame.border)}>
+                {capturedPhoto && (
+                   <Image 
+                     src={capturedPhoto} 
+                     alt="Editing Preview" 
+                     fill 
+                     className={cn("object-cover transition-all duration-500", selectedFilter.class)}
+                   />
+                 )}
+                 <div className="absolute bottom-6 right-6 text-right z-10 pointer-events-none">
+                    <div className="font-headline font-black text-xl text-white drop-shadow-md italic">
+                      JNL <span className="text-primary">STUDIO</span>
+                    </div>
+                 </div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <div className="flex items-center gap-2 mb-3 text-primary uppercase font-black text-xs tracking-widest">
+                  <Sparkles className="w-4 h-4" /> Filters
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {FILTERS.map((f) => (
+                    <button
+                      key={f.id}
+                      onClick={() => setSelectedFilter(f)}
+                      className={cn(
+                        "py-3 text-[10px] font-black uppercase border-2 transition-all italic",
+                        selectedFilter.id === f.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40 hover:border-white/30"
+                      )}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2 mb-3 text-primary uppercase font-black text-xs tracking-widest">
+                  <Frame className="w-4 h-4" /> Frames
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {FRAMES.map((f) => (
+                    <button
+                      key={f.id}
+                      onClick={() => setSelectedFrame(f)}
+                      className={cn(
+                        "py-3 text-[10px] font-black uppercase border-2 transition-all italic",
+                        selectedFrame.id === f.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40 hover:border-white/30"
+                      )}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <NeonButton 
+                onClick={() => setAppState("consent")} 
+                className="w-full !py-6 mt-8"
+              >
+                APPLY & FINISH
+              </NeonButton>
             </div>
           </div>
         )}
@@ -312,7 +405,7 @@ export default function KioskPage() {
               
               <button 
                 onClick={() => handleConsent(false)}
-                className="w-full border-2 border-white/20 py-6 font-headline font-black text-lg italic hover:bg-white/10 transition-colors flex items-center justify-center gap-3"
+                className="w-full border-2 border-white/20 py-6 font-headline font-black text-lg italic hover:bg-white/10 transition-colors flex items-center justify-center gap-3 uppercase"
               >
                 <X className="w-5 h-5 opacity-40" />
                 NO, KEEP IT PRIVATE
@@ -328,7 +421,6 @@ export default function KioskPage() {
         {appState === "printing" && (
           <div className="text-center animate-in zoom-in duration-500 w-full max-w-sm">
             <div className="space-y-12">
-              {/* Soft Copy Download */}
               <div className="bg-white/5 p-6 border-2 border-white/10">
                 <div className="w-48 h-48 mx-auto mb-6 bg-white p-2">
                    <div className="w-full h-full border-4 border-black flex items-center justify-center relative">
@@ -344,19 +436,17 @@ export default function KioskPage() {
                       </div>
                    </div>
                 </div>
-                <h3 className="font-headline font-black text-2xl mb-2 italic">DOWNLOAD PHOTO</h3>
+                <h3 className="font-headline font-black text-2xl mb-2 italic uppercase">DOWNLOAD PHOTO</h3>
                 <p className="text-[10px] opacity-60 uppercase font-bold tracking-tighter">
                   Scan to save your premium JNL portraits
                 </p>
               </div>
 
-              {/* Facebook Follow */}
               <div className="bg-primary/5 p-6 border-2 border-primary/20 relative overflow-hidden">
                 <div className="absolute -top-4 -right-4 opacity-10">
                   <Facebook className="w-24 h-24 text-primary" />
                 </div>
                 <div className="w-40 h-40 mx-auto mb-6 bg-white p-2 relative z-10">
-                  {/* Placeholder for JNL Studio FB Page QR */}
                   <Image 
                     src="https://picsum.photos/seed/fb-qr/300/300" 
                     alt="Facebook QR" 
@@ -367,7 +457,7 @@ export default function KioskPage() {
                 </div>
                 <div className="flex items-center justify-center gap-2 mb-2">
                   <Facebook className="w-5 h-5 text-primary" />
-                  <h3 className="font-headline font-black text-xl italic uppercase">FOLLOW JNL STUDIO</h3>
+                  <h3 className="font-headline font-black text-xl italic uppercase tracking-tighter">FOLLOW JNL STUDIO</h3>
                 </div>
                 <p className="text-[10px] opacity-60 uppercase font-bold tracking-tighter">
                   Stay updated with our latest promotions
@@ -376,7 +466,7 @@ export default function KioskPage() {
             </div>
             
             <div className="mt-12 flex flex-col gap-4">
-               <div className="flex items-center gap-2 justify-center text-primary text-xs font-black italic mb-4">
+               <div className="flex items-center gap-2 justify-center text-primary text-xs font-black italic mb-4 uppercase tracking-widest">
                  <Loader2 className="w-4 h-4 animate-spin" />
                  PRINTER READYING...
                </div>

@@ -11,11 +11,12 @@ import {
   Camera, 
   Image as ImageIcon, 
   Printer,
-  Share2
+  Share2,
+  Palette
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type SessionState = "welcome" | "payment" | "capturing" | "review" | "consent" | "printing";
+type SessionState = "welcome" | "payment" | "capturing" | "review" | "editing" | "consent" | "printing";
 
 interface AdminControlsProps {
   currentStatus: SessionState;
@@ -39,13 +40,14 @@ export function AdminControls({
     { id: "payment", label: "Cash", icon: CreditCard },
     { id: "capturing", label: "Camera", icon: Camera },
     { id: "review", label: "Review", icon: ImageIcon },
+    { id: "editing", label: "Edit", icon: Palette },
     { id: "consent", label: "Consent", icon: Share2 },
     { id: "printing", label: "Final", icon: Printer },
   ];
 
   return (
     <div className="fixed bottom-16 right-4 z-[100] flex flex-col items-end gap-2">
-      <div className="bg-zinc-900/90 backdrop-blur-md border-2 border-primary/50 p-4 shadow-[0_0_30px_rgba(255,51,153,0.3)] w-64 animate-in slide-in-from-right-4">
+      <div className="bg-zinc-950/95 backdrop-blur-md border-2 border-primary/50 p-4 shadow-[0_0_30px_rgba(255,51,153,0.3)] w-64 animate-in slide-in-from-right-4 border-b-primary/80">
         <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/10">
           <div className="flex items-center gap-2">
             <Settings className="w-4 h-4 text-primary" />

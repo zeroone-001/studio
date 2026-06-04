@@ -256,16 +256,6 @@ export default function KioskPage() {
     <KioskLayout>
       <canvas ref={canvasRef} className="hidden" />
       
-      {/* Welcome Logo */}
-      {appState === "welcome" && (
-        <div 
-          className="absolute inset-0 flex items-center justify-center z-[60] cursor-default animate-in zoom-in duration-1000"
-          onClick={handleLogoClick}
-        >
-          <JnlLogo variant="hero" color="light" />
-        </div>
-      )}
-
       {/* Small Text Logo - All Other Screens */}
       {appState !== "welcome" && (
         <div 
@@ -303,15 +293,47 @@ export default function KioskPage() {
       <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 overflow-y-auto pt-36 sm:pt-48 pb-20 sm:pb-24">
         
         {appState === "welcome" && (
-          <div className="text-center animate-in fade-in duration-700 w-full max-w-sm mt-32">
-            <h2 className="font-headline font-black text-2xl sm:text-3xl mb-8 uppercase tracking-widest italic opacity-60">TOUCH TO START</h2>
-            <NeonButton 
-              onClick={() => setAppState("payment")} 
-              className="w-full text-xl"
-              disabled={isStorageBlocked}
-            >
-              READY?
-            </NeonButton>
+          <div 
+            className="flex flex-col items-center w-full max-w-lg animate-in fade-in slide-in-from-bottom-4 duration-1000"
+            style={{ paddingTop: '120px', paddingBottom: '100px' }}
+          >
+            {/* 1. LOGO ICON */}
+            <div className="flex justify-center mb-[40px] cursor-default" onClick={handleLogoClick}>
+              <JnlLogo variant="icon" color="light" className="w-32 h-32" />
+            </div>
+            
+            {/* 2. MAIN TITLE */}
+            <div className="flex justify-center mb-[30px] w-full px-4 overflow-hidden">
+              <h1 className="font-headline font-black text-5xl sm:text-7xl tracking-tight uppercase italic text-center whitespace-nowrap flex items-center gap-4">
+                <span className="text-white">JNL</span>
+                <span className="text-primary">STUDIO</span>
+              </h1>
+            </div>
+            
+            {/* 3. SUBTITLE */}
+            <div className="flex justify-center mb-[20px] w-full px-4">
+              <h2 className="font-headline font-black text-2xl sm:text-3xl tracking-[0.2em] uppercase italic text-white/90 text-center">
+                TOUCH TO START
+              </h2>
+            </div>
+            
+            {/* 4. PHOTOBOOTH LABEL */}
+            <div className="flex justify-center mb-[80px] w-full px-4">
+              <p className="font-bold text-[10px] sm:text-xs tracking-[0.5em] uppercase text-white/40 text-center">
+                PHOTOBOOTH
+              </p>
+            </div>
+            
+            {/* 5. BUTTON */}
+            <div className="flex justify-center w-full">
+              <NeonButton 
+                onClick={() => setAppState("payment")} 
+                className="w-[75%] sm:w-[80%] text-2xl py-10"
+                disabled={isStorageBlocked}
+              >
+                READY?
+              </NeonButton>
+            </div>
           </div>
         )}
 

@@ -5,7 +5,7 @@ import React, { useMemo } from "react";
 import Image from "next/image";
 import { FrameBlueprint } from "./frame-blueprint";
 import { cn } from "@/lib/utils";
-import { STICKER_DEFS, PlacedSticker } from "@/app/page";
+import { STICKER_DEFS, PlacedSticker, QUOTES } from "@/app/page";
 import { X } from "lucide-react";
 
 interface BlueprintFrameProps {
@@ -45,7 +45,8 @@ export function BlueprintFrame({
   // 1600 x 2560 canvas scale factor
   const CANVAS_W = 1600;
   const CANVAS_H = 2560;
-  const FOOTER_Y = 1880;
+  // FOOTER START (Higher value means less footer space, more photo space)
+  const FOOTER_Y = 2420; 
 
   const displayDate = useMemo(() => {
     if (dateText) return dateText;
@@ -84,6 +85,7 @@ export function BlueprintFrame({
                 alt={`Shot ${index + 1}`}
                 fill
                 className={cn("object-cover", filterClass)}
+                sizes="(max-width: 768px) 100vw, 800px"
               />
             </div>
           </div>
@@ -135,39 +137,39 @@ export function BlueprintFrame({
         })}
       </div>
 
-      {/* Footer Area - Fixed Positioning */}
+      {/* Footer Area - Optimized for minimal space / save paper */}
       <div 
         className="absolute left-0 right-0 bottom-0 bg-white"
         style={{ top: `${(FOOTER_Y / CANVAS_H) * 100}%` }}
       >
-        {/* Divider line */}
+        {/* Very subtle Divider line */}
         <div 
-          className="absolute left-1/2 -translate-x-1/2 h-[2px] bg-black/10"
-          style={{ top: '20px', width: '1480px' }}
+          className="absolute left-1/2 -translate-x-1/2 h-[1px] bg-black/5"
+          style={{ top: '10px', width: '1500px' }}
         />
 
-        {/* Quote */}
-        {quoteText && (
+        {/* Small Quote */}
+        {quoteText && quoteText.length > 0 && (
           <div 
-            className="absolute left-0 right-0 flex items-center justify-center px-12"
-            style={{ top: '60px', height: '60px' }}
+            className="absolute left-0 right-0 flex items-center justify-center px-8"
+            style={{ top: '15px', height: '40px' }}
           >
             <span 
-              className="font-headline font-black italic uppercase text-center leading-none"
-              style={{ fontSize: '48px' }}
+              className="font-headline font-black italic uppercase text-center leading-none text-black/80"
+              style={{ fontSize: '32px' }}
             >
               {quoteText}
             </span>
           </div>
         )}
 
-        {/* Branding & Metadata */}
-        <div className="absolute bottom-[60px] left-[60px] right-[60px] flex justify-between items-end">
-          <div className="flex flex-col">
-             <span className="font-headline font-black italic text-black uppercase" style={{ fontSize: '32px' }}>JNL STUDIO</span>
+        {/* Small Branding & Tiny Date */}
+        <div className="absolute bottom-[20px] left-[60px] right-[60px] flex justify-between items-center">
+          <div>
+             <span className="font-headline font-black italic text-black/60 uppercase tracking-tighter" style={{ fontSize: '20px' }}>JNL STUDIO</span>
           </div>
           <div className="text-right">
-             <span className="font-bold uppercase tracking-widest text-black/40" style={{ fontSize: '20px' }}>{displayDate}</span>
+             <span className="font-bold uppercase tracking-[0.2em] text-black/30" style={{ fontSize: '14px' }}>{displayDate}</span>
           </div>
         </div>
       </div>

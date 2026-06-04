@@ -133,6 +133,36 @@ export default function KioskPage() {
     }
   }, [appState, printProgress]);
 
+  const resetSession = useCallback(() => {
+    stopCamera();
+    setAppState("welcome");
+    setPaymentReceived(0);
+    setPackageSelected(null);
+    setCapturedPhotos([]);
+    setCurrentShotIndex(0);
+    setCountdown(null);
+    setIsProcessing(false);
+    setSelectedBlueprint(null);
+    setSelectedFilter(FILTERS[0]);
+    setPlacedStickers([]);
+    setSelectedQuote(QUOTES[0]);
+    setSelectedStickerId(null);
+    setPrintProgress(0);
+    setPromotionalConsent(null);
+  }, []);
+
+  // Auto-reset timer for the "Thank You" screen
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (appState === "printing" && printProgress === 100) {
+      // Give the user 45 seconds to scan QR codes before automatically returning to Welcome
+      timer = setTimeout(() => {
+        resetSession();
+      }, 45000); 
+    }
+    return () => clearTimeout(timer);
+  }, [appState, printProgress, resetSession]);
+
   // Camera Management
   const startCamera = async () => {
     try {
@@ -202,24 +232,6 @@ export default function KioskPage() {
       startShotSequence();
     }
   }, [appState]);
-
-  const resetSession = useCallback(() => {
-    stopCamera();
-    setAppState("welcome");
-    setPaymentReceived(0);
-    setPackageSelected(null);
-    setCapturedPhotos([]);
-    setCurrentShotIndex(0);
-    setCountdown(null);
-    setIsProcessing(false);
-    setSelectedBlueprint(null);
-    setSelectedFilter(FILTERS[0]);
-    setPlacedStickers([]);
-    setSelectedQuote(QUOTES[0]);
-    setSelectedStickerId(null);
-    setPrintProgress(0);
-    setPromotionalConsent(null);
-  }, []);
 
   const handleLogoClick = () => {
     setLogoClickCount(prev => {

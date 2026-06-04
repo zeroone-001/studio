@@ -1,13 +1,15 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { KioskLayout } from "@/components/kiosk/kiosk-layout";
 import { NeonButton } from "@/components/kiosk/neon-button";
 import { HealthMonitor } from "@/components/kiosk/health-monitor";
-import { Camera, Zap, Wallet, ArrowRight, Loader2 } from "lucide-react";
+import { AdminAuthDialog } from "@/components/kiosk/admin-auth-dialog";
+import { AdminControls } from "@/components/kiosk/admin-controls";
+import { Camera, Zap, Wallet, ArrowRight, Loader2, ShieldAlert } from "lucide-react";
 import Image from "next/image";
-import { aiPortraitEnhancement } from "@/ai/flows/ai-portrait-enhancement";
+import { cn } from "@/lib/utils";
 
 type SessionState = "welcome" | "payment" | "capturing" | "review" | "printing";
 
@@ -18,6 +20,25 @@ export default function KioskPage() {
   const [countdown, setCountdown] = useState<number | null>(null);
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  
+  // Admin Mode States
+  const [isOwnerMode, setIsOwnerMode] = useState(false);
+  const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
+  const [logoClickCount, setLogoClickCount] = useState(0);
+
+  // Logo trigger logic: Click 5 times to open admin dialog
+  const handleLogoClick = () => {
+    setLogoClickCount(prev => {
+      const next = prev + 1;
+      if (next >= 5) {
+        setIsAdminDialogOpen(true);
+        return 0;
+      }
+      return next;
+    });
+    // Reset count after 3 seconds of inactivity
+    setTimeout(() => setLogoClickCount(0), 3000);
+  };
 
   // Simulated Payment Detector Logic
   useEffect(() => {
@@ -45,37 +66,48 @@ export default function KioskPage() {
   }, [appState]);
 
   const takePhoto = async () => {
-    // Mock photo capture
     const mockPhoto = "https://picsum.photos/seed/capture/1080/1440";
     setCapturedPhoto(mockPhoto);
     setIsEnhancing(true);
     
     try {
-      // In a real app, we'd pass actual base64 data here
-      // const enhanced = await aiPortraitEnhancement({ photoDataUri: "data:image/jpeg;base64,..." });
-      // setCapturedPhoto(enhanced.enhancedPhotoDataUri);
-      
-      // Simulating AI process time
       await new Promise(r => setTimeout(r, 2000));
       setAppState("review");
     } catch (e) {
-      console.error("AI Enhancement failed", e);
       setAppState("review");
     } finally {
       setIsEnhancing(false);
     }
   };
 
+  const resetSession = useCallback(() => {
+    setAppState("welcome");
+    setPaymentReceived(0);
+    setPackageSelected(null);
+    setCapturedPhoto(null);
+    setCountdown(null);
+    setIsEnhancing(false);
+  }, []);
+
   const handleStart = () => setAppState("payment");
+  
   const handleSelectPackage = (p: 50 | 100) => {
     setPackageSelected(p);
-    // Simulate bill validator activation
+  };
+
+  const handleBypassPayment = () => {
+    if (isOwnerMode && packageSelected) {
+      setPaymentReceived(packageSelected);
+    }
   };
 
   return (
     <KioskLayout>
-      {/* Dynamic JNL Studio Header */}
-      <div className="absolute top-12 left-0 right-0 z-50 text-center pointer-events-none">
+      {/* Hidden Admin Trigger Area */}
+      <div 
+        className="absolute top-12 left-0 right-0 z-[60] text-center cursor-pointer select-none active:scale-95 transition-transform"
+        onClick={handleLogoClick}
+      >
         <h1 className="font-headline font-black text-6xl tracking-tighter text-white neon-glow">
           JNL <span className="text-primary">STUDIO</span>
         </h1>
@@ -83,6 +115,33 @@ export default function KioskPage() {
           Premium Photobooth Experience
         </p>
       </div>
+
+      {/* Admin Auth Component */}
+      <AdminAuthDialog 
+        isOpen={isAdminDialogOpen} 
+        onClose={() => setIsAdminDialogOpen(false)}
+        onAuthSuccess={() => setIsOwnerMode(true)}
+      />
+
+      {/* Admin Controls Component */}
+      {isOwnerMode && (
+        <AdminControls 
+          currentStatus={appState}
+          onJumpTo={setAppState}
+          onReset={resetSession}
+          onExitOwnerMode={() => setIsOwnerMode(false)}
+          hasPackage={!!packageSelected}
+          onBypassPayment={handleBypassPayment}
+        />
+      )}
+
+      {/* Owner Mode Active Indicator */}
+      {isOwnerMode && (
+        <div className="absolute top-4 left-4 z-50 flex items-center gap-2 bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter animate-pulse">
+          <ShieldAlert className="w-3 h-3" />
+          TEST MODE ACTIVE
+        </div>
+      )}
 
       <div className="flex-1 flex flex-col items-center justify-center p-8">
         {appState === "welcome" && (
@@ -129,25 +188,36 @@ export default function KioskPage() {
               >
                 <div>
                   <div className="text-4xl font-black italic">100 PHP</div>
-                  <div className="text-sm font-bold opacity-60 uppercase">4 Shots • Digital + Print</div>
+                  <div className="text-sm font-bold opacity-60 uppercase">6 Shots • Digital + Print</div>
                 </div>
                 <Zap className={cn("w-8 h-8", packageSelected === 100 ? "text-primary" : "text-white/20")} />
               </button>
             </div>
 
             {packageSelected && (
-              <div className="text-center p-8 border-2 border-dashed border-white/20 bg-white/5 animate-pulse">
-                <Wallet className="w-12 h-12 mx-auto mb-4 text-primary" />
+              <div className="text-center p-8 border-2 border-dashed border-white/20 bg-white/5">
+                <Wallet className="w-12 h-12 mx-auto mb-4 text-primary animate-bounce" />
                 <p className="font-bold uppercase tracking-widest text-xl">Insert {packageSelected} PHP</p>
                 <p className="text-xs opacity-50 mt-2">Validated payment detected automatically</p>
                 
-                {/* Demo Payment simulator button */}
-                <button 
-                  onClick={() => setPaymentReceived(packageSelected)}
-                  className="mt-6 text-[10px] text-white/20 hover:text-white/40 uppercase"
-                >
-                  (Demo: Simulate Payment)
-                </button>
+                {/* Regular payment simulator button (for devs, but owner bypass is better) */}
+                {!isOwnerMode && (
+                  <button 
+                    onClick={() => setPaymentReceived(packageSelected)}
+                    className="mt-6 text-[10px] text-white/10 hover:text-white/30 uppercase"
+                  >
+                    (Simulate Hardware Signal)
+                  </button>
+                )}
+                
+                {isOwnerMode && (
+                  <NeonButton 
+                    onClick={handleBypassPayment}
+                    className="mt-6 w-full !py-4 bg-green-600 border-green-600 shadow-green-900/50"
+                  >
+                    OWNER BYPASS
+                  </NeonButton>
+                )}
               </div>
             )}
           </div>
@@ -156,7 +226,6 @@ export default function KioskPage() {
         {appState === "capturing" && (
           <div className="w-full h-full flex flex-col items-center justify-center relative">
             <div className="w-full aspect-[3/4] bg-zinc-900 border-4 border-primary relative overflow-hidden">
-               {/* Camera Feed Placeholder */}
                <div className="absolute inset-0 bg-[url('https://picsum.photos/seed/live/1080/1440')] bg-cover bg-center grayscale contrast-125" />
                <div className="absolute inset-0 bg-primary/5 mix-blend-overlay" />
                
@@ -178,11 +247,11 @@ export default function KioskPage() {
             </div>
             <div className="mt-8 text-center">
               <div className="flex gap-2 justify-center mb-4">
-                 {[1,2,3].map(i => (
+                 {[1,2,3,4,5,6].map(i => (
                    <div key={i} className={cn("w-3 h-3 rounded-full border border-primary", i === 1 ? "bg-primary" : "bg-transparent")} />
                  ))}
               </div>
-              <p className="font-body font-black italic text-lg opacity-80">STRIKE A POSE!</p>
+              <p className="font-body font-black italic text-lg opacity-80 uppercase tracking-widest">Strike a pose!</p>
             </div>
           </div>
         )}
@@ -200,7 +269,6 @@ export default function KioskPage() {
                    className="object-cover"
                  />
                )}
-               {/* Branding Watermark */}
                <div className="absolute bottom-4 right-4 text-right">
                   <div className="font-headline font-black text-xl text-white drop-shadow-md italic">
                     JNL <span className="text-primary">STUDIO</span>
@@ -231,7 +299,6 @@ export default function KioskPage() {
         {appState === "printing" && (
           <div className="text-center animate-in zoom-in duration-500">
             <div className="w-64 h-64 mx-auto mb-8 bg-white p-4">
-               {/* QR Placeholder */}
                <div className="w-full h-full border-8 border-black flex items-center justify-center relative">
                   <div className="grid grid-cols-4 grid-rows-4 gap-1 w-full h-full p-2 opacity-80">
                     {Array.from({length: 16}).map((_, i) => (
@@ -257,11 +324,7 @@ export default function KioskPage() {
                </div>
                
                <NeonButton 
-                 onClick={() => {
-                   setAppState("welcome");
-                   setPaymentReceived(0);
-                   setPackageSelected(null);
-                 }} 
+                 onClick={resetSession} 
                  className="w-full"
                >
                  DONE
@@ -273,9 +336,9 @@ export default function KioskPage() {
 
       <HealthMonitor />
 
-      {/* Decorative Neon Accents */}
       <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-primary via-transparent to-primary opacity-20" />
       <div className="absolute top-0 right-0 w-1 h-full bg-gradient-to-b from-primary via-transparent to-primary opacity-20" />
     </KioskLayout>
   );
 }
+

@@ -1,7 +1,6 @@
-
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { cn } from "@/lib/utils";
 
 interface KioskLayoutProps {
@@ -10,10 +9,65 @@ interface KioskLayoutProps {
 }
 
 export function KioskLayout({ children, className }: KioskLayoutProps) {
+  // Generate random stars once on mount
+  const stars = useMemo(() => {
+    return Array.from({ length: 40 }).map((_, i) => ({
+      id: i,
+      top: `${Math.random() * 100}%`,
+      left: `${Math.random() * 100}%`,
+      size: `${Math.random() * 2 + 1}px`,
+      duration: `${(Math.random() * 3 + 2).toFixed(2)}s`,
+      delay: `${(Math.random() * 5).toFixed(2)}s`,
+    }));
+  }, []);
+
+  // Generate meteors
+  const meteors = useMemo(() => {
+    return Array.from({ length: 4 }).map((_, i) => ({
+      id: i,
+      top: `${Math.random() * 50}%`,
+      right: `${Math.random() * 30}%`,
+      duration: `${(Math.random() * 5 + 5).toFixed(2)}s`,
+      delay: `${(Math.random() * 10).toFixed(2)}s`,
+    }));
+  }, []);
+
   return (
-    <div className="fixed inset-0 bg-black flex items-center justify-center overflow-hidden safe-area-inset-top safe-area-inset-bottom">
+    <div className="fixed inset-0 bg-black flex items-center justify-center overflow-hidden">
+      {/* Global Background Elements */}
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+        {stars.map((star) => (
+          <div
+            key={star.id}
+            className="star"
+            style={{
+              top: star.top,
+              left: star.left,
+              width: star.size,
+              height: star.size,
+              "--duration": star.duration,
+              "--delay": star.delay,
+            } as any}
+          />
+        ))}
+        {meteors.map((meteor) => (
+          <div
+            key={meteor.id}
+            className="meteor"
+            style={{
+              top: meteor.top,
+              right: meteor.right,
+              "--duration": meteor.duration,
+              "--delay": meteor.delay,
+            } as any}
+          />
+        ))}
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-primary/5" />
+      </div>
+
       <div className={cn(
-        "w-full h-full max-w-[1080px] bg-black flex flex-col relative portrait-container",
+        "w-full h-full max-w-[1080px] bg-black/40 backdrop-blur-[2px] flex flex-col relative portrait-container z-10",
+        "safe-area-inset-top safe-area-inset-bottom",
         className
       )}>
         {children}

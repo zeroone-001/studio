@@ -106,6 +106,25 @@ export default function KioskPage() {
   const [usbHandle, setUsbHandle] = useState<any>(null);
   const [isDevMode, setIsDevMode] = useState(true);
 
+  // Hidden Trigger Logic
+  const [logoTapCount, setLogoTapCount] = useState(0);
+  const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleHiddenTrigger = useCallback(() => {
+    setLogoTapCount((prev) => {
+      const newCount = prev + 1;
+      if (newCount >= 5) {
+        setIsAdminDialogOpen(true);
+        return 0;
+      }
+      
+      if (tapTimeoutRef.current) clearTimeout(tapTimeoutRef.current);
+      tapTimeoutRef.current = setTimeout(() => setLogoTapCount(0), 1000);
+      
+      return newCount;
+    });
+  }, []);
+
   const availableBlueprints = useMemo(() => {
     if (!packageSelected) return [];
     return BLUEPRINTS.filter(bp => bp.package === packageSelected);
@@ -227,10 +246,6 @@ export default function KioskPage() {
     }
   }, [appState]);
 
-  const handleLogoClick = () => {
-    setIsAdminDialogOpen(true);
-  };
-
   const addSticker = useCallback((type: string) => {
     const newSticker: PlacedSticker = { id: `sticker-${Date.now()}`, type, x: 50, y: 40, size: 15, rotation: 0 };
     setPlacedStickers(prev => [...prev, newSticker]);
@@ -257,7 +272,7 @@ export default function KioskPage() {
       
       {appState !== "welcome" && (
         <div className="fixed bottom-6 left-6 right-6 z-[60] flex justify-between items-center opacity-40 hover:opacity-100 transition-opacity pointer-events-none">
-          <div className="cursor-pointer pointer-events-auto" onClick={handleLogoClick}>
+          <div className="pointer-events-auto" onClick={handleHiddenTrigger}>
             <p className="font-headline font-black text-[10px] sm:text-xs tracking-[0.2em] text-white uppercase italic flex items-center gap-3">
               <span>JNL</span>
               <span className="text-primary">STUDIO</span>
@@ -283,7 +298,7 @@ export default function KioskPage() {
           onExitOwnerMode={() => setIsOwnerMode(false)}
           hasPackage={!!packageSelected}
           onSimulateCash={(amount) => setPaymentReceived(prev => prev + amount)}
-          onBypassPayment={(pkg) => { setPaymentReceived(pkg); setPackageSelected(pkg); setAppState("setup"); }}
+          onBypassPayment={(pkg) => { setPackageSelected(pkg); setPaymentReceived(pkg); setAppState("setup"); }}
           usbStatus={usbHandle ? "connected" : "disconnected"}
           onSetupUsb={() => setUsbHandle({})}
           isDevMode={isDevMode}
@@ -295,7 +310,7 @@ export default function KioskPage() {
         
         {appState === "welcome" && (
           <div className="flex flex-col items-center w-full max-w-lg animate-in fade-in slide-in-from-bottom-4 duration-1000" style={{ paddingTop: '120px', paddingBottom: '100px' }}>
-            <div className="flex justify-center mb-[40px] cursor-default" onClick={handleLogoClick}>
+            <div className="flex justify-center mb-[40px]" onClick={handleHiddenTrigger}>
               <JnlLogo variant="icon" color="light" className="w-32 h-32" />
             </div>
             <div className="flex justify-center mb-[30px] w-full px-4">

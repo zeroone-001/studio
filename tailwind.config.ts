@@ -1,4 +1,3 @@
-
 import type {Config} from 'tailwindcss';
 
 export default {
@@ -49,13 +48,6 @@ export default {
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
-        chart: {
-          '1': 'hsl(var(--chart-1))',
-          '2': 'hsl(var(--chart-2))',
-          '3': 'hsl(var(--chart-3))',
-          '4': 'hsl(var(--chart-4))',
-          '5': 'hsl(var(--chart-5))',
-        },
       },
       borderRadius: {
         lg: 'var(--radius)',
@@ -71,10 +63,33 @@ export default {
           from: { height: 'var(--radix-accordion-content-height)' },
           to: { height: '0' },
         },
+        'neon-pulse': {
+          '0%, 100%': {
+            opacity: '1',
+            filter: 'drop-shadow(0 0 15px hsl(var(--primary)))',
+          },
+          '50%': {
+            opacity: '0.7',
+            filter: 'drop-shadow(0 0 5px hsl(var(--primary)))',
+          },
+        },
+        'twinkle': {
+          '0%, 100%': { opacity: '0.3', transform: 'scale(1)' },
+          '50%': { opacity: '1', transform: 'scale(1.2)' },
+        },
+        'meteor': {
+          '0%': { transform: 'translate(0, 0) rotate(215deg) scale(0)', opacity: '0' },
+          '10%': { opacity: '1', scale: '1' },
+          '20%': { transform: 'translate(-500px, 500px) rotate(215deg) scale(1)', opacity: '0' },
+          '100%': { transform: 'translate(-500px, 500px) rotate(215deg) scale(1)', opacity: '0' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'neon-pulse': 'neon-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'twinkle': 'twinkle 3s ease-in-out infinite',
+        'meteor': 'meteor 5s linear infinite',
       },
     },
   },

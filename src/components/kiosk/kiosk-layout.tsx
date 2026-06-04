@@ -39,27 +39,27 @@ export function KioskLayout({ children, className }: KioskLayoutProps) {
         {stars.map((star) => (
           <div
             key={star.id}
-            className="star"
+            className="absolute rounded-full bg-white animate-twinkle"
             style={{
               top: star.top,
               left: star.left,
               width: star.size,
               height: star.size,
-              "--duration": star.duration,
-              "--delay": star.delay,
-            } as any}
+              animationDuration: star.duration,
+              animationDelay: star.delay,
+            }}
           />
         ))}
         {meteors.map((meteor) => (
           <div
             key={meteor.id}
-            className="meteor"
+            className="absolute w-[2px] h-[100px] bg-gradient-to-b from-white to-transparent opacity-0 animate-meteor"
             style={{
               top: meteor.top,
               right: meteor.right,
-              "--duration": meteor.duration,
-              "--delay": meteor.delay,
-            } as any}
+              animationDuration: meteor.duration,
+              animationDelay: meteor.delay,
+            }}
           />
         ))}
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-primary/5" />

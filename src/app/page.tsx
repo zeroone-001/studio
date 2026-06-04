@@ -12,13 +12,14 @@ import {
   Sparkles, Frame, Usb, Printer, Smile, Quote, Share2, Heart, Star, Flame,
   AlertTriangle, HardDrive, CheckCircle2, Crown, Cat, Moon, Sun, Cloud, 
   Coffee, Pizza, Flower2, Ghost, Rocket, Trash2, XCircle, RefreshCw, Maximize2,
-  RotateCcw, Layers
+  RotateCcw, Layers, CameraIcon, ImageIcon, Flashlight, User, HeartIcon
 } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
 import { BlueprintFrame } from "@/components/kiosk/blueprint-frame";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import * as Kawaii from "@/components/kiosk/kawaii-stickers";
 
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "test-stickers";
 
@@ -36,24 +37,32 @@ export const FILTERS = [
 ];
 
 export const STICKER_DEFS = [
-  // TRENDY
-  { id: "heart", icon: Heart, color: "text-red-500", category: "TRENDY" },
-  { id: "star", icon: Star, color: "text-yellow-400", category: "TRENDY" },
-  { id: "sparkle", icon: Sparkles, color: "text-white", category: "TRENDY" },
-  { id: "fire", icon: Flame, color: "text-orange-500", category: "TRENDY" },
-  // CUTE
-  { id: "cat", icon: Cat, color: "text-orange-200", category: "CUTE" },
-  { id: "ghost", icon: Ghost, color: "text-zinc-300", category: "CUTE" },
-  { id: "rocket", icon: Rocket, color: "text-cyan-400", category: "CUTE" },
+  // HEARTS
+  { id: "puffy-heart", icon: Kawaii.PuffyHeart, color: "", category: "HEARTS" },
+  { id: "ribbon-heart", icon: Kawaii.RibbonHeart, color: "", category: "HEARTS" },
+  { id: "sparkle-heart", icon: HeartIcon, color: "text-pink-300", category: "HEARTS" },
+  // CUTE OBJECTS
+  { id: "bunny", icon: Kawaii.KawaiiBunny, color: "", category: "CUTE" },
+  { id: "bear", icon: Kawaii.TeddyBear, color: "", category: "CUTE" },
+  { id: "cat-face", icon: Cat, color: "text-orange-200", category: "CUTE" },
   { id: "pizza", icon: Pizza, color: "text-yellow-600", category: "CUTE" },
-  // ELEMENTS
-  { id: "flower", icon: Flower2, color: "text-pink-400", category: "ELEMENTS" },
-  { id: "cloud", icon: Cloud, color: "text-blue-200", category: "ELEMENTS" },
-  { id: "sun", icon: Sun, color: "text-orange-300", category: "ELEMENTS" },
-  { id: "moon", icon: Moon, color: "text-indigo-200", category: "ELEMENTS" },
-  // VIBE
-  { id: "crown", icon: Crown, color: "text-yellow-300", category: "VIBE" },
-  { id: "coffee", icon: Coffee, color: "text-amber-900", category: "VIBE" },
+  { id: "coffee", icon: Coffee, color: "text-amber-900", category: "CUTE" },
+  // PHOTOBOOTH ITEMS
+  { id: "mini-camera", icon: CameraIcon, color: "text-zinc-400", category: "PHOTO" },
+  { id: "film", icon: Layers, color: "text-zinc-500", category: "PHOTO" },
+  { id: "flash", icon: Flashlight, color: "text-yellow-400", category: "PHOTO" },
+  { id: "selfie", icon: User, color: "text-blue-300", category: "PHOTO" },
+  // AESTHETIC ITEMS
+  { id: "cloud", icon: Kawaii.KawaiiCloud, color: "", category: "AESTHETIC" },
+  { id: "sparkle", icon: Kawaii.PastelSparkle, color: "", category: "AESTHETIC" },
+  { id: "moon", icon: Moon, color: "text-indigo-200", category: "AESTHETIC" },
+  { id: "star", icon: Star, color: "text-yellow-300", category: "AESTHETIC" },
+  { id: "crown", icon: Crown, color: "text-yellow-400", category: "AESTHETIC" },
+  { id: "flower", icon: Flower2, color: "text-pink-400", category: "AESTHETIC" },
+  // TEXT STICKERS
+  { id: "slay", icon: Kawaii.SlayText, color: "", category: "TEXT" },
+  { id: "cutie", icon: Kawaii.CutieText, color: "", category: "TEXT" },
+  { id: "besties", icon: Kawaii.BestiesText, color: "", category: "TEXT" },
 ];
 
 export const QUOTES = [
@@ -94,7 +103,7 @@ export default function KioskPage() {
   const [placedStickers, setPlacedStickers] = useState<PlacedSticker[]>([]);
   const [selectedQuote, setSelectedQuote] = useState(QUOTES[0]);
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
-  const [activeStickerCategory, setActiveStickerCategory] = useState("TRENDY");
+  const [activeStickerCategory, setActiveStickerCategory] = useState("HEARTS");
 
   // Admin & Storage States
   const [isOwnerMode, setIsOwnerMode] = useState(false);
@@ -475,13 +484,13 @@ export default function KioskPage() {
                 </div>
 
                 <div className="space-y-8">
-                  <Tabs defaultValue="TRENDY" onValueChange={setActiveStickerCategory} className="w-full">
-                    <TabsList className="w-full grid grid-cols-4 bg-white/5 border border-white/10 mb-4 h-12">
-                      {["TRENDY", "CUTE", "ELEMENTS", "VIBE"].map((cat) => (
+                  <Tabs defaultValue="HEARTS" onValueChange={setActiveStickerCategory} className="w-full">
+                    <TabsList className="w-full grid grid-cols-5 bg-white/5 border border-white/10 mb-4 h-12">
+                      {["HEARTS", "CUTE", "PHOTO", "AESTHETIC", "TEXT"].map((cat) => (
                         <TabsTrigger 
                           key={cat} 
                           value={cat} 
-                          className="text-[9px] font-black tracking-tighter data-[state=active]:bg-primary data-[state=active]:text-white"
+                          className="text-[8px] font-black tracking-tighter data-[state=active]:bg-primary data-[state=active]:text-white"
                         >
                           {cat}
                         </TabsTrigger>

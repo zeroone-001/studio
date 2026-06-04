@@ -5,7 +5,7 @@ import React, { useMemo, useRef, useState, useEffect } from "react";
 import Image from "next/image";
 import { FrameBlueprint } from "./frame-blueprint";
 import { cn } from "@/lib/utils";
-import { PlacedSticker } from "@/app/page";
+import { PlacedSticker, STICKER_DEFS } from "@/app/page";
 import { JnlLogo } from "./jnl-logo";
 import { StickerEditor } from "./sticker-editor";
 
@@ -92,31 +92,33 @@ export function BlueprintFrame({
         </div>
       ))}
 
-      {/* Stickers Editor Layer (Only in Preview) */}
-      {isPreview && (
-        <div className="absolute inset-0 z-40 pointer-events-none">
-          {stickers.map((s) => (
-            <StickerEditor
-              key={s.id}
-              sticker={s}
-              canvasRect={canvasRect}
-              isSelected={selectedStickerId === s.id}
-              onUpdate={(id, up) => onUpdateSticker?.(id, up)}
-              onDelete={(id) => onRemoveSticker?.(id)}
-              onSelect={(id) => onSelectSticker?.(id)}
-              onBringToFront={(id) => onBringToFront?.(id)}
-            />
-          ))}
-        </div>
-      )}
+      {/* Stickers Layer */}
+      <div className="absolute inset-0 z-40 pointer-events-none">
+        {stickers.map((s) => {
+          const def = STICKER_DEFS.find(d => d.id === s.type);
+          if (!def) return null;
+          const StickerIcon = def.icon;
 
-      {/* Static Rendering for Export (Non-Interactive) */}
-      {!isPreview && (
-        <div className="absolute inset-0 z-40 pointer-events-none">
-          {stickers.map((s) => (
+          if (isPreview) {
+            return (
+              <StickerEditor
+                key={s.id}
+                sticker={s}
+                canvasRect={canvasRect}
+                isSelected={selectedStickerId === s.id}
+                onUpdate={(id, up) => onUpdateSticker?.(id, up)}
+                onDelete={(id) => onRemoveSticker?.(id)}
+                onSelect={(id) => onSelectSticker?.(id)}
+                onBringToFront={(id) => onBringToFront?.(id)}
+              />
+            );
+          }
+
+          // Static rendering for Export
+          return (
             <div
               key={s.id}
-              className="absolute"
+              className="absolute pointer-events-none"
               style={{
                 left: `${s.x}%`,
                 top: `${s.y}%`,
@@ -125,13 +127,11 @@ export function BlueprintFrame({
                 transform: `translate(-50%, -50%) rotate(${s.rotation}deg)`,
               }}
             >
-              <div className="w-full h-full">
-                {/* Visual placeholder for non-preview mode */}
-              </div>
+              <StickerIcon className={cn("w-full h-full drop-shadow-md", def.color)} />
             </div>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
 
       {/* Compact Branding Footer */}
       <div 

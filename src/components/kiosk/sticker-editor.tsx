@@ -27,7 +27,7 @@ export function StickerEditor({
 }: StickerEditorProps) {
   const def = STICKER_DEFS.find(d => d.id === sticker.type);
   if (!def) return null;
-  const Icon = def.icon;
+  const StickerIcon = def.icon;
 
   const [isDragging, setIsDragging] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
@@ -98,7 +98,6 @@ export function StickerEditor({
         const dist = Math.sqrt(dx * dx + dy * dy);
         const sizeFactor = (dist / canvasRect.width) * 100;
         
-        // Use vector direction relative to sticker center to determine grow/shrink
         const centerX = canvasRect.left + (sticker.x / 100) * canvasRect.width;
         const centerY = canvasRect.top + (sticker.y / 100) * canvasRect.height;
         const isMovingAway = Math.sqrt(Math.pow(e.clientX - centerX, 2) + Math.pow(e.clientY - centerY, 2)) > 
@@ -148,7 +147,7 @@ export function StickerEditor({
         "w-full h-full transition-shadow",
         isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded-lg animate-neon-pulse shadow-[0_0_20px_rgba(255,51,153,0.6)]"
       )}>
-        <Icon className={cn("w-full h-full drop-shadow-lg", def.color)} strokeWidth={2.5} />
+        <StickerIcon className={cn("w-full h-full drop-shadow-lg", def.color)} />
       </div>
 
       {isSelected && (

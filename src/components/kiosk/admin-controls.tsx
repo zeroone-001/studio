@@ -134,6 +134,7 @@ export function AdminControls({
               <Sparkles className="w-4 h-4" /> Visual Test Mode
             </button>
 
+            {/* Owner access to skip payment and jump to packages */}
             <div className="grid grid-cols-2 gap-2">
                <button onClick={() => onBypassPayment(50)} className="bg-primary/20 border border-primary/40 py-2 text-[9px] font-black uppercase">P50 Bypass</button>
                <button onClick={() => onBypassPayment(100)} className="bg-primary/20 border border-primary/40 py-2 text-[9px] font-black uppercase">P100 Bypass</button>

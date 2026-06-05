@@ -113,7 +113,6 @@ export const BlueprintFrame = React.memo(({
             );
           }
 
-          // Static rendering for Export
           return (
             <div
               key={s.id}
@@ -132,7 +131,7 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* Ultra-Compact Branding Footer */}
+      {/* Printed Frame Branding - Minimal per instructions */}
       <div 
         className="absolute left-0 right-0 bottom-0 bg-white"
         style={{ top: `${(FOOTER_Y / CANVAS_H) * 100}%` }}

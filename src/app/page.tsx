@@ -10,7 +10,7 @@ import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
   Wallet, Sparkles, Frame, Quote, Trash2, Cat, Moon, Sun, 
   Coffee, Pizza, Flower2, Crown, Layers, CameraIcon, Flashlight, User, HeartIcon,
-  QrCode, Facebook, CheckCircle2, Printer, Share2, Usb, AlertCircle, Camera
+  QrCode, Facebook, Printer, Usb, AlertCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -125,6 +125,7 @@ export default function KioskPage() {
   const [logoTapCount, setLogoTapCount] = useState(0);
   const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Hidden 5-tap logo trigger for owner access
   const handleHiddenTrigger = useCallback(() => {
     setLogoTapCount((prev) => {
       const newCount = prev + 1;
@@ -201,15 +202,6 @@ export default function KioskPage() {
 
   useEffect(() => {
     if (appState === "printing" && promoConsent === true) {
-      SessionStore.addToSyncQueue({
-        id: `usb_sync_${Date.now()}`,
-        type: 'usb_sync',
-        data: { photos: capturedPhotos, blueprint: selectedBlueprint?.id },
-        timestamp: Date.now(),
-        retryCount: 0,
-        status: 'pending'
-      });
-
       if (usbHandle) {
         setIsSavingToUsb(true);
         KioskLogger.log('info', 'Storage', 'Initiating Hybrid USB gallery sync for approved promotion.');
@@ -220,7 +212,7 @@ export default function KioskPage() {
         return () => clearTimeout(timer);
       }
     }
-  }, [appState, promoConsent, usbHandle, capturedPhotos, selectedBlueprint]);
+  }, [appState, promoConsent, usbHandle]);
 
   const resetSession = useCallback(() => {
     stopCamera();
@@ -402,7 +394,7 @@ export default function KioskPage() {
       <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 overflow-y-auto pt-36 sm:pt-48 pb-20 sm:pb-24 scrollbar-hide">
         
         {appState === "welcome" && (
-          <div className="flex flex-col items-center w-full max-w-lg animate-in fade-in slide-in-from-bottom-4 duration-1000" style={{ paddingTop: '120px', paddingBottom: '100px' }}>
+          <div className="flex flex-col items-center w-full max-w-lg animate-in fade-in slide-in-from-bottom-4 duration-1000" style={{ paddingTop: '120px' }}>
             <div className="flex justify-center mb-[40px]" onClick={handleHiddenTrigger}>
               <JnlLogo variant="icon" color="light" className="w-32 h-32" />
             </div>

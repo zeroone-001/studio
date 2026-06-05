@@ -101,7 +101,7 @@ export default function KioskPage() {
   const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
   const [currentShotIndex, setCurrentShotIndex] = useState(0);
   const [printProgress, setPrintProgress] = useState(0);
-  const [promotionalConsent, setPromotionalConsent] = useState<boolean | null>(null);
+  const [promoConsent, setPromoConsent] = useState<boolean | null>(null);
   const [isSavingToUsb, setIsSavingToUsb] = useState(false);
   const [interruptedSession, setInterruptedSession] = useState<KioskSession | null>(null);
   
@@ -146,10 +146,10 @@ export default function KioskPage() {
         packageSelected,
         paymentReceived,
         capturedPhotos,
-        promotionalConsent
+        promoConsent
       });
     }
-  }, [appState, packageSelected, paymentReceived, capturedPhotos, promotionalConsent]);
+  }, [appState, packageSelected, paymentReceived, capturedPhotos, promoConsent]);
 
   useEffect(() => {
     const saved = SessionStore.load();
@@ -165,7 +165,7 @@ export default function KioskPage() {
       setPackageSelected(interruptedSession.packageSelected);
       setPaymentReceived(interruptedSession.paymentReceived);
       setCapturedPhotos(interruptedSession.capturedPhotos);
-      setPromotionalConsent(interruptedSession.promotionalConsent);
+      setPromoConsent(interruptedSession.promoConsent);
       setInterruptedSession(null);
       KioskLogger.log('info', 'Recovery', 'Session successfully resumed.');
     }
@@ -200,7 +200,7 @@ export default function KioskPage() {
   }, [appState, printProgress]);
 
   useEffect(() => {
-    if (appState === "printing" && promotionalConsent === true) {
+    if (appState === "printing" && promoConsent === true) {
       SessionStore.addToSyncQueue({
         id: `usb_sync_${Date.now()}`,
         type: 'usb_sync',
@@ -220,7 +220,7 @@ export default function KioskPage() {
         return () => clearTimeout(timer);
       }
     }
-  }, [appState, promotionalConsent, usbHandle, capturedPhotos, selectedBlueprint]);
+  }, [appState, promoConsent, usbHandle, capturedPhotos, selectedBlueprint]);
 
   const resetSession = useCallback(() => {
     stopCamera();
@@ -238,7 +238,7 @@ export default function KioskPage() {
     setSelectedQuote(QUOTES[0]);
     setSelectedStickerId(null);
     setPrintProgress(0);
-    setPromotionalConsent(null);
+    setPromoConsent(null);
     setIsSavingToUsb(false);
     KioskLogger.log('info', 'System', 'Full state cleanup and session reset.');
   }, []);
@@ -610,14 +610,17 @@ export default function KioskPage() {
           <div className="w-full max-w-xl animate-in slide-in-from-bottom-8 duration-500 text-center">
             <div className="mb-10">
                <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-primary/30">
-                  <Share2 className="w-12 h-12 text-primary" />
+                  <Sparkles className="w-12 h-12 text-primary" />
                </div>
-               <h2 className="font-headline font-black text-4xl mb-4 italic uppercase">Promotional Consent</h2>
-               <p className="text-sm opacity-60 uppercase font-bold tracking-widest leading-relaxed">May we post your photo on the JNL Studio FB Page for promotional highlights?</p>
+               <h2 className="font-headline font-black text-4xl mb-4 italic uppercase">Help Us Share Happy Memories ✨</h2>
+               <div className="space-y-4 mb-10">
+                 <p className="text-lg font-bold text-white leading-relaxed">May we use your moments from this session for promotional posts on our Facebook page?</p>
+                 <p className="text-sm font-medium text-white/60 leading-relaxed italic">Maaari ba naming gamitin ang inyong moments mula sa session na ito para sa promotional posts sa aming Facebook page?</p>
+               </div>
             </div>
             <div className="grid grid-cols-1 gap-4 px-4">
-               <button onClick={() => { setPromotionalConsent(true); setAppState("printing"); }} className="w-full bg-primary py-8 text-xl font-headline font-black italic uppercase shadow-[0_0_20px_rgba(255,51,153,0.4)]">YES, GO FOR IT!</button>
-               <button onClick={() => { setPromotionalConsent(false); setAppState("printing"); }} className="w-full border-2 border-white/20 font-headline font-black text-lg py-6 italic uppercase text-white/40">NO, KEEP IT PRIVATE</button>
+               <button onClick={() => { setPromoConsent(true); setAppState("printing"); }} className="w-full bg-primary py-8 text-xl font-headline font-black italic uppercase shadow-[0_0_20px_rgba(255,51,153,0.4)]">Yes, we allow it / Oo, pumapayag kami</button>
+               <button onClick={() => { setPromoConsent(false); setAppState("printing"); }} className="w-full border-2 border-white/20 font-headline font-black text-lg py-6 italic uppercase text-white/40">No, thank you / Hindi po</button>
             </div>
           </div>
         )}

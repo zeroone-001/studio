@@ -11,7 +11,7 @@ export interface KioskSession {
   paymentReceived: number;
   capturedPhotos: string[];
   timestamp: number;
-  promotionalConsent: boolean | null;
+  promoConsent: boolean | null;
   isSynced: boolean;
 }
 

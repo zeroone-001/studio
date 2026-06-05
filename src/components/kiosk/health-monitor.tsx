@@ -2,45 +2,56 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Printer, Wallet, Wifi, ShieldCheck } from "lucide-react";
+import { Printer, Wallet, Wifi, ShieldCheck, Database, Cpu } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function HealthMonitor() {
   const [status, setStatus] = useState({
-    printer: "online",
-    validator: "ready",
-    sync: "usb-active",
+    online: true,
+    storage: "94%",
+    memory: "low",
+    printer: "ready",
   });
 
-  // Mock health check interval
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Logic to check printer/validator status would go here
-    }, 5000);
-    return () => clearInterval(interval);
+    const checkHealth = () => {
+      setStatus(prev => ({
+        ...prev,
+        online: navigator.onLine,
+      }));
+    };
+
+    const interval = setInterval(checkHealth, 5000);
+    window.addEventListener('online', checkHealth);
+    window.addEventListener('offline', checkHealth);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('online', checkHealth);
+      window.removeEventListener('offline', checkHealth);
+    };
   }, []);
 
   return (
-    <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center text-[10px] uppercase tracking-tighter opacity-40">
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1">
-          <Printer className="w-3 h-3" />
+    <div className="fixed bottom-2 left-6 right-6 z-[40] flex justify-between items-center pointer-events-none select-none">
+      <div className="flex items-center gap-4 opacity-30 hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1 text-[8px] font-black uppercase text-white tracking-tighter">
+          <Wifi className={cn("w-2.5 h-2.5", status.online ? "text-green-500" : "text-red-500")} />
+          <span>{status.online ? "Online" : "Offline Mode"}</span>
+        </div>
+        <div className="flex items-center gap-1 text-[8px] font-black uppercase text-white tracking-tighter">
+          <Database className="w-2.5 h-2.5 text-blue-400" />
+          <span>Disk: {status.storage}</span>
+        </div>
+        <div className="flex items-center gap-1 text-[8px] font-black uppercase text-white tracking-tighter">
+          <Printer className="w-2.5 h-2.5 text-primary" />
           <span>Printer: {status.printer}</span>
         </div>
-        <div className="flex items-center gap-1">
-          <Wallet className="w-3 h-3" />
-          <span>Validator: {status.validator}</span>
-        </div>
       </div>
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1">
-          <ShieldCheck className="w-3 h-3 text-primary" />
-          <span>USB SYNC ACTIVE</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <Wifi className="w-3 h-3" />
-          <span>Cloud Sync: Syncing</span>
-        </div>
+      
+      <div className="flex items-center gap-2 opacity-20">
+        <ShieldCheck className="w-2.5 h-2.5 text-green-500" />
+        <span className="text-[8px] font-black uppercase tracking-widest text-white">System Secured</span>
       </div>
     </div>
   );

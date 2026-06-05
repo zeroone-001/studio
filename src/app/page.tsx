@@ -7,10 +7,11 @@ import { NeonButton } from "@/components/kiosk/neon-button";
 import { AdminAuthDialog } from "@/components/kiosk/admin-auth-dialog";
 import { AdminControls } from "@/components/kiosk/admin-controls";
 import { JnlLogo } from "@/components/kiosk/jnl-logo";
+import { HealthMonitor } from "@/components/kiosk/health-monitor";
 import { 
   Wallet, Sparkles, Frame, Quote, Trash2, Cat, Moon, Sun, 
   Coffee, Pizza, Flower2, Crown, Layers, CameraIcon, Flashlight, User, HeartIcon,
-  ShieldCheck, QrCode, Facebook, CheckCircle2, Printer, Share2, Usb
+  ShieldCheck, QrCode, Facebook, CheckCircle2, Printer, Share2, Usb, AlertCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -18,6 +19,8 @@ import { BlueprintFrame } from "@/components/kiosk/blueprint-frame";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import * as Kawaii from "@/components/kiosk/kawaii-stickers";
+import { SessionStore, KioskSession } from "@/lib/kiosk/persistence";
+import { KioskLogger } from "@/lib/kiosk/logger";
 
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "test-stickers";
 
@@ -58,62 +61,28 @@ export const STICKER_DEFS = [
   { id: "besties", icon: Kawaii.BestiesText, color: "", category: "TEXT" },
 ];
 
-export const QUOTES = [
-  { id: "none", text: "", label: "NONE" },
-  { id: "stay", text: "STAY POSITIVE", label: "POSITIVE" },
-  { id: "magic", text: "JNL MAGIC", label: "MAGIC" },
-  { id: "iconic", text: "PURE ICONIC", label: "ICONIC" },
-  { id: "best", text: "BEST DAY EVER", label: "BEST DAY" },
-  { id: "gold", text: "YOU ARE GOLD", label: "GOLD" },
-  { id: "shine", text: "KEEP SHINING", label: "SHINE" },
-  { id: "humble", text: "STAY HUMBLE", label: "HUMBLE" },
-  { id: "love", text: "RADIATE LOVE", label: "LOVE" },
-  { id: "kind", text: "BE KIND", label: "KIND" },
-  { id: "dream", text: "DREAM BIG", label: "DREAM" },
-  { id: "loud", text: "LIVE LOUD", label: "LOUD" },
-  { id: "joy", text: "CHOOSE JOY", label: "JOY" },
-  { id: "light", text: "BE THE LIGHT", label: "LIGHT" },
-  { id: "gotthis", text: "YOU GOT THIS", label: "GOT THIS" },
-  { id: "brave", text: "BOLD & BRAVE", label: "BRAVE" },
-  { id: "vibes", text: "GOOD VIBES", label: "VIBES" },
-  { id: "true", text: "STAY TRUE", label: "TRUE" },
-  { id: "fearless", text: "FEARLESS", label: "FEARLESS" },
-  { id: "make", text: "MAKE MAGIC", label: "MAKE" },
-  { id: "bliss", text: "PURE BLISS", label: "BLISS" },
-  { id: "soul", text: "ICONIC SOUL", label: "SOUL" },
-  { id: "authentic", text: "BE AUTHENTIC", label: "AUTHENTIC" },
-  { id: "limitless", text: "LIMITLESS", label: "LIMIT" },
-  { id: "curious", text: "STAY CURIOUS", label: "CURIOUS" },
-  { id: "ownvibe", text: "OWN YOUR VIBE", label: "OWN VIBE" },
-  { id: "bright", text: "SHINE BRIGHT", label: "BRIGHT" },
-  { id: "heartgold", text: "HEART OF GOLD", label: "HEART" },
-  { id: "keepgoing", text: "KEEP GOING", label: "GOING" },
-  { id: "smile", text: "JUST SMILE", label: "SMILE" },
-  { id: "today", text: "TODAY IS GOOD", label: "TODAY" },
-  { id: "inside", text: "MAGIC INSIDE", label: "INSIDE" },
-  { id: "wild", text: "STAY WILD", label: "WILD" },
-  { id: "born", text: "BORN TO SHINE", label: "BORN" },
-  { id: "braveheart", text: "BRAVE HEART", label: "HEART" },
-  { id: "dreamer", text: "DREAMER", label: "DREAMER" },
-  { id: "strong", text: "STAY STRONG", label: "STRONG" },
-  { id: "energy", text: "PURE ENERGY", label: "ENERGY" },
-  { id: "lovelife", text: "LOVE LIFE", label: "LOVE LIFE" },
-  { id: "unstoppable", text: "BE UNSTOPPABLE", label: "UNSTOP" },
-  { id: "inspired", text: "STAY INSPIRED", label: "INSPIRED" },
-  { id: "blooming", text: "KEEP BLOOMING", label: "BLOOM" },
-  { id: "radiant", text: "RADIANT VIBE", label: "RADIANT" },
-  { id: "bold", text: "BE BOLD", label: "BOLD" },
-  { id: "fully", text: "LIVE FULLY", label: "FULLY" },
-  { id: "sweet", text: "STAY SWEET", label: "SWEET" },
-  { id: "enough", text: "YOU ARE ENOUGH", label: "ENOUGH" },
-  { id: "count", text: "MAKE IT COUNT", label: "COUNT" },
-  { id: "grateful", text: "STAY GRATEFUL", label: "GRATEFUL" },
-  { id: "happiness", text: "PURE HAPPINESS", label: "HAPPY" },
-  { id: "beyond", text: "BEYOND LIMITS", label: "BEYOND" },
-  { id: "always", text: "SHINE ALWAYS", label: "ALWAYS" },
-  { id: "change", text: "BE THE CHANGE", label: "CHANGE" },
-  { id: "moments", text: "MAGIC MOMENTS", label: "MOMENTS" },
-];
+export const QUOTES = Array.from({ length: 50 }, (_, i) => ({
+  id: `q-${i}`,
+  label: [
+    "POSITIVE", "MAGIC", "ICONIC", "BEST DAY", "GOLD", "SHINE", "HUMBLE", "LOVE", 
+    "KIND", "DREAM", "LOUD", "JOY", "LIGHT", "GOT THIS", "BRAVE", "VIBES", "TRUE", 
+    "FEARLESS", "MAKE", "BLISS", "SOUL", "AUTHENTIC", "LIMIT", "CURIOUS", "OWN VIBE",
+    "BRIGHT", "HEART", "GOING", "SMILE", "TODAY", "INSIDE", "WILD", "BORN", "HEART",
+    "DREAMER", "STRONG", "ENERGY", "LOVE LIFE", "UNSTOP", "INSPIRED", "BLOOM", "RADIANT",
+    "BOLD", "FULLY", "SWEET", "ENOUGH", "COUNT", "GRATEFUL", "HAPPY", "BEYOND"
+  ][i] || `QUOTE ${i}`,
+  text: [
+    "STAY POSITIVE", "JNL MAGIC", "PURE ICONIC", "BEST DAY EVER", "YOU ARE GOLD", 
+    "KEEP SHINING", "STAY HUMBLE", "RADIATE LOVE", "BE KIND", "DREAM BIG", "LIVE LOUD",
+    "CHOOSE JOY", "BE THE LIGHT", "YOU GOT THIS", "BOLD & BRAVE", "GOOD VIBES", "STAY TRUE",
+    "FEARLESS", "MAKE MAGIC", "PURE BLISS", "ICONIC SOUL", "BE AUTHENTIC", "LIMITLESS",
+    "STAY CURIOUS", "OWN YOUR VIBE", "SHINE BRIGHT", "HEART OF GOLD", "KEEP GOING",
+    "JUST SMILE", "TODAY IS GOOD", "MAGIC INSIDE", "STAY WILD", "BORN TO SHINE",
+    "BRAVE HEART", "DREAMER", "STAY STRONG", "PURE ENERGY", "LOVE LIFE", "BE UNSTOPPABLE",
+    "STAY INSPIRED", "KEEP BLOOMING", "RADIANT VIBE", "BE BOLD", "LIVE FULLY",
+    "STAY SWEET", "YOU ARE ENOUGH", "MAKE IT COUNT", "STAY GRATEFUL", "PURE HAPPINESS", "BEYOND LIMITS"
+  ][i] || `INSPIRATION ${i}`
+}));
 
 export interface PlacedSticker {
   id: string;
@@ -135,6 +104,7 @@ export default function KioskPage() {
   const [printProgress, setPrintProgress] = useState(0);
   const [promotionalConsent, setPromotionalConsent] = useState<boolean | null>(null);
   const [isSavingToUsb, setIsSavingToUsb] = useState(false);
+  const [interruptedSession, setInterruptedSession] = useState<KioskSession | null>(null);
   
   // Camera Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -156,7 +126,7 @@ export default function KioskPage() {
   const [usbHandle, setUsbHandle] = useState<any>(null);
   const [isDevMode, setIsDevMode] = useState(true);
 
-  // Hidden Trigger Logic
+  // Hidden Trigger Logic (5 Taps)
   const [logoTapCount, setLogoTapCount] = useState(0);
   const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -165,15 +135,47 @@ export default function KioskPage() {
       const newCount = prev + 1;
       if (newCount >= 5) {
         setIsAdminDialogOpen(true);
+        KioskLogger.log('info', 'System', 'Admin auth dialog requested via hidden trigger.');
         return 0;
       }
-      
       if (tapTimeoutRef.current) clearTimeout(tapTimeoutRef.current);
       tapTimeoutRef.current = setTimeout(() => setLogoTapCount(0), 1000);
-      
       return newCount;
     });
   }, []);
+
+  // Reliability: Session Persistence Logic
+  useEffect(() => {
+    if (appState !== "welcome" && appState !== "printing") {
+      SessionStore.save({
+        state: appState,
+        packageSelected,
+        paymentReceived,
+        capturedPhotos,
+        promotionalConsent
+      });
+    }
+  }, [appState, packageSelected, paymentReceived, capturedPhotos, promotionalConsent]);
+
+  useEffect(() => {
+    const saved = SessionStore.load();
+    if (saved && saved.state !== "welcome") {
+      setInterruptedSession(saved);
+      KioskLogger.log('info', 'Recovery', `Found interrupted session at state: ${saved.state}`);
+    }
+  }, []);
+
+  const resumeSession = () => {
+    if (interruptedSession) {
+      setAppState(interruptedSession.state as SessionState);
+      setPackageSelected(interruptedSession.packageSelected);
+      setPaymentReceived(interruptedSession.paymentReceived);
+      setCapturedPhotos(interruptedSession.capturedPhotos);
+      setPromotionalConsent(interruptedSession.promotionalConsent);
+      setInterruptedSession(null);
+      KioskLogger.log('info', 'Recovery', 'Session successfully resumed.');
+    }
+  };
 
   const availableBlueprints = useMemo(() => {
     if (!packageSelected) return [];
@@ -204,6 +206,7 @@ export default function KioskPage() {
   useEffect(() => {
     if (appState === "printing" && promotionalConsent === true && usbHandle) {
       setIsSavingToUsb(true);
+      KioskLogger.log('info', 'Storage', 'Initiating USB gallery sync.');
       const timer = setTimeout(() => {
         setIsSavingToUsb(false);
       }, 3000);
@@ -213,6 +216,7 @@ export default function KioskPage() {
 
   const resetSession = useCallback(() => {
     stopCamera();
+    SessionStore.clear();
     setAppState("welcome");
     setPaymentReceived(0);
     setPackageSelected(null);
@@ -228,6 +232,7 @@ export default function KioskPage() {
     setPrintProgress(0);
     setPromotionalConsent(null);
     setIsSavingToUsb(false);
+    KioskLogger.log('info', 'System', 'Global session reset executed.');
   }, []);
 
   useEffect(() => {
@@ -249,8 +254,10 @@ export default function KioskPage() {
       setCameraStream(stream);
       if (videoRef.current) videoRef.current.srcObject = stream;
       setCameraError(null);
+      KioskLogger.log('info', 'Camera', 'Camera stream successfully connected.');
     } catch (err) {
       setCameraError("Unable to access device camera.");
+      KioskLogger.log('error', 'Camera', 'Failed to connect camera stream.');
     }
   };
 
@@ -277,6 +284,7 @@ export default function KioskPage() {
   const startShotSequence = async () => {
     const totalShots = packageSelected === 50 ? 3 : 6;
     const photos: string[] = [];
+    KioskLogger.log('info', 'Capture', `Sequence started for ${totalShots} shots.`);
     for (let i = 0; i < totalShots; i++) {
       setCurrentShotIndex(i + 1);
       for (let c = 3; c > 0; c--) {
@@ -331,6 +339,7 @@ export default function KioskPage() {
   return (
     <KioskLayout>
       <canvas ref={canvasRef} className="hidden" />
+      <HealthMonitor />
       
       {appState !== "welcome" && (
         <div className="fixed bottom-6 left-6 right-6 z-[60] flex justify-between items-center opacity-40 hover:opacity-100 transition-opacity pointer-events-none">
@@ -343,6 +352,25 @@ export default function KioskPage() {
           <p className="text-[8px] sm:text-[10px] font-bold text-white uppercase tracking-[0.3em] pointer-events-none">
             {new Date().toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })}
           </p>
+        </div>
+      )}
+
+      {/* Recovery Alert for interrupted sessions */}
+      {interruptedSession && appState === "welcome" && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-500">
+           <div className="bg-zinc-950 border-2 border-primary/40 p-10 max-w-md w-full text-center space-y-6 shadow-[0_0_50px_rgba(255,51,153,0.3)]">
+              <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto border-2 border-primary/20">
+                <AlertCircle className="w-10 h-10 text-primary animate-pulse" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="font-headline font-black text-2xl italic uppercase text-white">INTERRUPTED SESSION</h3>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">The app detected a sudden restart during a session.</p>
+              </div>
+              <div className="grid grid-cols-1 gap-3">
+                <NeonButton onClick={resumeSession} className="w-full !py-6">RESUME SESSION</NeonButton>
+                <button onClick={() => { setInterruptedSession(null); SessionStore.clear(); }} className="text-[10px] font-black uppercase text-white/40 hover:text-white transition-colors">DISCARD & START NEW</button>
+              </div>
+           </div>
         </div>
       )}
 
@@ -442,7 +470,6 @@ export default function KioskPage() {
                           selectedBlueprint?.id === bp.id ? "bg-primary/20 border-primary" : "bg-white/5 border-white/10"
                         )}
                       >
-                        {/* Mini Blueprint Preview */}
                         <div className="relative w-full h-full bg-zinc-800/50">
                           {bp.slots.map((slot, i) => (
                             <div 
@@ -555,7 +582,7 @@ export default function KioskPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2 scrollbar-hide">
                       {QUOTES.map((q) => (
-                        <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("py-3 px-4 text-[10px] font-black uppercase border-2 transition-all italic", selectedQuote.id === q.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40")}>{q.label}</button>
+                        <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("py-3 px-4 text-[10px] font-black uppercase border-2 transition-all italic text-left", selectedQuote.id === q.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40")}>{q.label}</button>
                       ))}
                     </div>
                   </div>
@@ -662,4 +689,3 @@ export default function KioskPage() {
     </KioskLayout>
   );
 }
-

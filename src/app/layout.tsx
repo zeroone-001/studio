@@ -1,6 +1,7 @@
 
 import type {Metadata} from 'next';
 import './globals.css';
+import { KioskErrorBoundary } from '@/components/kiosk/error-boundary';
 
 export const metadata: Metadata = {
   title: 'JNL Studio Booth | Premium Photobooth Kiosk',
@@ -23,7 +24,9 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className="font-body antialiased bg-black text-white selection:bg-primary/30">
-        {children}
+        <KioskErrorBoundary>
+          {children}
+        </KioskErrorBoundary>
       </body>
     </html>
   );

@@ -41,18 +41,13 @@ export const RibbonHeart = ({ className }: KawaiiProps) => (
 // 2. CUTE OBJECTS
 export const KawaiiBunny = ({ className }: KawaiiProps) => (
   <svg viewBox="0 0 100 100" className={cn("w-full h-full", className)}>
-    {/* Ears */}
     <ellipse cx="35" cy="25" rx="10" ry="20" fill="white" stroke="#FFE4E1" strokeWidth="2" transform="rotate(-15 35 25)" />
     <ellipse cx="65" cy="25" rx="10" ry="20" fill="white" stroke="#FFE4E1" strokeWidth="2" transform="rotate(15 65 25)" />
-    {/* Face */}
     <circle cx="50" cy="60" r="30" fill="white" stroke="#FFE4E1" strokeWidth="4" />
-    {/* Eyes */}
     <circle cx="40" cy="60" r="3" fill="#333" />
     <circle cx="60" cy="60" r="3" fill="#333" />
-    {/* Blush */}
     <circle cx="30" cy="65" r="5" fill="#FFB7CE" opacity="0.5" />
     <circle cx="70" cy="65" r="5" fill="#FFB7CE" opacity="0.5" />
-    {/* Mouth */}
     <path d="M48 70C48 70 49 72 50 72C51 72 52 70 52 70" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round" />
   </svg>
 );
@@ -70,6 +65,19 @@ export const TeddyBear = ({ className }: KawaiiProps) => (
   </svg>
 );
 
+export const KawaiiPanda = ({ className }: KawaiiProps) => (
+  <svg viewBox="0 0 100 100" className={cn("w-full h-full", className)}>
+    <circle cx="30" cy="30" r="12" fill="#333" />
+    <circle cx="70" cy="30" r="12" fill="#333" />
+    <circle cx="50" cy="60" r="35" fill="white" stroke="#333" strokeWidth="4" />
+    <ellipse cx="40" cy="55" rx="8" ry="10" fill="#333" />
+    <ellipse cx="60" cy="55" rx="8" ry="10" fill="#333" />
+    <circle cx="40" cy="53" r="2" fill="white" />
+    <circle cx="60" cy="53" r="2" fill="white" />
+    <circle cx="50" cy="68" r="4" fill="#333" />
+  </svg>
+);
+
 // 3. AESTHETIC
 export const KawaiiCloud = ({ className }: KawaiiProps) => (
   <svg viewBox="0 0 100 100" className={cn("w-full h-full", className)}>
@@ -84,6 +92,14 @@ export const KawaiiCloud = ({ className }: KawaiiProps) => (
 export const PastelSparkle = ({ className }: KawaiiProps) => (
   <svg viewBox="0 0 100 100" className={cn("w-full h-full", className)}>
     <path d="M50 10L55 45L90 50L55 55L50 90L45 55L10 50L45 45Z" fill="#FFF44F" stroke="white" strokeWidth="4" />
+  </svg>
+);
+
+export const RainbowSticker = ({ className }: KawaiiProps) => (
+  <svg viewBox="0 0 100 60" className={cn("w-full h-full", className)}>
+    <path d="M10 50C10 20 90 20 90 50" fill="none" stroke="#FF3399" strokeWidth="10" />
+    <path d="M20 50C20 30 80 30 80 50" fill="none" stroke="#FFD1DC" strokeWidth="10" />
+    <path d="M30 50C30 40 70 40 70 50" fill="none" stroke="#E6E6FA" strokeWidth="10" />
   </svg>
 );
 

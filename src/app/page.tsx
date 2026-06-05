@@ -10,7 +10,7 @@ import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
   Wallet, Sparkles, Frame, Quote, Trash2, Cat, Moon, Sun, 
   Coffee, Pizza, Flower2, Crown, Layers, CameraIcon, Flashlight, User, HeartIcon,
-  QrCode, Facebook, Printer, Usb, AlertCircle
+  QrCode, Facebook, Printer, Usb, AlertCircle, Star, IceCream, Cookie, Ghost, PartyPopper
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -42,19 +42,26 @@ export const STICKER_DEFS = [
   { id: "sparkle-heart", icon: HeartIcon, color: "text-pink-300", category: "HEARTS" },
   { id: "bunny", icon: Kawaii.KawaiiBunny, color: "", category: "CUTE" },
   { id: "bear", icon: Kawaii.TeddyBear, color: "", category: "CUTE" },
+  { id: "panda", icon: Kawaii.KawaiiPanda, color: "", category: "CUTE" },
   { id: "cat-face", icon: Cat, color: "text-orange-200", category: "CUTE" },
   { id: "pizza", icon: Pizza, color: "text-yellow-600", category: "CUTE" },
   { id: "coffee", icon: Coffee, color: "text-amber-900", category: "CUTE" },
+  { id: "ice-cream", icon: IceCream, color: "text-pink-400", category: "CUTE" },
+  { id: "cookie", icon: Cookie, color: "text-amber-700", category: "CUTE" },
   { id: "mini-camera", icon: CameraIcon, color: "text-zinc-400", category: "PHOTO" },
   { id: "film", icon: Layers, color: "text-zinc-500", category: "PHOTO" },
   { id: "flash", icon: Flashlight, color: "text-yellow-400", category: "PHOTO" },
   { id: "selfie", icon: User, color: "text-blue-300", category: "PHOTO" },
   { id: "cloud", icon: Kawaii.KawaiiCloud, color: "", category: "AESTHETIC" },
   { id: "sparkle", icon: Kawaii.PastelSparkle, color: "", category: "AESTHETIC" },
+  { id: "rainbow", icon: Kawaii.RainbowSticker, color: "", category: "AESTHETIC" },
   { id: "moon", icon: Moon, color: "text-indigo-200", category: "AESTHETIC" },
   { id: "sun", icon: Sun, color: "text-yellow-300", category: "AESTHETIC" },
   { id: "crown", icon: Crown, color: "text-yellow-400", category: "AESTHETIC" },
   { id: "flower", icon: Flower2, color: "text-pink-400", category: "AESTHETIC" },
+  { id: "star", icon: Star, color: "text-yellow-400", category: "AESTHETIC" },
+  { id: "ghost", icon: Ghost, color: "text-zinc-200", category: "AESTHETIC" },
+  { id: "party", icon: PartyPopper, color: "text-orange-400", category: "AESTHETIC" },
   { id: "slay", icon: Kawaii.SlayText, color: "", category: "TEXT" },
   { id: "cutie", icon: Kawaii.CutieText, color: "", category: "TEXT" },
   { id: "besties", icon: Kawaii.BestiesText, color: "", category: "TEXT" },
@@ -569,31 +576,31 @@ export default function KioskPage() {
                 </div>
                 <div className="space-y-8">
                   <Tabs defaultValue="HEARTS" onValueChange={setActiveStickerCategory} className="w-full">
-                    <TabsList className="w-full grid grid-cols-5 bg-white/5 border border-white/10 mb-4 h-12">
+                    <TabsList className="w-full grid grid-cols-5 bg-white/10 backdrop-blur-md border border-white/20 mb-4 h-12 rounded-2xl p-1">
                       {["HEARTS", "CUTE", "PHOTO", "AESTHETIC", "TEXT"].map((cat) => (
-                        <TabsTrigger key={cat} value={cat} className="text-[8px] font-black tracking-tighter data-[state=active]:bg-primary">{cat}</TabsTrigger>
+                        <TabsTrigger key={cat} value={cat} className="text-[8px] font-black tracking-tighter data-[state=active]:bg-primary data-[state=active]:shadow-lg rounded-xl transition-all">{cat}</TabsTrigger>
                       ))}
                     </TabsList>
-                    <div className="grid grid-cols-4 gap-3 max-h-48 overflow-y-auto pr-2 scrollbar-hide">
+                    <div className="grid grid-cols-4 gap-3 max-h-56 overflow-y-auto pr-2 scrollbar-hide">
                       {STICKER_DEFS.filter(s => s.category === activeStickerCategory).map((s) => (
-                        <button key={s.id} onClick={() => addSticker(s.id)} className="aspect-square flex items-center justify-center bg-white/5 border-2 border-white/10 rounded-xl hover:border-primary active:scale-90">
-                          <s.icon className={cn("w-8 h-8", s.color)} />
+                        <button key={s.id} onClick={() => addSticker(s.id)} className="aspect-square flex items-center justify-center bg-white/5 backdrop-blur-sm border-2 border-white/10 rounded-2xl hover:border-primary/50 hover:bg-white/10 active:scale-90 transition-all group">
+                          <s.icon className={cn("w-8 h-8 transition-transform group-hover:scale-110", s.color)} />
                         </button>
                       ))}
                     </div>
                   </Tabs>
                   <div>
                     <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
-                      <Quote className="w-4 h-4 text-primary" /> Quote
+                      <Quote className="w-4 h-4 text-primary" /> Inspiration
                     </div>
                     <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2 scrollbar-hide">
                       {QUOTES.map((q) => (
-                        <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("py-3 px-4 text-[10px] font-black uppercase border-2 italic text-left", selectedQuote.id === q.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40")}>{q.label}</button>
+                        <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("py-3 px-4 text-[10px] font-black uppercase border-2 italic text-left rounded-xl transition-all", selectedQuote.id === q.id ? "bg-primary border-primary text-white shadow-lg" : "bg-white/5 border-white/10 text-white/40 hover:border-white/20")}>{q.label}</button>
                       ))}
                     </div>
                   </div>
                 </div>
-                <NeonButton onClick={() => setAppState("consent")} className="w-full !py-8 mt-6">DONE</NeonButton>
+                <NeonButton onClick={() => setAppState("consent")} className="w-full !py-8 mt-6">FINISH CREATING</NeonButton>
              </div>
           </div>
         )}
@@ -640,15 +647,15 @@ export default function KioskPage() {
                       <div className="bg-white/5 border border-white/10 p-8 flex flex-col items-center space-y-6 rounded-2xl">
                          <QrCode className="w-12 h-12 text-primary" />
                          <h3 className="font-headline font-black text-xl uppercase italic">SOFT COPY</h3>
-                         <div className="aspect-square w-48 sm:w-64 bg-white p-4 rounded-2xl">
-                            <img src="https://picsum.photos/seed/softcopy/500/500" alt="Soft Copy QR" />
+                         <div className="aspect-square w-48 sm:w-64 bg-white p-4 rounded-2xl shadow-xl">
+                            <img src="https://picsum.photos/seed/softcopy/500/500" alt="Soft Copy QR" className="w-full h-full object-contain" />
                          </div>
                       </div>
                       <div className="bg-white/5 border border-white/10 p-8 flex flex-col items-center space-y-6 rounded-2xl">
                          <Facebook className="w-12 h-12 text-blue-500" />
                          <h3 className="font-headline font-black text-xl uppercase italic">FOLLOW US</h3>
-                         <div className="aspect-square w-48 sm:w-64 bg-white p-4 rounded-2xl">
-                            <img src="https://picsum.photos/seed/fb-qr/500/500" alt="Facebook QR" />
+                         <div className="aspect-square w-48 sm:w-64 bg-white p-4 rounded-2xl shadow-xl">
+                            <img src="https://picsum.photos/seed/fb-qr/500/500" alt="Facebook QR" className="w-full h-full object-contain" />
                          </div>
                       </div>
                    </div>

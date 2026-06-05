@@ -22,19 +22,19 @@ import * as Kawaii from "@/components/kiosk/kawaii-stickers";
 import { SessionStore, KioskSession } from "@/lib/kiosk/persistence";
 import { KioskLogger } from "@/lib/kiosk/logger";
 
-export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "test-stickers";
+export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing";
 
 export const FILTERS = [
-  { id: "natural", label: "STYLE A", class: "contrast-110 brightness-105 saturate-110" },
-  { id: "silver", label: "STYLE B", class: "grayscale contrast-125 brightness-110" },
-  { id: "vintage", label: "STYLE C", class: "sepia-[0.4] saturate-150 contrast-110 brightness-105" },
-  { id: "dreamy", label: "STYLE D", class: "brightness-115 contrast-90 saturate-125 blur-[0.3px]" },
-  { id: "nordic", label: "STYLE E", class: "hue-rotate-[15deg] saturate-75 brightness-110 contrast-105" },
-  { id: "noir", label: "STYLE F", class: "grayscale contrast-150 brightness-90" },
-  { id: "radiant", label: "STYLE G", class: "brightness-125 contrast-110 saturate-150" },
-  { id: "autumn", label: "STYLE H", class: "sepia-[0.2] hue-rotate-[-10deg] saturate-150 contrast-110" },
-  { id: "pacific", label: "STYLE I", class: "hue-rotate-[180deg] saturate-50 brightness-110 contrast-110" },
-  { id: "aesthetic", label: "STYLE J", class: "saturate-[0.6] brightness-115 contrast-105" },
+  { id: "natural", label: "STYLE A", sub: "NATURAL", class: "contrast-110 brightness-105 saturate-110" },
+  { id: "silver", label: "STYLE B", sub: "SILVER", class: "grayscale contrast-125 brightness-110" },
+  { id: "vintage", label: "STYLE C", sub: "VINTAGE", class: "sepia-[0.4] saturate-150 contrast-110 brightness-105" },
+  { id: "dreamy", label: "STYLE D", sub: "DREAMY", class: "brightness-115 contrast-90 saturate-125 blur-[0.3px]" },
+  { id: "nordic", label: "STYLE E", sub: "NORDIC", class: "hue-rotate-[15deg] saturate-75 brightness-110 contrast-105" },
+  { id: "noir", label: "STYLE F", sub: "NOIR", class: "grayscale contrast-150 brightness-90" },
+  { id: "radiant", label: "STYLE G", sub: "RADIANT", class: "brightness-125 contrast-110 saturate-150" },
+  { id: "autumn", label: "STYLE H", sub: "AUTUMN", class: "sepia-[0.2] hue-rotate-[-10deg] saturate-150 contrast-110" },
+  { id: "pacific", label: "STYLE I", sub: "PACIFIC", class: "hue-rotate-[180deg] saturate-50 brightness-110 contrast-110" },
+  { id: "aesthetic", label: "STYLE J", sub: "AESTHETIC", class: "saturate-[0.6] brightness-115 contrast-105" },
 ];
 
 export const STICKER_DEFS = [
@@ -308,7 +308,6 @@ export default function KioskPage() {
     if (appState === "setup" || appState === "capturing") {
       startCamera();
     } else {
-      // Only stop camera if not in owner diagnostics mode
       if (!isOwnerMode) {
         stopCamera();
       }
@@ -360,7 +359,6 @@ export default function KioskPage() {
         </div>
       )}
 
-      {/* Recovery Alert for interrupted sessions */}
       {interruptedSession && appState === "welcome" && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-500">
            <div className="bg-zinc-950 border-2 border-primary/40 p-10 max-w-md w-full text-center space-y-6 shadow-[0_0_50px_rgba(255,51,153,0.3)]">
@@ -505,8 +503,24 @@ export default function KioskPage() {
                   </div>
                   <div className="grid grid-cols-5 gap-2">
                     {availableFilters.map((f) => (
-                      <button key={f.id} onClick={() => setSelectedFilter(f)} className={cn("aspect-square flex items-center justify-center text-[8px] font-black border-2 transition-all italic p-1", selectedFilter.id === f.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40")}>
-                        {f.label}
+                      <button 
+                        key={f.id} 
+                        onClick={() => setSelectedFilter(f)} 
+                        className={cn(
+                          "aspect-square relative flex flex-col items-center justify-center transition-all border-2 overflow-hidden", 
+                          selectedFilter.id === f.id ? "border-primary" : "border-white/10"
+                        )}
+                      >
+                        <div className={cn("absolute inset-0 bg-gradient-to-br from-zinc-700 to-zinc-900", f.class)} />
+                        <div className="relative z-10 flex flex-col items-center text-center">
+                          <span className={cn("text-[8px] font-black italic", selectedFilter.id === f.id ? "text-white" : "text-white/60")}>{f.label}</span>
+                          <span className={cn("text-[6px] font-bold opacity-60 uppercase", selectedFilter.id === f.id ? "text-white" : "text-white/40")}>{f.sub}</span>
+                        </div>
+                        {selectedFilter.id === f.id && (
+                          <div className="absolute top-0 right-0 p-0.5 bg-primary">
+                            <CheckCircle2 className="w-2 h-2 text-white" />
+                          </div>
+                        )}
                       </button>
                     ))}
                   </div>

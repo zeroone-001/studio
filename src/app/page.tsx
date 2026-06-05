@@ -132,7 +132,6 @@ export default function KioskPage() {
   const [logoTapCount, setLogoTapCount] = useState(0);
   const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Hidden 5-tap logo trigger for owner access
   const handleHiddenTrigger = useCallback(() => {
     setLogoTapCount((prev) => {
       const newCount = prev + 1;
@@ -245,12 +244,15 @@ export default function KioskPage() {
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (appState === "printing" && printProgress === 100) {
+      // PRIVACY RULE: If NO consent, auto-delete session faster (20s)
+      // If YES consent, keep longer for user convenience (45s)
+      const timeout = promoConsent === false ? 20000 : 45000;
       timer = setTimeout(() => {
         resetSession();
-      }, 45000); 
+      }, timeout); 
     }
     return () => clearTimeout(timer);
-  }, [appState, printProgress, resetSession]);
+  }, [appState, printProgress, resetSession, promoConsent]);
 
   const startCamera = async () => {
     if (cameraStream) return true;
@@ -348,6 +350,12 @@ export default function KioskPage() {
 
   const handleBringToFront = useCallback((id: string) => {
     setPlacedStickers(prev => [...prev.filter(s => s.id !== id), prev.find(s => s.id === id)!]);
+  }, []);
+
+  // Simulated soft-copy QR link for the specific session
+  const softCopyQrUrl = useMemo(() => {
+    const sessionId = SessionStore.load()?.id || Date.now();
+    return `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=https://jnlstudio.gallery/retrieve/${sessionId}`;
   }, []);
 
   return (
@@ -648,8 +656,9 @@ export default function KioskPage() {
                          <QrCode className="w-12 h-12 text-primary" />
                          <h3 className="font-headline font-black text-xl uppercase italic">SOFT COPY</h3>
                          <div className="aspect-square w-48 sm:w-64 bg-white p-4 rounded-2xl shadow-xl">
-                            <img src="https://picsum.photos/seed/softcopy/500/500" alt="Soft Copy QR" className="w-full h-full object-contain" />
+                            <img src={softCopyQrUrl} alt="Soft Copy QR" className="w-full h-full object-contain" />
                          </div>
+                         {promoConsent === false && <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest animate-pulse">Temporary Link - Auto-deletes soon</p>}
                       </div>
                       <div className="bg-white/5 border border-white/10 p-8 flex flex-col items-center space-y-6 rounded-2xl">
                          <Facebook className="w-12 h-12 text-blue-500" />

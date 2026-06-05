@@ -606,8 +606,8 @@ export default function KioskPage() {
                </div>
                <h2 className="font-headline font-black text-4xl mb-4 italic uppercase">Help Us Share Happy Memories ✨</h2>
                <div className="space-y-4 mb-10">
-                 <p className="text-lg font-bold text-white leading-relaxed">May we use your moments from this session for promotional posts on our Facebook page?</p>
-                 <p className="text-sm font-medium text-white/60 leading-relaxed italic">Maaari ba naming gamitin ang inyong moments mula sa session na ito para sa promotional posts sa aming Facebook page?</p>
+                 <p className="text-lg font-bold text-white leading-relaxed">May we use your moments from this photo booth for promotional posts on JNL STUDIO Facebook page?</p>
+                 <p className="text-sm font-medium text-white/60 leading-relaxed italic">Maaari ba naming gamitin ang inyong moments mula sa photo booth na ito para sa promotional posts sa JNL STUDIO Facebook page?</p>
                </div>
             </div>
             <div className="grid grid-cols-1 gap-4 px-4">

@@ -78,6 +78,16 @@ export const KawaiiPanda = ({ className }: KawaiiProps) => (
   </svg>
 );
 
+export const SushiSticker = ({ className }: KawaiiProps) => (
+  <svg viewBox="0 0 100 100" className={cn("w-full h-full", className)}>
+    <rect x="20" y="50" width="60" height="30" rx="10" fill="white" stroke="#333" strokeWidth="4" />
+    <rect x="20" y="40" width="60" height="15" rx="5" fill="#FF6347" stroke="#333" strokeWidth="3" />
+    <rect x="40" y="40" width="20" height="40" fill="none" stroke="#333" strokeWidth="4" opacity="0.2" />
+    <circle cx="40" cy="65" r="2" fill="#333" />
+    <circle cx="60" cy="65" r="2" fill="#333" />
+  </svg>
+);
+
 // 3. AESTHETIC
 export const KawaiiCloud = ({ className }: KawaiiProps) => (
   <svg viewBox="0 0 100 100" className={cn("w-full h-full", className)}>

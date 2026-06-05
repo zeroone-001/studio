@@ -46,7 +46,7 @@ export const STICKER_DEFS = [
   { id: "cat-face", icon: Cat, color: "text-orange-200", category: "CUTE" },
   { id: "pizza", icon: Pizza, color: "text-yellow-600", category: "CUTE" },
   { id: "coffee", icon: Coffee, color: "text-amber-900", category: "CUTE" },
-  { id: "ice-cream", icon: IceCream, color: "text-pink-400", category: "CUTE" },
+  { id: "ice-cream", icon: Kawaii.SushiSticker || IceCream, color: "text-pink-400", category: "CUTE" },
   { id: "cookie", icon: Cookie, color: "text-amber-700", category: "CUTE" },
   { id: "mini-camera", icon: CameraIcon, color: "text-zinc-400", category: "PHOTO" },
   { id: "film", icon: Layers, color: "text-zinc-500", category: "PHOTO" },

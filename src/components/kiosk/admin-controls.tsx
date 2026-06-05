@@ -25,12 +25,13 @@ import {
   AlertTriangle,
   Eye,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
 
-type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "test-stickers";
+type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "test-camera";
 
 interface AdminControlsProps {
   currentStatus: SessionState;
@@ -98,6 +99,20 @@ export function AdminControls({
               <button onClick={onToggleDevMode} className="text-blue-400">
                 {isDevMode ? <ToggleRight className="w-6 h-6" /> : <ToggleLeft className="w-6 h-6 opacity-40" />}
               </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2">
+                <button 
+                  onClick={onTestCamera} 
+                  className={cn(
+                    "w-full py-4 text-[10px] font-black uppercase flex items-center justify-center gap-2 border-2 transition-all",
+                    currentStatus === 'test-camera' 
+                      ? "bg-primary border-primary text-white shadow-[0_0_20px_rgba(255,51,153,0.4)]" 
+                      : "bg-white/5 border-white/20 text-white/60 hover:bg-white/10"
+                  )}
+                >
+                  <Sparkles className="w-4 h-4" /> Live Visual Diagnostic
+                </button>
             </div>
 
             <div className="grid grid-cols-2 gap-2">

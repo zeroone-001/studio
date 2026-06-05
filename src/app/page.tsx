@@ -11,7 +11,7 @@ import { HealthMonitor } from "@/components/kiosk/health-monitor";
 import { 
   Wallet, Sparkles, Frame, Quote, Trash2, Cat, Moon, Sun, 
   Coffee, Pizza, Flower2, Crown, Layers, CameraIcon, Flashlight, User, HeartIcon,
-  ShieldCheck, QrCode, Facebook, CheckCircle2, Printer, Share2, Usb, AlertCircle
+  ShieldCheck, QrCode, Facebook, CheckCircle2, Printer, Share2, Usb, AlertCircle, Camera
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -22,7 +22,7 @@ import * as Kawaii from "@/components/kiosk/kawaii-stickers";
 import { SessionStore, KioskSession } from "@/lib/kiosk/persistence";
 import { KioskLogger } from "@/lib/kiosk/logger";
 
-export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing";
+export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "test-camera";
 
 export const FILTERS = [
   { id: "natural", label: "STYLE A", sub: "NATURAL", class: "contrast-110 brightness-105 saturate-110" },
@@ -146,7 +146,7 @@ export default function KioskPage() {
 
   // Reliability: Session Persistence Logic
   useEffect(() => {
-    if (appState !== "welcome" && appState !== "printing") {
+    if (appState !== "welcome" && appState !== "printing" && appState !== "test-camera") {
       SessionStore.save({
         state: appState,
         packageSelected,
@@ -178,20 +178,23 @@ export default function KioskPage() {
   };
 
   const availableBlueprints = useMemo(() => {
+    if (appState === "test-camera") return BLUEPRINTS;
     if (!packageSelected) return [];
     return BLUEPRINTS.filter(bp => bp.package === packageSelected);
-  }, [packageSelected]);
+  }, [packageSelected, appState]);
 
   const availableFilters = useMemo(() => {
+    if (appState === "test-camera") return FILTERS;
     return FILTERS.slice(0, packageSelected === 100 ? 10 : 5);
-  }, [packageSelected]);
+  }, [packageSelected, appState]);
 
   useEffect(() => {
-    if (packageSelected) {
-      const first = BLUEPRINTS.find(bp => bp.package === packageSelected);
-      if (first) setSelectedBlueprint(first);
+    if (packageSelected || appState === "test-camera") {
+      const filterSet = appState === "test-camera" ? BLUEPRINTS : availableBlueprints;
+      const first = filterSet[0];
+      if (first && !selectedBlueprint) setSelectedBlueprint(first);
     }
-  }, [packageSelected]);
+  }, [packageSelected, appState, availableBlueprints]);
 
   useEffect(() => {
     if (appState === "printing" && printProgress < 100) {
@@ -305,7 +308,7 @@ export default function KioskPage() {
   };
 
   useEffect(() => {
-    if (appState === "setup" || appState === "capturing") {
+    if (appState === "setup" || appState === "capturing" || appState === "test-camera") {
       startCamera();
     } else {
       if (!isOwnerMode) {
@@ -398,8 +401,7 @@ export default function KioskPage() {
           onToggleDevMode={() => setIsDevMode(!isDevMode)}
           isCameraActive={!!cameraStream}
           onTestCamera={() => {
-            if (cameraStream) stopCamera();
-            else startCamera();
+            setAppState("test-camera");
           }}
         />
       )}
@@ -456,13 +458,36 @@ export default function KioskPage() {
           </div>
         )}
 
-        {appState === "setup" && (
+        {(appState === "setup" || appState === "test-camera") && (
           <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in duration-500">
              <div className="relative w-full aspect-[3/4] max-h-[60vh] mx-auto overflow-hidden bg-zinc-900 border-2 border-white/20">
                 <video ref={videoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover", selectedFilter.class)} />
+                {appState === "test-camera" && selectedBlueprint && (
+                  <div className="absolute inset-0 pointer-events-none opacity-40">
+                    {selectedBlueprint.slots.map((slot, i) => (
+                      <div 
+                        key={i} 
+                        className="absolute border-2 border-primary/50 bg-primary/5"
+                        style={{
+                          left: `${(slot.x / 1600) * 100}%`,
+                          top: `${(slot.y / 2560) * 100}%`,
+                          width: `${(slot.w / 1600) * 100}%`,
+                          height: `${(slot.h / 2560) * 100}%`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
              </div>
              <div className="space-y-6 sm:max-h-[70vh] overflow-y-auto pr-4 scrollbar-hide">
-              <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Styling</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="font-headline font-black text-3xl italic uppercase text-primary">
+                  {appState === "test-camera" ? "Visual Test" : "Styling"}
+                </h2>
+                {appState === "test-camera" && (
+                   <span className="text-[8px] bg-red-500 text-white px-2 py-1 font-black uppercase tracking-widest animate-pulse">Owner Diagnostic Mode</span>
+                )}
+              </div>
               <div className="space-y-8">
                 <div>
                   <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
@@ -526,7 +551,13 @@ export default function KioskPage() {
                   </div>
                 </div>
               </div>
-              <NeonButton onClick={() => setAppState("capturing")} className="w-full !py-8 mt-6">SHOOT</NeonButton>
+              <div className="grid grid-cols-1 gap-4 pt-6">
+                {appState === "test-camera" ? (
+                  <button onClick={resetSession} className="w-full border-2 border-white font-headline font-black text-xl py-8 italic uppercase hover:bg-white hover:text-black">EXIT TEST MODE</button>
+                ) : (
+                  <NeonButton onClick={() => setAppState("capturing")} className="w-full !py-8">SHOOT</NeonButton>
+                )}
+              </div>
             </div>
           </div>
         )}

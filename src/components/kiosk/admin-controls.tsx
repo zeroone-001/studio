@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Settings, 
   RefreshCcw, 
@@ -26,10 +26,12 @@ import {
   Eye,
   CheckCircle2,
   XCircle,
-  Sparkles
+  Sparkles,
+  HardDrive
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
+import { SessionStore } from "@/lib/kiosk/persistence";
 
 type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "test-camera";
 
@@ -63,7 +65,19 @@ export function AdminControls({
   onTestCamera
 }: AdminControlsProps) {
   const [view, setView] = useState<'main' | 'logs' | 'diag'>('main');
+  const [stats, setStats] = useState({ used: '0MB', percent: '0', queue: 0 });
   const logs = KioskLogger.getLogs();
+
+  useEffect(() => {
+    const updateStats = () => {
+      const s = SessionStore.getStorageStats();
+      const q = SessionStore.getSyncQueue();
+      setStats({ used: s.usedMB, percent: s.percent, queue: q.length });
+    };
+    const interval = setInterval(updateStats, 2000);
+    updateStats();
+    return () => clearInterval(interval);
+  }, []);
 
   const states: { id: SessionState; label: string; icon: any }[] = [
     { id: "welcome", label: "Intro", icon: PlayCircle },
@@ -75,6 +89,16 @@ export function AdminControls({
     { id: "consent", label: "Privacy", icon: ShieldAlert },
     { id: "printing", label: "Print/QR", icon: Printer },
   ];
+
+  const handleForceReload = () => {
+    KioskLogger.log('warn', 'Admin', 'Force reload triggered by owner.');
+    window.location.reload();
+  };
+
+  const handleClearQueue = () => {
+    localStorage.removeItem('jnl_kiosk_sync_queue');
+    KioskLogger.log('warn', 'Admin', 'Sync queue cleared by owner.');
+  };
 
   return (
     <div className="fixed bottom-16 right-4 z-[100] flex flex-col items-end gap-2 scale-90 sm:scale-100 origin-bottom-right">
@@ -180,32 +204,33 @@ export function AdminControls({
           <div className="space-y-4">
              <div className="bg-white/5 p-3 space-y-3">
                 <div className="flex justify-between items-center text-[9px] font-bold uppercase">
+                   <div className="flex items-center gap-1.5 text-white/40"><HardDrive className="w-2.5 h-2.5" /> Storage Used</div>
+                   <span className={cn(parseInt(stats.percent) > 85 ? "text-red-500" : "text-white")}>{stats.used} ({stats.percent}%)</span>
+                </div>
+                <div className="flex justify-between items-center text-[9px] font-bold uppercase">
+                   <div className="flex items-center gap-1.5 text-white/40"><RefreshCcw className="w-2.5 h-2.5" /> Sync Queue</div>
+                   <span className={cn(stats.queue > 0 ? "text-primary" : "text-white/40")}>{stats.queue} Items</span>
+                </div>
+                <div className="flex justify-between items-center text-[9px] font-bold uppercase">
                    <span className="text-white/40">Camera Stream</span>
                    <span className={cn(isCameraActive ? "text-green-500" : "text-red-500")}>
                       {isCameraActive ? "READY" : "OFFLINE"}
                    </span>
                 </div>
-                <div className="flex justify-between items-center text-[9px] font-bold uppercase">
-                   <span className="text-white/40">USB Storage</span>
-                   <span className={cn(usbStatus === 'connected' ? "text-green-500" : "text-white/40")}>
-                      {usbStatus === 'connected' ? "MOUNTED" : "UNMOUNTED"}
-                   </span>
-                </div>
-                <div className="flex justify-between items-center text-[9px] font-bold uppercase">
-                   <span className="text-white/40">UI Latency</span>
-                   <span className="text-white">8ms</span>
-                </div>
              </div>
              
              <div className="grid grid-cols-1 gap-2">
                 <button 
-                  onClick={onTestCamera} 
-                  className="w-full bg-primary/10 border border-primary/20 py-2 text-[9px] font-black uppercase flex items-center justify-center gap-2 text-primary"
+                  onClick={handleForceReload} 
+                  className="w-full bg-white/10 py-2 text-[9px] font-black uppercase flex items-center justify-center gap-2"
                 >
-                  <Camera className="w-3 h-3" /> Live Camera Check
-                </button>
-                <button onClick={() => window.location.reload()} className="w-full bg-white/10 py-2 text-[9px] font-black uppercase flex items-center justify-center gap-2">
                   <RefreshCcw className="w-3 h-3" /> Reload App
+                </button>
+                <button 
+                  onClick={handleClearQueue} 
+                  className="w-full bg-red-500/10 text-red-500 border border-red-500/20 py-2 text-[9px] font-black uppercase flex items-center justify-center gap-2"
+                >
+                  <Trash2 className="w-3 h-3" /> Clear Sync Queue
                 </button>
              </div>
 

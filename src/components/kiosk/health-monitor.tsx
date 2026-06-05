@@ -2,26 +2,34 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Printer, Wallet, Wifi, ShieldCheck, Database, Cpu } from "lucide-react";
+import { Printer, Wallet, Wifi, ShieldCheck, Database, RefreshCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SessionStore } from "@/lib/kiosk/persistence";
 
 export function HealthMonitor() {
   const [status, setStatus] = useState({
     online: true,
-    storage: "94%",
-    memory: "low",
+    storage: "0MB",
+    storagePercent: "0",
+    syncPending: 0,
     printer: "ready",
   });
 
   useEffect(() => {
     const checkHealth = () => {
-      setStatus(prev => ({
-        ...prev,
+      const stats = SessionStore.getStorageStats();
+      const queue = SessionStore.getSyncQueue();
+      
+      setStatus({
         online: navigator.onLine,
-      }));
+        storage: `${stats.usedMB}MB`,
+        storagePercent: stats.percent,
+        syncPending: queue.length,
+        printer: "ready",
+      });
     };
 
-    const interval = setInterval(checkHealth, 5000);
+    const interval = setInterval(checkHealth, 3000);
     window.addEventListener('online', checkHealth);
     window.addEventListener('offline', checkHealth);
 
@@ -37,12 +45,18 @@ export function HealthMonitor() {
       <div className="flex items-center gap-4 opacity-30 hover:opacity-100 transition-opacity">
         <div className="flex items-center gap-1 text-[8px] font-black uppercase text-white tracking-tighter">
           <Wifi className={cn("w-2.5 h-2.5", status.online ? "text-green-500" : "text-red-500")} />
-          <span>{status.online ? "Online" : "Offline Mode"}</span>
+          <span>{status.online ? "Cloud Active" : "Offline Mode"}</span>
         </div>
         <div className="flex items-center gap-1 text-[8px] font-black uppercase text-white tracking-tighter">
-          <Database className="w-2.5 h-2.5 text-blue-400" />
-          <span>Disk: {status.storage}</span>
+          <Database className={cn("w-2.5 h-2.5", parseInt(status.storagePercent) > 80 ? "text-red-500" : "text-blue-400")} />
+          <span>Cache: {status.storagePercent}%</span>
         </div>
+        {status.syncPending > 0 && (
+          <div className="flex items-center gap-1 text-[8px] font-black uppercase text-white tracking-tighter">
+            <RefreshCcw className="w-2.5 h-2.5 text-primary animate-spin" />
+            <span>Syncing: {status.syncPending} items</span>
+          </div>
+        )}
         <div className="flex items-center gap-1 text-[8px] font-black uppercase text-white tracking-tighter">
           <Printer className="w-2.5 h-2.5 text-primary" />
           <span>Printer: {status.printer}</span>
@@ -51,7 +65,7 @@ export function HealthMonitor() {
       
       <div className="flex items-center gap-2 opacity-20">
         <ShieldCheck className="w-2.5 h-2.5 text-green-500" />
-        <span className="text-[8px] font-black uppercase tracking-widest text-white">System Secured</span>
+        <span className="text-[8px] font-black uppercase tracking-widest text-white">Failsafe Protected</span>
       </div>
     </div>
   );

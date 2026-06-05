@@ -202,11 +202,11 @@ export default function KioskPage() {
     }
   }, [appState, printProgress]);
 
-  // USB Auto-Save Logic
+  // USB Auto-Save Logic (Promotional Storage)
   useEffect(() => {
     if (appState === "printing" && promotionalConsent === true && usbHandle) {
       setIsSavingToUsb(true);
-      KioskLogger.log('info', 'Storage', 'Initiating USB gallery sync.');
+      KioskLogger.log('info', 'Storage', 'Initiating Automatic USB gallery sync for promotional use.');
       const timer = setTimeout(() => {
         setIsSavingToUsb(false);
       }, 3000);
@@ -255,9 +255,11 @@ export default function KioskPage() {
       if (videoRef.current) videoRef.current.srcObject = stream;
       setCameraError(null);
       KioskLogger.log('info', 'Camera', 'Camera stream successfully connected.');
+      return true;
     } catch (err) {
       setCameraError("Unable to access device camera.");
       KioskLogger.log('error', 'Camera', 'Failed to connect camera stream.');
+      return false;
     }
   };
 
@@ -306,9 +308,12 @@ export default function KioskPage() {
     if (appState === "setup" || appState === "capturing") {
       startCamera();
     } else {
-      stopCamera();
+      // Only stop camera if not in owner diagnostics mode
+      if (!isOwnerMode) {
+        stopCamera();
+      }
     }
-  }, [appState]);
+  }, [appState, isOwnerMode]);
 
   useEffect(() => {
     if (appState === "capturing") {
@@ -393,6 +398,11 @@ export default function KioskPage() {
           onSetupUsb={() => setUsbHandle({})}
           isDevMode={isDevMode}
           onToggleDevMode={() => setIsDevMode(!isDevMode)}
+          isCameraActive={!!cameraStream}
+          onTestCamera={() => {
+            if (cameraStream) stopCamera();
+            else startCamera();
+          }}
         />
       )}
 
@@ -674,7 +684,7 @@ export default function KioskPage() {
                             <h3 className="font-headline font-black text-xl uppercase italic tracking-wide">FOLLOW US</h3>
                             <p className="text-[10px] font-bold opacity-40 uppercase tracking-[0.2em]">Like & Share JNL Studio</p>
                          </div>
-                         <div className="aspect-square w-48 sm:w-64 bg-white p-4 rounded-2xl shadow-[0_0_40px_rgba(255,255,255,0.05)] transition-transform hover:scale-105">
+                         <div className="aspect-square w-48 sm:grid-cols-1 w-64 bg-white p-4 rounded-2xl shadow-[0_0_40px_rgba(255,255,255,0.05)] transition-transform hover:scale-105">
                             <img src="https://picsum.photos/seed/fb-qr/500/500" alt="Facebook QR" className="w-full h-full object-cover" />
                          </div>
                       </div>

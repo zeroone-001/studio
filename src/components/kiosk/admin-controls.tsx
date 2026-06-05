@@ -22,7 +22,10 @@ import {
   Activity,
   FileText,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  Eye,
+  CheckCircle2,
+  XCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
@@ -41,6 +44,8 @@ interface AdminControlsProps {
   onSetupUsb: () => void;
   isDevMode: boolean;
   onToggleDevMode: () => void;
+  isCameraActive?: boolean;
+  onTestCamera?: () => void;
 }
 
 export function AdminControls({ 
@@ -52,7 +57,9 @@ export function AdminControls({
   usbStatus,
   onSetupUsb,
   isDevMode,
-  onToggleDevMode
+  onToggleDevMode,
+  isCameraActive = false,
+  onTestCamera
 }: AdminControlsProps) {
   const [view, setView] = useState<'main' | 'logs' | 'diag'>('main');
   const logs = KioskLogger.getLogs();
@@ -158,12 +165,16 @@ export function AdminControls({
           <div className="space-y-4">
              <div className="bg-white/5 p-3 space-y-3">
                 <div className="flex justify-between items-center text-[9px] font-bold uppercase">
-                   <span className="text-white/40">App Uptime</span>
-                   <span className="text-white">Active</span>
+                   <span className="text-white/40">Camera Stream</span>
+                   <span className={cn(isCameraActive ? "text-green-500" : "text-red-500")}>
+                      {isCameraActive ? "READY" : "OFFLINE"}
+                   </span>
                 </div>
                 <div className="flex justify-between items-center text-[9px] font-bold uppercase">
-                   <span className="text-white/40">Browser Memory</span>
-                   <span className="text-green-500">Normal</span>
+                   <span className="text-white/40">USB Storage</span>
+                   <span className={cn(usbStatus === 'connected' ? "text-green-500" : "text-white/40")}>
+                      {usbStatus === 'connected' ? "MOUNTED" : "UNMOUNTED"}
+                   </span>
                 </div>
                 <div className="flex justify-between items-center text-[9px] font-bold uppercase">
                    <span className="text-white/40">UI Latency</span>
@@ -172,11 +183,14 @@ export function AdminControls({
              </div>
              
              <div className="grid grid-cols-1 gap-2">
+                <button 
+                  onClick={onTestCamera} 
+                  className="w-full bg-primary/10 border border-primary/20 py-2 text-[9px] font-black uppercase flex items-center justify-center gap-2 text-primary"
+                >
+                  <Camera className="w-3 h-3" /> Live Camera Check
+                </button>
                 <button onClick={() => window.location.reload()} className="w-full bg-white/10 py-2 text-[9px] font-black uppercase flex items-center justify-center gap-2">
                   <RefreshCcw className="w-3 h-3" /> Reload App
-                </button>
-                <button onClick={() => localStorage.clear()} className="w-full border border-red-500/30 py-2 text-[9px] font-black uppercase text-red-500 flex items-center justify-center gap-2">
-                  <Trash2 className="w-3 h-3" /> Clear System Cache
                 </button>
              </div>
 

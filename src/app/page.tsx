@@ -244,9 +244,9 @@ export default function KioskPage() {
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (appState === "printing" && printProgress === 100) {
-      // PRIVACY RULE: If NO consent, auto-delete session faster (20s)
+      // PRIVACY RULE: If NO consent, delete session faster (25s) to satisfy "get soft copy first"
       // If YES consent, keep longer for user convenience (45s)
-      const timeout = promoConsent === false ? 20000 : 45000;
+      const timeout = promoConsent === false ? 25000 : 45000;
       timer = setTimeout(() => {
         resetSession();
       }, timeout); 
@@ -626,7 +626,7 @@ export default function KioskPage() {
                </div>
             </div>
             <div className="grid grid-cols-1 gap-4 px-4">
-               <button onClick={() => { setPromoConsent(true); setAppState("printing"); }} className="w-full bg-primary py-8 text-xl font-headline font-black italic uppercase shadow-[0_0_20px_rgba(255,51,153,0.4)]">Yes, we allow it / Oo, pumapayag kami</button>
+               <button onClick={() => { setPromoConsent(true); setAppState("printing"); }} className="w-full bg-primary py-8 text-xl font-headline font-black italic uppercase shadow-[0_0_20px_rgba(255,51_153,0.4)]">Yes, we allow it / Oo, pumapayag kami</button>
                <button onClick={() => { setPromoConsent(false); setAppState("printing"); }} className="w-full border-2 border-white/20 font-headline font-black text-lg py-6 italic uppercase text-white/40">No, thank you / Hindi po</button>
             </div>
           </div>

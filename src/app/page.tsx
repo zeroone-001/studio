@@ -7,7 +7,6 @@ import { NeonButton } from "@/components/kiosk/neon-button";
 import { AdminAuthDialog } from "@/components/kiosk/admin-auth-dialog";
 import { AdminControls } from "@/components/kiosk/admin-controls";
 import { JnlLogo } from "@/components/kiosk/jnl-logo";
-import { HealthMonitor } from "@/components/kiosk/health-monitor";
 import { 
   Wallet, Sparkles, Frame, Quote, Trash2, Cat, Moon, Sun, 
   Coffee, Pizza, Flower2, Crown, Layers, CameraIcon, Flashlight, User, HeartIcon,
@@ -106,13 +105,11 @@ export default function KioskPage() {
   const [isSavingToUsb, setIsSavingToUsb] = useState(false);
   const [interruptedSession, setInterruptedSession] = useState<KioskSession | null>(null);
   
-  // Camera Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
-  // Customization States
   const [selectedFilter, setSelectedFilter] = useState(FILTERS[0]);
   const [selectedBlueprint, setSelectedBlueprint] = useState<FrameBlueprint | null>(null);
   const [placedStickers, setPlacedStickers] = useState<PlacedSticker[]>([]);
@@ -120,13 +117,11 @@ export default function KioskPage() {
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [activeStickerCategory, setActiveStickerCategory] = useState("HEARTS");
 
-  // Admin & Storage States
   const [isOwnerMode, setIsOwnerMode] = useState(false);
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
   const [usbHandle, setUsbHandle] = useState<any>(null);
   const [isDevMode, setIsDevMode] = useState(true);
 
-  // Hidden Trigger Logic (5 Taps)
   const [logoTapCount, setLogoTapCount] = useState(0);
   const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -144,7 +139,6 @@ export default function KioskPage() {
     });
   }, []);
 
-  // Reliability: Session Persistence Logic (Non-Intrusive)
   useEffect(() => {
     if (appState !== "welcome" && appState !== "printing" && appState !== "test-camera") {
       SessionStore.save({
@@ -205,10 +199,8 @@ export default function KioskPage() {
     }
   }, [appState, printProgress]);
 
-  // USB Auto-Save Logic (Hybrid Online/Offline)
   useEffect(() => {
     if (appState === "printing" && promotionalConsent === true) {
-      // Local Save first
       SessionStore.addToSyncQueue({
         id: `usb_sync_${Date.now()}`,
         type: 'usb_sync',
@@ -298,7 +290,6 @@ export default function KioskPage() {
       canvas.height = videoRef.current.videoHeight;
       context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
       const data = canvas.toDataURL('image/jpeg', 0.9);
-      // Failsafe: log capture attempt
       KioskLogger.log('info', 'Capture', 'Shot buffer written to canvas.');
       return data;
     }
@@ -363,22 +354,7 @@ export default function KioskPage() {
   return (
     <KioskLayout>
       <canvas ref={canvasRef} className="hidden" />
-      <HealthMonitor />
       
-      {appState !== "welcome" && (
-        <div className="fixed bottom-6 left-6 right-6 z-[60] flex justify-between items-center opacity-40 hover:opacity-100 transition-opacity pointer-events-none">
-          <div className="pointer-events-auto" onClick={handleHiddenTrigger}>
-            <p className="font-headline font-black text-[10px] sm:text-xs tracking-[0.2em] text-white uppercase italic flex items-center gap-3">
-              <span>JNL</span>
-              <span className="text-primary">STUDIO</span>
-            </p>
-          </div>
-          <p className="text-[8px] sm:text-[10px] font-bold text-white uppercase tracking-[0.3em] pointer-events-none">
-            {new Date().toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })}
-          </p>
-        </div>
-      )}
-
       {interruptedSession && appState === "welcome" && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-500">
            <div className="bg-zinc-950 border-2 border-primary/40 p-10 max-w-md w-full text-center space-y-6 shadow-[0_0_50px_rgba(255,51,153,0.3)]">

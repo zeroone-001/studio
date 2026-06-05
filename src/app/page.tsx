@@ -144,6 +144,22 @@ export default function KioskPage() {
     });
   }, []);
 
+  // Hardware Inventory on Mount
+  useEffect(() => {
+    const checkHardware = async () => {
+      if (typeof navigator !== 'undefined' && navigator.mediaDevices) {
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const cams = devices.filter(d => d.kind === 'videoinput');
+          KioskLogger.log('info', 'Hardware', `Detected ${cams.length} camera(s). Status: ${cams.length > 0 ? 'Ready' : 'No Devices Found'}`);
+        } catch (e) {
+          KioskLogger.log('warn', 'Hardware', 'Unable to enumerate media devices.');
+        }
+      }
+    };
+    checkHardware();
+  }, []);
+
   // Reliability: Session Persistence Logic
   useEffect(() => {
     if (appState !== "welcome" && appState !== "printing" && appState !== "test-camera") {
@@ -249,19 +265,22 @@ export default function KioskPage() {
   }, [appState, printProgress, resetSession]);
 
   const startCamera = async () => {
+    if (cameraStream) return true;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 1706 } },
+      const constraints = {
+        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 1706 }, frameRate: { ideal: 30 } },
         audio: false
-      });
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       setCameraStream(stream);
       if (videoRef.current) videoRef.current.srcObject = stream;
       setCameraError(null);
       KioskLogger.log('info', 'Camera', 'Camera stream successfully connected.');
       return true;
-    } catch (err) {
-      setCameraError("Unable to access device camera.");
-      KioskLogger.log('error', 'Camera', 'Failed to connect camera stream.');
+    } catch (err: any) {
+      const msg = err.message || "Unable to access device camera.";
+      setCameraError(msg);
+      KioskLogger.log('error', 'Camera', `Failed to connect camera stream: ${msg}`);
       return false;
     }
   };
@@ -461,7 +480,16 @@ export default function KioskPage() {
         {(appState === "setup" || appState === "test-camera") && (
           <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in duration-500">
              <div className="relative w-full aspect-[3/4] max-h-[60vh] mx-auto overflow-hidden bg-zinc-900 border-2 border-white/20">
-                <video ref={videoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover", selectedFilter.class)} />
+                {cameraError ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-black/60">
+                     <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
+                     <p className="text-xs font-black uppercase text-red-400 mb-2">Camera Access Failed</p>
+                     <p className="text-[10px] text-white/60 uppercase">{cameraError}</p>
+                     <button onClick={startCamera} className="mt-6 px-4 py-2 border border-white/20 text-[10px] font-black uppercase hover:bg-white/10">Retry Connection</button>
+                  </div>
+                ) : (
+                  <video ref={videoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover", selectedFilter.class)} />
+                )}
                 {appState === "test-camera" && selectedBlueprint && (
                   <div className="absolute inset-0 pointer-events-none opacity-40">
                     {selectedBlueprint.slots.map((slot, i) => (
@@ -555,7 +583,7 @@ export default function KioskPage() {
                 {appState === "test-camera" ? (
                   <button onClick={resetSession} className="w-full border-2 border-white font-headline font-black text-xl py-8 italic uppercase hover:bg-white hover:text-black">EXIT TEST MODE</button>
                 ) : (
-                  <NeonButton onClick={() => setAppState("capturing")} className="w-full !py-8">SHOOT</NeonButton>
+                  <NeonButton onClick={() => setAppState("capturing")} className="w-full !py-8" disabled={!!cameraError}>SHOOT</NeonButton>
                 )}
               </div>
             </div>

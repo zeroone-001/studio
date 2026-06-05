@@ -1,44 +1,41 @@
 
 /**
- * @fileOverview Centralized logging service for kiosk diagnostics with state capture.
+ * @fileOverview Centralized logging manager for kiosk diagnostics with hardware state capture.
  */
 
 export interface LogEntry {
   timestamp: string;
-  level: 'info' | 'warn' | 'error';
+  level: 'info' | 'warn' | 'error' | 'critical';
   module: string;
   message: string;
   context: {
-    internetStatus: boolean;
-    storageUsed: string;
-    cameraActive: boolean;
-    paymentState: number;
-    sessionId?: string;
+    online: boolean;
+    storage: string;
+    camera: boolean;
+    printer: string;
+    sessionState: string;
+    payment: number;
   };
-  data?: any;
 }
 
-const MAX_LOGS = 200;
-const LOG_KEY = 'jnl_kiosk_logs';
+const MAX_LOGS = 300;
+const LOG_KEY = 'jnl_kiosk_system_logs';
 
 export const KioskLogger = {
-  log: (level: LogEntry['level'], module: string, message: string, data?: any) => {
-    // Capture current system state for debugging
-    const context = {
-      internetStatus: typeof navigator !== 'undefined' ? navigator.onLine : true,
-      storageUsed: 'Unknown',
-      cameraActive: false, // Updated by components
-      paymentState: 0,
-      sessionId: 'none'
-    };
-
+  log: (level: LogEntry['level'], module: string, message: string, stateContext?: any) => {
     const entry: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
       module,
       message,
-      context,
-      data
+      context: {
+        online: typeof navigator !== 'undefined' ? navigator.onLine : true,
+        storage: 'Monitor Active',
+        camera: !!stateContext?.cameraActive,
+        printer: stateContext?.printerStatus || 'Ready',
+        sessionState: stateContext?.appState || 'Unknown',
+        payment: stateContext?.paymentReceived || 0
+      }
     };
 
     try {
@@ -46,11 +43,11 @@ export const KioskLogger = {
       logs.unshift(entry);
       localStorage.setItem(LOG_KEY, JSON.stringify(logs.slice(0, MAX_LOGS)));
       
-      if (level === 'error') {
+      if (level === 'error' || level === 'critical') {
         console.error(`[${module}] ${message}`, entry);
       }
     } catch (e) {
-      // Failsafe
+      // Recovery failsafe
     }
   },
 

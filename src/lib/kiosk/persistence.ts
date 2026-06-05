@@ -1,7 +1,7 @@
 
 /**
  * @fileOverview Session persistence and Hybrid Sync Queue for JNL Studio Kiosk.
- * Ensures data integrity across restarts and network outages.
+ * Ensures data integrity across restarts and network outages with local-first logic.
  */
 
 export interface KioskSession {
@@ -17,10 +17,11 @@ export interface KioskSession {
 
 export interface SyncItem {
   id: string;
-  type: 'photo' | 'log' | 'session';
+  type: 'photo' | 'log' | 'session' | 'usb_sync';
   data: any;
   timestamp: number;
   retryCount: number;
+  status: 'pending' | 'synced' | 'failed';
 }
 
 const STORAGE_KEY = 'jnl_kiosk_current_session';
@@ -28,6 +29,7 @@ const SYNC_QUEUE_KEY = 'jnl_kiosk_sync_queue';
 const MAX_RETRIES = 5;
 
 export const SessionStore = {
+  // Save locally first - non-intrusive
   save: (session: Partial<KioskSession>) => {
     try {
       const existing = SessionStore.load();
@@ -40,16 +42,17 @@ export const SessionStore = {
       } as KioskSession;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       
-      // Add to sync queue for cloud backup
+      // Auto-queue for sync
       SessionStore.addToSyncQueue({
-        id: updated.id,
+        id: `${updated.id}_update`,
         type: 'session',
         data: updated,
         timestamp: Date.now(),
-        retryCount: 0
+        retryCount: 0,
+        status: 'pending'
       });
     } catch (e) {
-      console.error('Persistence: Failed to save session', e);
+      console.error('Persistence: Local save failed', e);
     }
   },
 
@@ -59,7 +62,7 @@ export const SessionStore = {
       if (!data) return null;
       const session = JSON.parse(data) as KioskSession;
       
-      // Expire sessions older than 6 hours for safety
+      // Expire old sessions (6 hours)
       if (Date.now() - session.timestamp > 6 * 60 * 60 * 1000) {
         SessionStore.clear();
         return null;
@@ -74,18 +77,20 @@ export const SessionStore = {
     localStorage.removeItem(STORAGE_KEY);
   },
 
-  // --- SYNC QUEUE SYSTEM ---
-
+  // --- HYBRID SYNC QUEUE ---
   addToSyncQueue: (item: SyncItem) => {
     try {
       const queue = SessionStore.getSyncQueue();
-      // Idempotent check
-      if (queue.some(i => i.id === item.id && i.type === item.type)) return;
-      
-      queue.push(item);
-      localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
+      // Idempotent check: update existing if same ID
+      const index = queue.findIndex(i => i.id === item.id);
+      if (index > -1) {
+        queue[index] = { ...queue[index], ...item };
+      } else {
+        queue.push(item);
+      }
+      localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue.slice(-100))); // Cap at 100 items
     } catch (e) {
-      console.error('Sync: Failed to add item to queue');
+      console.error('Sync Queue: Add failed', e);
     }
   },
 
@@ -98,21 +103,23 @@ export const SessionStore = {
     }
   },
 
-  removeFromSyncQueue: (id: string) => {
-    const queue = SessionStore.getSyncQueue().filter(i => i.id !== id);
+  updateSyncStatus: (id: string, status: SyncItem['status']) => {
+    const queue = SessionStore.getSyncQueue().map(i => 
+      i.id === id ? { ...i, status, retryCount: status === 'failed' ? i.retryCount + 1 : i.retryCount } : i
+    );
     localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
   },
 
   // --- STORAGE MONITORING ---
-
   getStorageStats: () => {
     let total = 0;
-    for (const key in localStorage) {
-      if (localStorage.hasOwnProperty(key)) {
-        total += ((localStorage[key].length + key.length) * 2);
+    if (typeof localStorage !== 'undefined') {
+      for (const key in localStorage) {
+        if (localStorage.hasOwnProperty(key)) {
+          total += ((localStorage[key].length + key.length) * 2);
+        }
       }
     }
-    // Approximate size in MB (max localstorage is usually 5-10MB)
     const sizeInMB = (total / 1024 / 1024).toFixed(2);
     return {
       usedMB: sizeInMB,

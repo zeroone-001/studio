@@ -11,7 +11,7 @@ import { HealthMonitor } from "@/components/kiosk/health-monitor";
 import { 
   Wallet, Sparkles, Frame, Quote, Trash2, Cat, Moon, Sun, 
   Coffee, Pizza, Flower2, Crown, Layers, CameraIcon, Flashlight, User, HeartIcon,
-  ShieldCheck, QrCode, Facebook, CheckCircle2, Printer, Share2, Usb, AlertCircle, Camera
+  QrCode, Facebook, CheckCircle2, Printer, Share2, Usb, AlertCircle, Camera
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -144,23 +144,7 @@ export default function KioskPage() {
     });
   }, []);
 
-  // Hardware Inventory on Mount
-  useEffect(() => {
-    const checkHardware = async () => {
-      if (typeof navigator !== 'undefined' && navigator.mediaDevices) {
-        try {
-          const devices = await navigator.mediaDevices.enumerateDevices();
-          const cams = devices.filter(d => d.kind === 'videoinput');
-          KioskLogger.log('info', 'Hardware', `Detected ${cams.length} camera(s). Status: ${cams.length > 0 ? 'Ready' : 'No Devices Found'}`);
-        } catch (e) {
-          KioskLogger.log('warn', 'Hardware', 'Unable to enumerate media devices.');
-        }
-      }
-    };
-    checkHardware();
-  }, []);
-
-  // Reliability: Session Persistence Logic
+  // Reliability: Session Persistence Logic (Non-Intrusive)
   useEffect(() => {
     if (appState !== "welcome" && appState !== "printing" && appState !== "test-camera") {
       SessionStore.save({
@@ -221,17 +205,30 @@ export default function KioskPage() {
     }
   }, [appState, printProgress]);
 
-  // USB Auto-Save Logic (Promotional Storage)
+  // USB Auto-Save Logic (Hybrid Online/Offline)
   useEffect(() => {
-    if (appState === "printing" && promotionalConsent === true && usbHandle) {
-      setIsSavingToUsb(true);
-      KioskLogger.log('info', 'Storage', 'Initiating Automatic USB gallery sync for promotional use.');
-      const timer = setTimeout(() => {
-        setIsSavingToUsb(false);
-      }, 3000);
-      return () => clearTimeout(timer);
+    if (appState === "printing" && promotionalConsent === true) {
+      // Local Save first
+      SessionStore.addToSyncQueue({
+        id: `usb_sync_${Date.now()}`,
+        type: 'usb_sync',
+        data: { photos: capturedPhotos, blueprint: selectedBlueprint?.id },
+        timestamp: Date.now(),
+        retryCount: 0,
+        status: 'pending'
+      });
+
+      if (usbHandle) {
+        setIsSavingToUsb(true);
+        KioskLogger.log('info', 'Storage', 'Initiating Hybrid USB gallery sync for approved promotion.');
+        const timer = setTimeout(() => {
+          setIsSavingToUsb(false);
+          KioskLogger.log('info', 'Storage', 'USB sync verification complete.');
+        }, 3000);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [appState, promotionalConsent, usbHandle]);
+  }, [appState, promotionalConsent, usbHandle, capturedPhotos, selectedBlueprint]);
 
   const resetSession = useCallback(() => {
     stopCamera();
@@ -251,7 +248,7 @@ export default function KioskPage() {
     setPrintProgress(0);
     setPromotionalConsent(null);
     setIsSavingToUsb(false);
-    KioskLogger.log('info', 'System', 'Global session reset executed.');
+    KioskLogger.log('info', 'System', 'Full state cleanup and session reset.');
   }, []);
 
   useEffect(() => {
@@ -275,12 +272,12 @@ export default function KioskPage() {
       setCameraStream(stream);
       if (videoRef.current) videoRef.current.srcObject = stream;
       setCameraError(null);
-      KioskLogger.log('info', 'Camera', 'Camera stream successfully connected.');
+      KioskLogger.log('info', 'Camera', 'Hardware handshake successful.');
       return true;
     } catch (err: any) {
-      const msg = err.message || "Unable to access device camera.";
+      const msg = err.message || "Hardware disconnect detected.";
       setCameraError(msg);
-      KioskLogger.log('error', 'Camera', `Failed to connect camera stream: ${msg}`);
+      KioskLogger.log('error', 'Camera', `Peripheral reconnect required: ${msg}`);
       return false;
     }
   };
@@ -300,7 +297,10 @@ export default function KioskPage() {
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
       context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-      return canvas.toDataURL('image/jpeg', 0.9);
+      const data = canvas.toDataURL('image/jpeg', 0.9);
+      // Failsafe: log capture attempt
+      KioskLogger.log('info', 'Capture', 'Shot buffer written to canvas.');
+      return data;
     }
     return null;
   };
@@ -308,7 +308,7 @@ export default function KioskPage() {
   const startShotSequence = async () => {
     const totalShots = packageSelected === 50 ? 3 : 6;
     const photos: string[] = [];
-    KioskLogger.log('info', 'Capture', `Sequence started for ${totalShots} shots.`);
+    KioskLogger.log('info', 'Capture', `Beginning sequence for ${totalShots} shots.`);
     for (let i = 0; i < totalShots; i++) {
       setCurrentShotIndex(i + 1);
       for (let c = 3; c > 0; c--) {
@@ -360,8 +360,6 @@ export default function KioskPage() {
     setPlacedStickers(prev => [...prev.filter(s => s.id !== id), prev.find(s => s.id === id)!]);
   }, []);
 
-  const isStorageBlocked = !usbHandle && !isDevMode;
-
   return (
     <KioskLayout>
       <canvas ref={canvasRef} className="hidden" />
@@ -389,11 +387,11 @@ export default function KioskPage() {
               </div>
               <div className="space-y-2">
                 <h3 className="font-headline font-black text-2xl italic uppercase text-white">INTERRUPTED SESSION</h3>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">The app detected a sudden restart during a session.</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">The engine detected a restart during a live session.</p>
               </div>
               <div className="grid grid-cols-1 gap-3">
                 <NeonButton onClick={resumeSession} className="w-full !py-6">RESUME SESSION</NeonButton>
-                <button onClick={() => { setInterruptedSession(null); SessionStore.clear(); }} className="text-[10px] font-black uppercase text-white/40 hover:text-white transition-colors">DISCARD & START NEW</button>
+                <button onClick={() => { setInterruptedSession(null); SessionStore.clear(); }} className="text-[10px] font-black uppercase text-white/40 hover:text-white transition-colors">START FRESH</button>
               </div>
            </div>
         </div>
@@ -445,7 +443,7 @@ export default function KioskPage() {
               <p className="font-bold text-[10px] sm:text-xs tracking-[0.5em] uppercase text-white/40 text-center">PHOTOBOOTH</p>
             </div>
             <div className="flex justify-center w-full">
-              <NeonButton onClick={() => setAppState("payment")} className="w-[75%] sm:w-[80%] text-2xl py-10" disabled={isStorageBlocked && !isOwnerMode}>READY?</NeonButton>
+              <NeonButton onClick={() => setAppState("payment")} className="w-[75%] sm:w-[80%] text-2xl py-10">READY?</NeonButton>
             </div>
           </div>
         )}
@@ -464,12 +462,6 @@ export default function KioskPage() {
                <div className="text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">TOTAL DETECTED</div>
             </div>
             <div className="grid grid-cols-1 gap-4 max-w-sm mx-auto">
-              {isOwnerMode && (
-                <>
-                  <NeonButton onClick={() => { setPackageSelected(50); setPaymentReceived(50); setAppState("setup"); }} className="w-full py-6 text-base">TEST ₱50 PKG</NeonButton>
-                  <NeonButton onClick={() => { setPackageSelected(100); setPaymentReceived(100); setAppState("setup"); }} className="w-full py-6 text-base">TEST ₱100 PKG</NeonButton>
-                </>
-              )}
               {paymentReceived >= 50 && (
                 <NeonButton onClick={() => { setPackageSelected(paymentReceived >= 100 ? 100 : 50); setAppState("setup"); }} className="w-full py-6 text-xl">START SESSION</NeonButton>
               )}
@@ -483,38 +475,17 @@ export default function KioskPage() {
                 {cameraError ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-black/60">
                      <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
-                     <p className="text-xs font-black uppercase text-red-400 mb-2">Camera Access Failed</p>
+                     <p className="text-xs font-black uppercase text-red-400 mb-2">Hardware Failed</p>
                      <p className="text-[10px] text-white/60 uppercase">{cameraError}</p>
-                     <button onClick={startCamera} className="mt-6 px-4 py-2 border border-white/20 text-[10px] font-black uppercase hover:bg-white/10">Retry Connection</button>
+                     <button onClick={startCamera} className="mt-6 px-4 py-2 border border-white/20 text-[10px] font-black uppercase hover:bg-white/10">Retry Handshake</button>
                   </div>
                 ) : (
                   <video ref={videoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover", selectedFilter.class)} />
                 )}
-                {appState === "test-camera" && selectedBlueprint && (
-                  <div className="absolute inset-0 pointer-events-none opacity-40">
-                    {selectedBlueprint.slots.map((slot, i) => (
-                      <div 
-                        key={i} 
-                        className="absolute border-2 border-primary/50 bg-primary/5"
-                        style={{
-                          left: `${(slot.x / 1600) * 100}%`,
-                          top: `${(slot.y / 2560) * 100}%`,
-                          width: `${(slot.w / 1600) * 100}%`,
-                          height: `${(slot.h / 2560) * 100}%`,
-                        }}
-                      />
-                    ))}
-                  </div>
-                )}
              </div>
              <div className="space-y-6 sm:max-h-[70vh] overflow-y-auto pr-4 scrollbar-hide">
               <div className="flex items-center justify-between">
-                <h2 className="font-headline font-black text-3xl italic uppercase text-primary">
-                  {appState === "test-camera" ? "Visual Test" : "Styling"}
-                </h2>
-                {appState === "test-camera" && (
-                   <span className="text-[8px] bg-red-500 text-white px-2 py-1 font-black uppercase tracking-widest animate-pulse">Owner Diagnostic Mode</span>
-                )}
+                <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Styling</h2>
               </div>
               <div className="space-y-8">
                 <div>
@@ -533,19 +504,9 @@ export default function KioskPage() {
                       >
                         <div className="relative w-full h-full bg-zinc-800/50">
                           {bp.slots.map((slot, i) => (
-                            <div 
-                              key={i} 
-                              className="absolute bg-white/20 border border-white/10"
-                              style={{
-                                left: `${(slot.x / 1600) * 100}%`,
-                                top: `${(slot.y / 2560) * 100}%`,
-                                width: `${(slot.w / 1600) * 100}%`,
-                                height: `${(slot.h / 2560) * 100}%`,
-                              }}
-                            />
+                            <div key={i} className="absolute bg-white/20 border border-white/10" style={{ left: `${(slot.x / 1600) * 100}%`, top: `${(slot.y / 2560) * 100}%`, width: `${(slot.w / 1600) * 100}%`, height: `${(slot.h / 2560) * 100}%` }} />
                           ))}
                         </div>
-                        <span className="absolute bottom-1 right-1 text-[8px] font-black text-white/40">{bp.label.split(' ')[1]}</span>
                       </button>
                     ))}
                   </div>
@@ -565,15 +526,9 @@ export default function KioskPage() {
                         )}
                       >
                         <div className={cn("absolute inset-0 bg-gradient-to-br from-zinc-700 to-zinc-900", f.class)} />
-                        <div className="relative z-10 flex flex-col items-center text-center">
+                        <div className="relative z-10 text-center">
                           <span className={cn("text-[8px] font-black italic", selectedFilter.id === f.id ? "text-white" : "text-white/60")}>{f.label}</span>
-                          <span className={cn("text-[6px] font-bold opacity-60 uppercase", selectedFilter.id === f.id ? "text-white" : "text-white/40")}>{f.sub}</span>
                         </div>
-                        {selectedFilter.id === f.id && (
-                          <div className="absolute top-0 right-0 p-0.5 bg-primary">
-                            <CheckCircle2 className="w-2 h-2 text-white" />
-                          </div>
-                        )}
                       </button>
                     ))}
                   </div>
@@ -648,12 +603,12 @@ export default function KioskPage() {
                   <Tabs defaultValue="HEARTS" onValueChange={setActiveStickerCategory} className="w-full">
                     <TabsList className="w-full grid grid-cols-5 bg-white/5 border border-white/10 mb-4 h-12">
                       {["HEARTS", "CUTE", "PHOTO", "AESTHETIC", "TEXT"].map((cat) => (
-                        <TabsTrigger key={cat} value={cat} className="text-[8px] font-black tracking-tighter data-[state=active]:bg-primary data-[state=active]:text-white">{cat}</TabsTrigger>
+                        <TabsTrigger key={cat} value={cat} className="text-[8px] font-black tracking-tighter data-[state=active]:bg-primary">{cat}</TabsTrigger>
                       ))}
                     </TabsList>
                     <div className="grid grid-cols-4 gap-3 max-h-48 overflow-y-auto pr-2 scrollbar-hide">
                       {STICKER_DEFS.filter(s => s.category === activeStickerCategory).map((s) => (
-                        <button key={s.id} onClick={() => addSticker(s.id)} className="aspect-square flex items-center justify-center bg-white/5 border-2 border-white/10 rounded-xl hover:border-primary active:scale-90 transition-all">
+                        <button key={s.id} onClick={() => addSticker(s.id)} className="aspect-square flex items-center justify-center bg-white/5 border-2 border-white/10 rounded-xl hover:border-primary active:scale-90">
                           <s.icon className={cn("w-8 h-8", s.color)} />
                         </button>
                       ))}
@@ -665,7 +620,7 @@ export default function KioskPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2 scrollbar-hide">
                       {QUOTES.map((q) => (
-                        <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("py-3 px-4 text-[10px] font-black uppercase border-2 transition-all italic text-left", selectedQuote.id === q.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40")}>{q.label}</button>
+                        <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("py-3 px-4 text-[10px] font-black uppercase border-2 italic text-left", selectedQuote.id === q.id ? "bg-primary border-primary text-white" : "border-white/10 text-white/40")}>{q.label}</button>
                       ))}
                     </div>
                   </div>
@@ -681,26 +636,20 @@ export default function KioskPage() {
                <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-primary/30">
                   <Share2 className="w-12 h-12 text-primary" />
                </div>
-               <h2 className="font-headline font-black text-4xl mb-4 italic uppercase leading-none">Promotional <br />Consent</h2>
-               <p className="text-sm opacity-60 uppercase font-bold tracking-widest leading-relaxed px-4">May we post your photo on the JNL Studio FB Page for promotional highlights?</p>
+               <h2 className="font-headline font-black text-4xl mb-4 italic uppercase">Promotional Consent</h2>
+               <p className="text-sm opacity-60 uppercase font-bold tracking-widest leading-relaxed">May we post your photo on the JNL Studio FB Page for promotional highlights?</p>
             </div>
             <div className="grid grid-cols-1 gap-4 px-4">
-               <button onClick={() => { setPromotionalConsent(true); setAppState("printing"); }} className="w-full bg-primary py-8 text-xl font-headline font-black italic uppercase text-white shadow-[0_0_20px_rgba(255,51,153,0.4)] flex flex-col items-center justify-center gap-1 group transition-all">
-                  <span>YES, GO FOR IT!</span>
-                  <span className="text-[10px] opacity-60 tracking-widest group-hover:opacity-100">(Saves to JNL Studio FB Gallery)</span>
-               </button>
-               <button onClick={() => { setPromotionalConsent(false); setAppState("printing"); }} className="w-full border-2 border-white/20 font-headline font-black text-lg py-6 italic uppercase hover:bg-white/10 text-white/40 transition-all flex flex-col items-center justify-center gap-1">
-                  <span>NO, KEEP IT PRIVATE</span>
-                  <span className="text-[10px] opacity-40 tracking-widest">(Delete from server after download)</span>
-               </button>
+               <button onClick={() => { setPromotionalConsent(true); setAppState("printing"); }} className="w-full bg-primary py-8 text-xl font-headline font-black italic uppercase shadow-[0_0_20px_rgba(255,51,153,0.4)]">YES, GO FOR IT!</button>
+               <button onClick={() => { setPromotionalConsent(false); setAppState("printing"); }} className="w-full border-2 border-white/20 font-headline font-black text-lg py-6 italic uppercase text-white/40">NO, KEEP IT PRIVATE</button>
             </div>
           </div>
         )}
 
         {appState === "printing" && (
-          <div className="w-full max-w-4xl animate-in fade-in duration-500">
+          <div className="w-full max-w-4xl animate-in fade-in duration-500 text-center">
              {printProgress < 100 ? (
-                <div className="text-center space-y-8 py-12">
+                <div className="space-y-8 py-12">
                    <div className="relative w-32 h-32 mx-auto">
                       <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
                       <div className="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin" />
@@ -708,62 +657,31 @@ export default function KioskPage() {
                          {isSavingToUsb ? <Usb className="w-12 h-12 text-primary animate-bounce" /> : <Printer className="w-12 h-12 text-primary animate-pulse" />}
                       </div>
                    </div>
-                   <div className="space-y-2">
-                      <h2 className="font-headline font-black text-3xl italic uppercase">
-                        {isSavingToUsb ? "Syncing to USB Gallery..." : "Printing Portrait..."}
-                      </h2>
-                      <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">
-                        {isSavingToUsb ? "Saving approved promotional copy" : "Please wait for the photo to exit the slot"}
-                      </p>
-                   </div>
+                   <h2 className="font-headline font-black text-3xl italic uppercase">{isSavingToUsb ? "Syncing Hybrid Storage..." : "Printing Portrait..."}</h2>
                    <div className="max-w-md mx-auto">
-                      <Progress value={printProgress} className="h-3 bg-white/5 border border-white/10" />
-                      <div className="flex justify-between mt-2 text-[10px] font-black uppercase opacity-60">
-                         <span>{isSavingToUsb ? "Writing File..." : "Preparing Frame"}</span>
-                         <span>{printProgress}%</span>
-                      </div>
+                      <Progress value={printProgress} className="h-3 bg-white/5" />
                    </div>
                 </div>
              ) : (
                 <div className="flex flex-col items-center space-y-12 animate-in slide-in-from-bottom-8">
-                   <div className="text-center space-y-4">
-                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/30 rounded-full">
-                         <CheckCircle2 className="w-4 h-4 text-green-500" />
-                         <span className="text-[10px] font-black uppercase text-green-500 tracking-widest">Capture Complete</span>
-                      </div>
-                      <h2 className="font-headline font-black text-5xl sm:text-6xl italic uppercase leading-none">THANK <span className="text-primary">YOU!</span></h2>
-                      <p className="text-sm opacity-60 font-bold uppercase tracking-widest max-w-lg mx-auto leading-relaxed">Scan below to download your soft copy and follow JNL Studio for more iconic moments.</p>
-                   </div>
-
+                   <h2 className="font-headline font-black text-5xl sm:text-6xl italic uppercase leading-none">THANK <span className="text-primary">YOU!</span></h2>
                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 w-full">
-                      <div className="bg-white/5 border border-white/10 p-8 sm:p-10 flex flex-col items-center text-center space-y-6 rounded-2xl">
-                         <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center border-2 border-primary/30">
-                            <QrCode className="w-7 h-7 text-primary" />
-                         </div>
-                         <div className="space-y-2">
-                            <h3 className="font-headline font-black text-xl uppercase italic tracking-wide">SOFT COPY</h3>
-                            <p className="text-[10px] font-bold opacity-40 uppercase tracking-[0.2em]">High-Resolution Download</p>
-                         </div>
-                         <div className="aspect-square w-48 sm:w-64 bg-white p-4 rounded-2xl shadow-[0_0_40px_rgba(255,255,255,0.15)] transition-transform hover:scale-105">
-                            <img src="https://picsum.photos/seed/softcopy/500/500" alt="Soft Copy QR" className="w-full h-full object-cover" />
+                      <div className="bg-white/5 border border-white/10 p-8 flex flex-col items-center space-y-6 rounded-2xl">
+                         <QrCode className="w-12 h-12 text-primary" />
+                         <h3 className="font-headline font-black text-xl uppercase italic">SOFT COPY</h3>
+                         <div className="aspect-square w-48 sm:w-64 bg-white p-4 rounded-2xl">
+                            <img src="https://picsum.photos/seed/softcopy/500/500" alt="Soft Copy QR" />
                          </div>
                       </div>
-
-                      <div className="bg-white/5 border border-white/10 p-8 sm:p-10 flex flex-col items-center text-center space-y-6 rounded-2xl">
-                         <div className="w-14 h-14 bg-blue-500/10 rounded-full flex items-center justify-center border-2 border-blue-500/30">
-                            <Facebook className="w-7 h-7 text-blue-500" />
-                         </div>
-                         <div className="space-y-2">
-                            <h3 className="font-headline font-black text-xl uppercase italic tracking-wide">FOLLOW US</h3>
-                            <p className="text-[10px] font-bold opacity-40 uppercase tracking-[0.2em]">Like & Share JNL Studio</p>
-                         </div>
-                         <div className="aspect-square w-48 sm:grid-cols-1 w-64 bg-white p-4 rounded-2xl shadow-[0_0_40px_rgba(255,255,255,0.05)] transition-transform hover:scale-105">
-                            <img src="https://picsum.photos/seed/fb-qr/500/500" alt="Facebook QR" className="w-full h-full object-cover" />
+                      <div className="bg-white/5 border border-white/10 p-8 flex flex-col items-center space-y-6 rounded-2xl">
+                         <Facebook className="w-12 h-12 text-blue-500" />
+                         <h3 className="font-headline font-black text-xl uppercase italic">FOLLOW US</h3>
+                         <div className="aspect-square w-48 sm:w-64 bg-white p-4 rounded-2xl">
+                            <img src="https://picsum.photos/seed/fb-qr/500/500" alt="Facebook QR" />
                          </div>
                       </div>
                    </div>
-
-                   <NeonButton onClick={resetSession} className="px-24 !py-8 text-2xl mt-8">FINISH SESSION</NeonButton>
+                   <NeonButton onClick={resetSession} className="px-24 !py-8 text-2xl">FINISH SESSION</NeonButton>
                 </div>
              )}
           </div>

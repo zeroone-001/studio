@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useMemo, useRef, useState, useEffect } from "react";
@@ -83,7 +82,7 @@ export const BlueprintFrame = React.memo(({
         >
           <Image
             src={photos[index] || "https://picsum.photos/seed/placeholder/800/1200"}
-            alt={`Shot ${index + 1}`}
+            alt=""
             fill
             className={cn("object-cover", filterClass)}
             sizes="1000px"

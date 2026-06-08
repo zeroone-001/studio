@@ -44,7 +44,7 @@ export const KioskLogger = {
       localStorage.setItem(LOG_KEY, JSON.stringify(logs.slice(0, MAX_LOGS)));
       
       // Removed console.error to prevent NextJS dev overlay from blocking the kiosk UI.
-      // Logs are preserved in the Admin Panel's diagnostic view instead.
+      // System diagnostics are preserved in the Admin Panel's diagnostic view instead.
     } catch (e) {
       // Recovery failsafe
     }

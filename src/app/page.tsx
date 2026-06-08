@@ -6,6 +6,7 @@ import { KioskLayout } from "@/components/kiosk/kiosk-layout";
 import { NeonButton } from "@/components/kiosk/neon-button";
 import { AdminAuthDialog } from "@/components/kiosk/admin-auth-dialog";
 import { AdminControls } from "@/components/kiosk/admin-controls";
+import { HealthMonitor } from "@/components/kiosk/health-monitor";
 import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
   Wallet, Sparkles, Frame, Quote, Trash2, Cat, Moon, Sun, 
@@ -46,7 +47,7 @@ export const STICKER_DEFS = [
   { id: "cat-face", icon: Cat, color: "text-orange-200", category: "CUTE" },
   { id: "pizza", icon: Pizza, color: "text-yellow-600", category: "CUTE" },
   { id: "coffee", icon: Coffee, color: "text-amber-900", category: "CUTE" },
-  { id: "ice-cream", icon: Kawaii.IceCreamSticker || IceCream, color: "", category: "CUTE" },
+  { id: "ice-cream", icon: Kawaii.IceCreamSticker, color: "", category: "CUTE" },
   { id: "cookie", icon: Cookie, color: "text-amber-700", category: "CUTE" },
   { id: "sushi", icon: Kawaii.SushiSticker, color: "", category: "CUTE" },
   { id: "mini-camera", icon: CameraIcon, color: "text-zinc-400", category: "PHOTO" },
@@ -418,23 +419,26 @@ export default function KioskPage() {
         />
 
         {isOwnerMode && (
-          <AdminControls 
-            currentStatus={appState}
-            onJumpTo={setAppState}
-            onReset={resetSession}
-            onExitOwnerMode={() => setIsOwnerMode(false)}
-            hasPackage={!!packageSelected}
-            onSimulateCash={(amount) => setPaymentReceived(prev => prev + amount)}
-            onBypassPayment={(pkg) => { setPackageSelected(pkg); setPaymentReceived(pkg); setAppState("setup"); }}
-            usbStatus={usbHandle ? "connected" : "disconnected"}
-            onSetupUsb={() => setUsbHandle({})}
-            isDevMode={isDevMode}
-            onToggleDevMode={() => setIsDevMode(!isDevMode)}
-            isCameraActive={!!cameraStream}
-            onTestCamera={() => {
-              setAppState("test-camera");
-            }}
-          />
+          <>
+            <AdminControls 
+              currentStatus={appState}
+              onJumpTo={setAppState}
+              onReset={resetSession}
+              onExitOwnerMode={() => setIsOwnerMode(false)}
+              hasPackage={!!packageSelected}
+              onSimulateCash={(amount) => setPaymentReceived(prev => prev + amount)}
+              onBypassPayment={(pkg) => { setPackageSelected(pkg); setPaymentReceived(pkg); setAppState("setup"); }}
+              usbStatus={usbHandle ? "connected" : "disconnected"}
+              onSetupUsb={() => setUsbHandle({})}
+              isDevMode={isDevMode}
+              onToggleDevMode={() => setIsDevMode(!isDevMode)}
+              isCameraActive={!!cameraStream}
+              onTestCamera={() => {
+                setAppState("test-camera");
+              }}
+            />
+            <HealthMonitor />
+          </>
         )}
 
         {appState === "welcome" && (

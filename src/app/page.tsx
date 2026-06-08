@@ -433,14 +433,14 @@ export default function KioskPage() {
                 <span className="text-primary">STUDIO</span>
               </h1>
             </div>
-            <div className="flex justify-center mb-[20px] w-full px-4">
+            <div className="flex justify-center mb-[30px] w-full px-4">
               <h2 className="font-headline font-black text-2xl sm:text-3xl tracking-[0.2em] uppercase italic text-white/90 text-center">TOUCH TO START</h2>
             </div>
-            <div className="flex justify-center mb-[80px] w-full px-4">
+            <div className="flex justify-center mb-[20px] w-full px-4">
               <p className="font-bold text-[10px] sm:text-xs tracking-[0.5em] uppercase text-white/40 text-center">PHOTOBOOTH</p>
             </div>
             <div className="flex justify-center w-full">
-              <NeonButton onClick={() => setAppState("payment")} className="w-[75%] sm:w-[80%] text-2xl py-10">READY?</NeonButton>
+              <NeonButton onClick={() => setAppState("payment")} className="w-[75%] sm:w-[80%] text-2xl py-10" style={{ marginTop: '80px' }}>READY?</NeonButton>
             </div>
           </div>
         )}

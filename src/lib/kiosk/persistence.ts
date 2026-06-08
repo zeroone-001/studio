@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Session persistence and Hybrid Sync Queue for JNL Studio Kiosk.
  * Ensures data integrity across restarts and network outages with local-first logic.
@@ -26,10 +25,9 @@ export interface SyncItem {
 
 const STORAGE_KEY = 'jnl_kiosk_current_session';
 const SYNC_QUEUE_KEY = 'jnl_kiosk_sync_queue';
-const MAX_RETRIES = 5;
 
 export const SessionStore = {
-  // Save locally first - non-intrusive
+  // Save locally first to the device's persistent storage
   save: (session: Partial<KioskSession>) => {
     try {
       const existing = SessionStore.load();
@@ -40,19 +38,25 @@ export const SessionStore = {
         id: existing?.id || `sess_${Date.now()}`,
         isSynced: false
       } as KioskSession;
+      
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       
-      // Auto-queue for sync
-      SessionStore.addToSyncQueue({
-        id: `${updated.id}_update`,
-        type: 'session',
-        data: updated,
-        timestamp: Date.now(),
-        retryCount: 0,
-        status: 'pending'
-      });
+      // Also track for sync queue if it contains actual captured photos
+      if (session.capturedPhotos && session.capturedPhotos.length > 0) {
+        SessionStore.addToSyncQueue({
+          id: `${updated.id}_update`,
+          type: 'session',
+          data: { ...updated, capturedPhotos: session.capturedPhotos },
+          timestamp: Date.now(),
+          retryCount: 0,
+          status: 'pending'
+        });
+      }
     } catch (e) {
-      console.error('Persistence: Local save failed', e);
+      // If QuotaExceeded, try clearing the queue but keep the current session
+      if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+        localStorage.removeItem(SYNC_QUEUE_KEY);
+      }
     }
   },
 
@@ -62,8 +66,8 @@ export const SessionStore = {
       if (!data) return null;
       const session = JSON.parse(data) as KioskSession;
       
-      // Expire old sessions (6 hours)
-      if (Date.now() - session.timestamp > 6 * 60 * 60 * 1000) {
+      // Expire old sessions from previous business days (12 hours)
+      if (Date.now() - session.timestamp > 12 * 60 * 60 * 1000) {
         SessionStore.clear();
         return null;
       }
@@ -88,7 +92,8 @@ export const SessionStore = {
       } else {
         queue.push(item);
       }
-      localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue.slice(-100))); // Cap at 100 items
+      // Cap at 25 items to prevent browser storage crash while holding high-res base64 photos
+      localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue.slice(-25))); 
     } catch (e) {
       console.error('Sync Queue: Add failed', e);
     }
@@ -123,7 +128,7 @@ export const SessionStore = {
     const sizeInMB = (total / 1024 / 1024).toFixed(2);
     return {
       usedMB: sizeInMB,
-      percent: Math.min(100, (total / (5 * 1024 * 1024)) * 100).toFixed(0)
+      percent: Math.min(100, (total / (5 * 1024 * 1024)) * 100).toFixed(0) // Assuming 5MB limit
     };
   }
 };

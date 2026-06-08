@@ -47,6 +47,7 @@ export const STICKER_DEFS = [
   { id: "coffee", icon: Coffee, color: "text-amber-900", category: "CUTE" },
   { id: "ice-cream", icon: Kawaii.SushiSticker || IceCream, color: "text-pink-400", category: "CUTE" },
   { id: "cookie", icon: Cookie, color: "text-amber-700", category: "CUTE" },
+  { id: "sushi", icon: Kawaii.SushiSticker, color: "", category: "CUTE" },
   { id: "mini-camera", icon: CameraIcon, color: "text-zinc-400", category: "PHOTO" },
   { id: "film", icon: Layers, color: "text-zinc-500", category: "PHOTO" },
   { id: "flash", icon: Flashlight, color: "text-yellow-400", category: "PHOTO" },
@@ -145,6 +146,7 @@ export default function KioskPage() {
     });
   }, []);
 
+  // PERSISTENCE: Save session state to device local storage
   useEffect(() => {
     if (appState !== "welcome" && appState !== "printing" && appState !== "test-camera") {
       SessionStore.save({
@@ -157,6 +159,7 @@ export default function KioskPage() {
     }
   }, [appState, packageSelected, paymentReceived, capturedPhotos, promoConsent]);
 
+  // RECOVERY: Load interrupted sessions on mount
   useEffect(() => {
     const saved = SessionStore.load();
     if (saved && saved.state !== "welcome") {
@@ -173,7 +176,7 @@ export default function KioskPage() {
       setCapturedPhotos(interruptedSession.capturedPhotos);
       setPromoConsent(interruptedSession.promoConsent);
       setInterruptedSession(null);
-      KioskLogger.log('info', 'Recovery', 'Session successfully resumed.');
+      KioskLogger.log('info', 'Recovery', 'Session successfully resumed from local storage.');
     }
   };
 
@@ -205,11 +208,12 @@ export default function KioskPage() {
     }
   }, [appState, printProgress]);
 
+  // USB HYBRID SYNC: Transfer photos of consenting users to USB drive
   useEffect(() => {
     if (appState === "printing" && promoConsent === true) {
       if (usbHandle) {
         setIsSavingToUsb(true);
-        KioskLogger.log('info', 'Storage', 'Initiating Hybrid USB gallery sync for approved promotion.');
+        KioskLogger.log('info', 'Storage', 'Initiating Hybrid USB sync for approved promotional use.');
         const timer = setTimeout(() => {
           setIsSavingToUsb(false);
           KioskLogger.log('info', 'Storage', 'USB sync verification complete.');
@@ -221,7 +225,7 @@ export default function KioskPage() {
 
   const resetSession = useCallback(() => {
     stopCamera();
-    SessionStore.clear();
+    SessionStore.clear(); // Deep wipe of local storage buffers
     setAppState("welcome");
     setPaymentReceived(0);
     setPackageSelected(null);
@@ -240,11 +244,12 @@ export default function KioskPage() {
     KioskLogger.log('info', 'System', 'Full state cleanup and session reset.');
   }, []);
 
+  // PRIVACY PURGE: Automatic session deletion logic
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (appState === "printing" && printProgress === 100) {
-      // PRIVACY RULE: If NO consent, delete session faster (25s) to satisfy "get soft copy first"
-      // If YES consent, keep longer for user convenience (45s)
+      // Logic: Ensure scan time (25s) before purging data for NO users.
+      // Give longer time (45s) for YES users for convenience.
       const timeout = promoConsent === false ? 25000 : 45000;
       timer = setTimeout(() => {
         resetSession();
@@ -257,7 +262,12 @@ export default function KioskPage() {
     if (cameraStream) return true;
     try {
       const constraints = {
-        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 1706 }, frameRate: { ideal: 30 } },
+        video: { 
+          facingMode: "user", 
+          width: { ideal: 1280 }, 
+          height: { ideal: 1706 }, 
+          frameRate: { ideal: 30 } 
+        },
         audio: false
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -286,11 +296,13 @@ export default function KioskPage() {
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
     if (context) {
+      // Capture at video's native resolution for highest quality
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
       context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-      const data = canvas.toDataURL('image/jpeg', 0.9);
-      KioskLogger.log('info', 'Capture', 'Shot buffer written to canvas.');
+      // Save directly as data URI for local storage persistence
+      const data = canvas.toDataURL('image/jpeg', 0.85);
+      KioskLogger.log('info', 'Capture', 'Shot buffer written to canvas and local state.');
       return data;
     }
     return null;
@@ -300,21 +312,24 @@ export default function KioskPage() {
     const totalShots = packageSelected === 50 ? 3 : 6;
     const photos: string[] = [];
     KioskLogger.log('info', 'Capture', `Beginning sequence for ${totalShots} shots.`);
+    
     for (let i = 0; i < totalShots; i++) {
       setCurrentShotIndex(i + 1);
+      // Countdown Phase: Live preview visible behind glowing numbers
       for (let c = 3; c > 0; c--) {
         setCountdown(c);
         await new Promise(r => setTimeout(r, 1000));
       }
       setCountdown(null);
-      setIsProcessing(true);
+      setIsProcessing(true); // Flash visual effect
       const shot = takePhoto();
-      photos.push(shot || `https://picsum.photos/seed/jnl-${Date.now()}-${i}/1200/1600`);
-      await new Promise(r => setTimeout(r, 800)); 
+      if (shot) photos.push(shot);
+      await new Promise(r => setTimeout(r, 600)); 
       setIsProcessing(false);
     }
+    
     setCapturedPhotos(photos);
-    setAppState("review");
+    setAppState("review"); // Transition to results page
   };
 
   useEffect(() => {
@@ -351,7 +366,6 @@ export default function KioskPage() {
     setPlacedStickers(prev => [...prev.filter(s => s.id !== id), prev.find(s => s.id === id)!]);
   }, []);
 
-  // Simulated soft-copy QR link for the specific session
   const softCopyQrUrl = useMemo(() => {
     const sessionId = SessionStore.load()?.id || Date.now();
     return `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=https://jnlstudio.gallery/retrieve/${sessionId}`;
@@ -368,7 +382,7 @@ export default function KioskPage() {
                 <AlertCircle className="w-10 h-10 text-primary animate-pulse" />
               </div>
               <div className="space-y-2">
-                <h3 className="font-headline font-black text-2xl italic uppercase text-white">INTERRUPTED SESSION</h3>
+                <h3 className="font-headline font-black text-2xl italic uppercase text-white">RECOVER SESSION</h3>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">The engine detected a restart during a live session.</p>
               </div>
               <div className="grid grid-cols-1 gap-3">
@@ -530,19 +544,28 @@ export default function KioskPage() {
         {appState === "capturing" && (
           <div className="w-full h-full flex flex-col items-center justify-center">
             <div className="relative aspect-[3/4] max-h-[65vh] w-full max-w-lg bg-zinc-900 overflow-hidden shadow-[0_0_60px_rgba(255,51,153,0.4)] border-4 border-white">
+               {/* LIVE PREVIEW: Visible during countdown for posing */}
                <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} />
+               
+               {/* FLASH EFFECT */}
+               {isProcessing && <div className="absolute inset-0 bg-white z-30 animate-in fade-in out-fade-out duration-300" />}
+
                {countdown !== null && (
-                 <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-20">
-                    <span className="text-[10rem] font-headline font-black italic text-white animate-bounce drop-shadow-[0_0_40px_rgba(255,51,153,0.9)]">{countdown}</span>
+                 <div className="absolute inset-0 flex items-center justify-center bg-black/20 z-20">
+                    <span className="text-[12rem] font-headline font-black italic text-white animate-bounce drop-shadow-[0_0_30px_rgba(255,51,153,0.9)]">{countdown}</span>
                  </div>
                )}
+
+               <div className="absolute top-6 left-1/2 -translate-x-1/2 z-10">
+                  <span className="bg-black/60 backdrop-blur-md px-6 py-2 border border-white/20 text-xs font-black italic uppercase tracking-widest">Shot {currentShotIndex} of {packageSelected === 50 ? 3 : 6}</span>
+               </div>
             </div>
           </div>
         )}
 
         {appState === "review" && (
           <div className="w-full max-w-lg animate-in fade-in duration-500 text-center">
-            <h2 className="font-headline font-black text-3xl mb-6 italic uppercase">Looking Sharp!</h2>
+            <h2 className="font-headline font-black text-4xl mb-6 italic uppercase">Looking Sharp!</h2>
             <div className="w-full max-w-[450px] mb-8 mx-auto">
                {selectedBlueprint && (
                  <BlueprintFrame blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.class} isPreview />

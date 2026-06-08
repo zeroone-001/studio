@@ -43,9 +43,8 @@ export const KioskLogger = {
       logs.unshift(entry);
       localStorage.setItem(LOG_KEY, JSON.stringify(logs.slice(0, MAX_LOGS)));
       
-      if (level === 'error' || level === 'critical') {
-        console.error(`[${module}] ${message}`, entry);
-      }
+      // Removed console.error to prevent NextJS dev overlay from blocking the kiosk UI.
+      // Logs are preserved in the Admin Panel's diagnostic view instead.
     } catch (e) {
       // Recovery failsafe
     }

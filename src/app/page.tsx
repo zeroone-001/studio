@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -260,28 +261,45 @@ export default function KioskPage() {
 
   const startCamera = async () => {
     if (cameraStream) return true;
-    try {
-      const constraints = {
-        video: { 
-          facingMode: "user", 
-          width: { ideal: 1280 }, 
-          height: { ideal: 1706 }, 
-          frameRate: { ideal: 30 } 
-        },
-        audio: false
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      setCameraStream(stream);
-      if (videoRef.current) videoRef.current.srcObject = stream;
-      setCameraError(null);
-      KioskLogger.log('info', 'Camera', 'Hardware handshake successful.');
-      return true;
-    } catch (err: any) {
-      const msg = err.message || "Hardware disconnect detected.";
+    
+    // Multi-stage Hardware Handshake for automatic camera detection
+    const tryStream = async (constraints: MediaStreamConstraints) => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        setCameraStream(stream);
+        if (videoRef.current) videoRef.current.srcObject = stream;
+        setCameraError(null);
+        KioskLogger.log('info', 'Camera', 'Hardware handshake successful.');
+        return true;
+      } catch (e) {
+        return false;
+      }
+    };
+
+    // Attempt 1: High-fidelity portrait (iPad/Tablet optimized)
+    let success = await tryStream({
+      video: { 
+        facingMode: "user", 
+        width: { ideal: 1280 }, 
+        height: { ideal: 1706 }, 
+        frameRate: { ideal: 30 } 
+      },
+      audio: false
+    });
+
+    // Attempt 2: Standard video fallback (Automatic detection)
+    if (!success) {
+      success = await tryStream({ video: true, audio: false });
+    }
+
+    if (!success) {
+      const msg = "Requested camera device not found or blocked.";
       setCameraError(msg);
-      KioskLogger.log('error', 'Camera', `Peripheral reconnect required: ${msg}`);
+      KioskLogger.log('warn', 'Camera', msg);
       return false;
     }
+
+    return true;
   };
 
   const stopCamera = () => {
@@ -546,7 +564,7 @@ export default function KioskPage() {
                {isProcessing && <div className="absolute inset-0 bg-white z-30 animate-in fade-in out-fade-out duration-300" />}
                {countdown !== null && (
                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 z-20">
-                    <span className="text-[12rem] font-headline font-black italic text-white animate-bounce drop-shadow-[0_0_30px_rgba(255,51,153,0.9)]">{countdown}</span>
+                    <span className="text-[12rem] font-headline font-black italic text-white animate-bounce drop-shadow-[0_0_30px_rgba(255,51_153,0.9)]">{countdown}</span>
                  </div>
                )}
             </div>

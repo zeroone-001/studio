@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -45,7 +46,7 @@ export const STICKER_DEFS = [
   { id: "cat-face", icon: Cat, color: "text-orange-200", category: "CUTE" },
   { id: "pizza", icon: Pizza, color: "text-yellow-600", category: "CUTE" },
   { id: "coffee", icon: Coffee, color: "text-amber-900", category: "CUTE" },
-  { id: "ice-cream", icon: Kawaii.SushiSticker || IceCream, color: "text-pink-400", category: "CUTE" },
+  { id: "ice-cream", icon: IceCream, color: "text-pink-400", category: "CUTE" },
   { id: "cookie", icon: Cookie, color: "text-amber-700", category: "CUTE" },
   { id: "sushi", icon: Kawaii.SushiSticker, color: "", category: "CUTE" },
   { id: "mini-camera", icon: CameraIcon, color: "text-zinc-400", category: "PHOTO" },
@@ -555,10 +556,6 @@ export default function KioskPage() {
                     <span className="text-[12rem] font-headline font-black italic text-white animate-bounce drop-shadow-[0_0_30px_rgba(255,51,153,0.9)]">{countdown}</span>
                  </div>
                )}
-
-               <div className="absolute top-6 left-1/2 -translate-x-1/2 z-10">
-                  <span className="bg-black/60 backdrop-blur-md px-6 py-2 border border-white/20 text-xs font-black italic uppercase tracking-widest">Shot {currentShotIndex} of {packageSelected === 50 ? 3 : 6}</span>
-               </div>
             </div>
           </div>
         )}

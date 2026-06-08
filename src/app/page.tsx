@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -46,7 +45,7 @@ export const STICKER_DEFS = [
   { id: "cat-face", icon: Cat, color: "text-orange-200", category: "CUTE" },
   { id: "pizza", icon: Pizza, color: "text-yellow-600", category: "CUTE" },
   { id: "coffee", icon: Coffee, color: "text-amber-900", category: "CUTE" },
-  { id: "ice-cream", icon: IceCream, color: "text-pink-400", category: "CUTE" },
+  { id: "ice-cream", icon: Kawaii.IceCreamSticker || IceCream, color: "", category: "CUTE" },
   { id: "cookie", icon: Cookie, color: "text-amber-700", category: "CUTE" },
   { id: "sushi", icon: Kawaii.SushiSticker, color: "", category: "CUTE" },
   { id: "mini-camera", icon: CameraIcon, color: "text-zinc-400", category: "PHOTO" },
@@ -249,8 +248,8 @@ export default function KioskPage() {
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (appState === "printing" && printProgress === 100) {
-      // Logic: Ensure scan time (25s) before purging data for NO users.
-      // Give longer time (45s) for YES users for convenience.
+      // Logic: Ensure scan time before purging.
+      // 25s for NO users (Privacy), 45s for YES users.
       const timeout = promoConsent === false ? 25000 : 45000;
       timer = setTimeout(() => {
         resetSession();
@@ -297,11 +296,9 @@ export default function KioskPage() {
     const canvas = canvasRef.current;
     const context = canvas.getContext('2d');
     if (context) {
-      // Capture at video's native resolution for highest quality
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
       context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-      // Save directly as data URI for local storage persistence
       const data = canvas.toDataURL('image/jpeg', 0.85);
       KioskLogger.log('info', 'Capture', 'Shot buffer written to canvas and local state.');
       return data;
@@ -376,52 +373,52 @@ export default function KioskPage() {
     <KioskLayout>
       <canvas ref={canvasRef} className="hidden" />
       
-      {interruptedSession && appState === "welcome" && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-500">
-           <div className="bg-zinc-950 border-2 border-primary/40 p-10 max-w-md w-full text-center space-y-6 shadow-[0_0_50px_rgba(255,51,153,0.3)]">
-              <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto border-2 border-primary/20">
-                <AlertCircle className="w-10 h-10 text-primary animate-pulse" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="font-headline font-black text-2xl italic uppercase text-white">RECOVER SESSION</h3>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">The engine detected a restart during a live session.</p>
-              </div>
-              <div className="grid grid-cols-1 gap-3">
-                <NeonButton onClick={resumeSession} className="w-full !py-6">RESUME SESSION</NeonButton>
-                <button onClick={() => { setInterruptedSession(null); SessionStore.clear(); }} className="text-[10px] font-black uppercase text-white/40 hover:text-white transition-colors">START FRESH</button>
-              </div>
-           </div>
-        </div>
-      )}
-
-      <AdminAuthDialog 
-        isOpen={isAdminDialogOpen} 
-        onClose={() => setIsAdminDialogOpen(false)}
-        onAuthSuccess={() => setIsOwnerMode(true)}
-      />
-
-      {isOwnerMode && (
-        <AdminControls 
-          currentStatus={appState}
-          onJumpTo={setAppState}
-          onReset={resetSession}
-          onExitOwnerMode={() => setIsOwnerMode(false)}
-          hasPackage={!!packageSelected}
-          onSimulateCash={(amount) => setPaymentReceived(prev => prev + amount)}
-          onBypassPayment={(pkg) => { setPackageSelected(pkg); setPaymentReceived(pkg); setAppState("setup"); }}
-          usbStatus={usbHandle ? "connected" : "disconnected"}
-          onSetupUsb={() => setUsbHandle({})}
-          isDevMode={isDevMode}
-          onToggleDevMode={() => setIsDevMode(!isDevMode)}
-          isCameraActive={!!cameraStream}
-          onTestCamera={() => {
-            setAppState("test-camera");
-          }}
-        />
-      )}
-
-      <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-12 overflow-y-auto pt-36 sm:pt-48 pb-20 sm:pb-24 scrollbar-hide">
+      <div className="flex-1 w-full h-full flex flex-col items-center overflow-y-auto scrollbar-hide safe-area-spacing">
         
+        {interruptedSession && appState === "welcome" && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-500">
+             <div className="bg-zinc-950 border-2 border-primary/40 p-10 max-w-md w-full text-center space-y-6 shadow-[0_0_50px_rgba(255,51,153,0.3)]">
+                <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto border-2 border-primary/20">
+                  <AlertCircle className="w-10 h-10 text-primary animate-pulse" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="font-headline font-black text-2xl italic uppercase text-white">RECOVER SESSION</h3>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">The engine detected a restart during a live session.</p>
+                </div>
+                <div className="grid grid-cols-1 gap-3">
+                  <NeonButton onClick={resumeSession} className="w-full !py-6">RESUME SESSION</NeonButton>
+                  <button onClick={() => { setInterruptedSession(null); SessionStore.clear(); }} className="text-[10px] font-black uppercase text-white/40 hover:text-white transition-colors">START FRESH</button>
+                </div>
+             </div>
+          </div>
+        )}
+
+        <AdminAuthDialog 
+          isOpen={isAdminDialogOpen} 
+          onClose={() => setIsAdminDialogOpen(false)}
+          onAuthSuccess={() => setIsOwnerMode(true)}
+        />
+
+        {isOwnerMode && (
+          <AdminControls 
+            currentStatus={appState}
+            onJumpTo={setAppState}
+            onReset={resetSession}
+            onExitOwnerMode={() => setIsOwnerMode(false)}
+            hasPackage={!!packageSelected}
+            onSimulateCash={(amount) => setPaymentReceived(prev => prev + amount)}
+            onBypassPayment={(pkg) => { setPackageSelected(pkg); setPaymentReceived(pkg); setAppState("setup"); }}
+            usbStatus={usbHandle ? "connected" : "disconnected"}
+            onSetupUsb={() => setUsbHandle({})}
+            isDevMode={isDevMode}
+            onToggleDevMode={() => setIsDevMode(!isDevMode)}
+            isCameraActive={!!cameraStream}
+            onTestCamera={() => {
+              setAppState("test-camera");
+            }}
+          />
+        )}
+
         {appState === "welcome" && (
           <div className="flex flex-col items-center w-full max-w-lg animate-in fade-in slide-in-from-bottom-4 duration-1000" style={{ paddingTop: '120px' }}>
             <div className="flex justify-center mb-[40px]" onClick={handleHiddenTrigger}>
@@ -439,14 +436,14 @@ export default function KioskPage() {
             <div className="flex justify-center mb-[20px] w-full px-4">
               <p className="font-bold text-[10px] sm:text-xs tracking-[0.5em] uppercase text-white/40 text-center">PHOTOBOOTH</p>
             </div>
-            <div className="flex justify-center w-full">
-              <NeonButton onClick={() => setAppState("payment")} className="w-[75%] sm:w-[80%] text-2xl py-10" style={{ marginTop: '80px' }}>READY?</NeonButton>
+            <div className="flex justify-center w-full" style={{ marginTop: '80px' }}>
+              <NeonButton onClick={() => setAppState("payment")} className="w-[75%] sm:w-[80%] text-2xl py-10">READY?</NeonButton>
             </div>
           </div>
         )}
 
         {appState === "payment" && (
-          <div className="w-full max-w-md animate-in slide-in-from-bottom-8 duration-500 text-center">
+          <div className="w-full max-w-md animate-in slide-in-from-bottom-8 duration-500 text-center py-20 px-6">
             <div className="mb-10">
                <div className="w-28 h-28 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-dashed border-primary/30 animate-pulse">
                   <Wallet className="w-12 h-12 text-primary" />
@@ -467,7 +464,7 @@ export default function KioskPage() {
         )}
 
         {(appState === "setup" || appState === "test-camera") && (
-          <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in duration-500">
+          <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in duration-500 py-10 px-6">
              <div className="relative w-full aspect-[3/4] max-h-[60vh] mx-auto overflow-hidden bg-zinc-900 border-2 border-white/20">
                 {cameraError ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-black/60">
@@ -543,14 +540,10 @@ export default function KioskPage() {
         )}
 
         {appState === "capturing" && (
-          <div className="w-full h-full flex flex-col items-center justify-center">
+          <div className="w-full h-full flex flex-col items-center justify-center py-10 px-6">
             <div className="relative aspect-[3/4] max-h-[65vh] w-full max-w-lg bg-zinc-900 overflow-hidden shadow-[0_0_60px_rgba(255,51,153,0.4)] border-4 border-white">
-               {/* LIVE PREVIEW: Visible during countdown for posing */}
                <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} />
-               
-               {/* FLASH EFFECT */}
                {isProcessing && <div className="absolute inset-0 bg-white z-30 animate-in fade-in out-fade-out duration-300" />}
-
                {countdown !== null && (
                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 z-20">
                     <span className="text-[12rem] font-headline font-black italic text-white animate-bounce drop-shadow-[0_0_30px_rgba(255,51,153,0.9)]">{countdown}</span>
@@ -561,7 +554,7 @@ export default function KioskPage() {
         )}
 
         {appState === "review" && (
-          <div className="w-full max-w-lg animate-in fade-in duration-500 text-center">
+          <div className="w-full max-w-lg animate-in fade-in duration-500 text-center py-10 px-6">
             <h2 className="font-headline font-black text-4xl mb-6 italic uppercase">Looking Sharp!</h2>
             <div className="w-full max-w-[450px] mb-8 mx-auto">
                {selectedBlueprint && (
@@ -576,7 +569,7 @@ export default function KioskPage() {
         )}
 
         {appState === "decorating" && (
-          <div className="w-full max-w-6xl flex flex-col lg:flex-row gap-8 items-start animate-in fade-in duration-500">
+          <div className="w-full max-w-6xl flex flex-col lg:flex-row gap-8 items-start animate-in fade-in duration-500 py-10 px-6">
              <div className="relative flex-1 w-full max-h-[70vh] flex items-center justify-center">
                 <div className="relative w-full h-full max-w-[450px]">
                   {selectedBlueprint && (
@@ -633,7 +626,7 @@ export default function KioskPage() {
         )}
 
         {appState === "consent" && (
-          <div className="w-full max-w-xl animate-in slide-in-from-bottom-8 duration-500 text-center">
+          <div className="w-full max-w-xl animate-in slide-in-from-bottom-8 duration-500 text-center py-20 px-6">
             <div className="mb-10">
                <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-primary/30">
                   <Sparkles className="w-12 h-12 text-primary" />
@@ -652,7 +645,7 @@ export default function KioskPage() {
         )}
 
         {appState === "printing" && (
-          <div className="w-full max-w-4xl animate-in fade-in duration-500 text-center">
+          <div className="w-full max-w-4xl animate-in fade-in duration-500 text-center py-20 px-6">
              {printProgress < 100 ? (
                 <div className="space-y-8 py-12">
                    <div className="relative w-32 h-32 mx-auto">

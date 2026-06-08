@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from "react";
@@ -85,6 +84,18 @@ export const SushiSticker = ({ className }: KawaiiProps) => (
     <rect x="40" y="40" width="20" height="40" fill="none" stroke="#333" strokeWidth="4" opacity="0.2" />
     <circle cx="40" cy="65" r="2" fill="#333" />
     <circle cx="60" cy="65" r="2" fill="#333" />
+  </svg>
+);
+
+export const IceCreamSticker = ({ className }: KawaiiProps) => (
+  <svg viewBox="0 0 100 100" className={cn("w-full h-full", className)}>
+    <path d="M50 90L30 60H70L50 90Z" fill="#DEB887" stroke="#8B4513" strokeWidth="2" />
+    <circle cx="50" cy="45" r="20" fill="#FFB7CE" stroke="white" strokeWidth="2" />
+    <circle cx="40" cy="40" r="2" fill="#333" />
+    <circle cx="60" cy="40" r="2" fill="#333" />
+    <circle cx="35" cy="45" r="4" fill="#FFD1DC" opacity="0.5" />
+    <circle cx="65" cy="45" r="4" fill="#FFD1DC" opacity="0.5" />
+    <path d="M48 50C48 50 49 52 50 52C51 52 52 50 52 50" fill="none" stroke="#333" strokeWidth="1" />
   </svg>
 );
 

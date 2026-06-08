@@ -55,6 +55,8 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    align-items: center;
+    justify-content: flex-start;
   }
   .safe-area-spacing {
     padding-top: env(safe-area-inset-top);

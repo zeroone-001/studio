@@ -89,10 +89,9 @@ export function KioskLayout({ children, className }: KioskLayoutProps) {
         <div className="absolute inset-0 bg-gradient-to-b from-primary/15 via-transparent to-primary/15" />
       </div>
 
-      {/* Portrait Container - Optimized for Tablet Heights */}
+      {/* Portrait Container - Optimized for Tablet Heights with Auto Screen Fit */}
       <div className={cn(
         "portrait-container z-10 bg-black/20 backdrop-blur-[1px]",
-        "safe-area-spacing",
         className
       )}>
         {children}

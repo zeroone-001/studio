@@ -6,6 +6,10 @@ import { Printer, Wallet, Wifi, ShieldCheck, Database, RefreshCcw, Video } from 
 import { cn } from "@/lib/utils";
 import { SessionStore } from "@/lib/kiosk/persistence";
 
+/**
+ * Health Monitor component.
+ * This component is intended to be visible only to the owner in Owner Mode.
+ */
 export function HealthMonitor() {
   const [status, setStatus] = useState({
     online: true,
@@ -21,7 +25,6 @@ export function HealthMonitor() {
       const stats = SessionStore.getStorageStats();
       const queue = SessionStore.getSyncQueue();
       
-      // Simple probe to see if media devices are available
       const checkCamera = async () => {
         try {
           const devices = await navigator.mediaDevices.enumerateDevices();
@@ -33,7 +36,7 @@ export function HealthMonitor() {
 
       checkCamera().then(camActive => {
         setStatus({
-          online: navigator.onLine,
+          online: typeof navigator !== 'undefined' ? navigator.onLine : true,
           storage: `${stats.usedMB}MB`,
           storagePercent: stats.percent,
           syncPending: queue.length,
@@ -44,13 +47,17 @@ export function HealthMonitor() {
     };
 
     const interval = setInterval(checkHealth, 3000);
-    window.addEventListener('online', checkHealth);
-    window.addEventListener('offline', checkHealth);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', checkHealth);
+      window.addEventListener('offline', checkHealth);
+    }
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener('online', checkHealth);
-      window.removeEventListener('offline', checkHealth);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('online', checkHealth);
+        window.removeEventListener('offline', checkHealth);
+      }
     };
   }, []);
 

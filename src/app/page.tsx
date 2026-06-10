@@ -452,8 +452,8 @@ export default function KioskPage() {
               onBypassPayment={(pkg) => { setPackageSelected(pkg); setPaymentReceived(pkg); setAppState("setup"); }}
               usbStatus={usbHandle ? "connected" : "disconnected"}
               onSetupUsb={() => setUsbHandle({})}
-              isDevMode={true}
-              onToggleDevMode={() => {}}
+              isDevMode={isDevMode}
+              onToggleDevMode={() => setIsDevMode(!isDevMode)}
               isCameraActive={!!cameraStream}
               onTestCamera={() => setAppState("test-camera")}
               cameras={availableCameras}

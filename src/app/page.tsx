@@ -121,6 +121,7 @@ export default function KioskPage() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>("");
+  const [cameraResolution, setCameraResolution] = useState<string>("");
 
   const [selectedFilter, setSelectedFilter] = useState(FILTERS[0]);
   const [selectedBlueprint, setSelectedBlueprint] = useState<FrameBlueprint | null>(null);
@@ -151,7 +152,6 @@ export default function KioskPage() {
     });
   }, []);
 
-  // PERSISTENCE: Save session state to device local storage
   useEffect(() => {
     if (appState !== "welcome" && appState !== "printing" && appState !== "test-camera") {
       SessionStore.save({
@@ -164,7 +164,6 @@ export default function KioskPage() {
     }
   }, [appState, packageSelected, paymentReceived, capturedPhotos, promoConsent]);
 
-  // RECOVERY: Load interrupted sessions on mount
   useEffect(() => {
     const saved = SessionStore.load();
     if (saved && saved.state !== "welcome") {
@@ -172,7 +171,6 @@ export default function KioskPage() {
       KioskLogger.log('info', 'Recovery', `Found interrupted session at state: ${saved.state}`);
     }
     
-    // Hardware Handshake: Enumerate cameras on startup
     const detectCameras = async () => {
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
@@ -182,7 +180,7 @@ export default function KioskPage() {
           setSelectedCameraId(videoDevices[0].deviceId);
         }
       } catch (err) {
-        KioskLogger.log('error', 'Camera', 'Failed to enumerate devices on startup.');
+        KioskLogger.log('warn', 'Camera', 'Device enumeration limited. Handshake pending.');
       }
     };
     detectCameras();
@@ -228,7 +226,6 @@ export default function KioskPage() {
     }
   }, [appState, printProgress]);
 
-  // USB HYBRID SYNC: Transfer photos of consenting users to USB drive
   useEffect(() => {
     if (appState === "printing" && promoConsent === true) {
       if (usbHandle) {
@@ -245,7 +242,7 @@ export default function KioskPage() {
 
   const resetSession = useCallback(() => {
     stopCamera();
-    SessionStore.clear(); // Deep wipe of local storage buffers
+    SessionStore.clear(); 
     setAppState("welcome");
     setPaymentReceived(0);
     setPackageSelected(null);
@@ -264,7 +261,6 @@ export default function KioskPage() {
     KioskLogger.log('info', 'System', 'Full state cleanup and session reset.');
   }, []);
 
-  // PRIVACY PURGE: Automatic session deletion logic
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (appState === "printing" && printProgress === 100) {
@@ -279,12 +275,19 @@ export default function KioskPage() {
   const startCamera = async (deviceId?: string) => {
     if (cameraStream) stopCamera();
     
-    // Multi-stage Hardware Handshake for automatic camera detection
     const tryStream = async (constraints: MediaStreamConstraints) => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         setCameraStream(stream);
         if (videoRef.current) videoRef.current.srcObject = stream;
+        
+        // Capture resolution for owner mode
+        const track = stream.getVideoTracks()[0];
+        const settings = track.getSettings();
+        if (settings.width && settings.height) {
+          setCameraResolution(`${settings.width}x${settings.height}`);
+        }
+
         setCameraError(null);
         KioskLogger.log('info', 'Camera', `Hardware handshake successful. Device: ${deviceId || 'default'}`);
         return true;
@@ -293,7 +296,7 @@ export default function KioskPage() {
       }
     };
 
-    // Attempt 1: High-fidelity portrait (iPad/Tablet optimized)
+    // Stage 1: High Fidelity Portrait
     let success = await tryStream({
       video: { 
         deviceId: deviceId ? { exact: deviceId } : undefined,
@@ -305,7 +308,7 @@ export default function KioskPage() {
       audio: false
     });
 
-    // Attempt 2: Standard video fallback (Automatic detection)
+    // Stage 2: Standard Fallback
     if (!success) {
       success = await tryStream({ 
         video: deviceId ? { deviceId: { exact: deviceId } } : true, 
@@ -352,13 +355,12 @@ export default function KioskPage() {
     
     for (let i = 0; i < totalShots; i++) {
       setCurrentShotIndex(i + 1);
-      // Countdown Phase: Live preview visible behind glowing numbers
       for (let c = 3; c > 0; c--) {
         setCountdown(c);
         await new Promise(r => setTimeout(r, 1000));
       }
       setCountdown(null);
-      setIsProcessing(true); // Flash visual effect
+      setIsProcessing(true);
       const shot = takePhoto();
       if (shot) photos.push(shot);
       await new Promise(r => setTimeout(r, 600)); 
@@ -366,7 +368,7 @@ export default function KioskPage() {
     }
     
     setCapturedPhotos(photos);
-    setAppState("review"); // Transition to results page
+    setAppState("review");
   };
 
   useEffect(() => {
@@ -450,13 +452,14 @@ export default function KioskPage() {
               onBypassPayment={(pkg) => { setPackageSelected(pkg); setPaymentReceived(pkg); setAppState("setup"); }}
               usbStatus={usbHandle ? "connected" : "disconnected"}
               onSetupUsb={() => setUsbHandle({})}
-              isDevMode={isDevMode}
-              onToggleDevMode={() => setIsDevMode(!isDevMode)}
+              isDevMode={true}
+              onToggleDevMode={() => {}}
               isCameraActive={!!cameraStream}
               onTestCamera={() => setAppState("test-camera")}
               cameras={availableCameras}
               selectedCameraId={selectedCameraId}
               onSelectCamera={setSelectedCameraId}
+              resolution={cameraResolution}
             />
             <HealthMonitor />
           </>
@@ -473,13 +476,13 @@ export default function KioskPage() {
                 <span className="text-primary">STUDIO</span>
               </h1>
             </div>
-            <div className="flex justify-center mb-[30px] w-full px-4">
+            <div className="flex justify-center mb-[20px] w-full px-4">
               <h2 className="font-headline font-black text-2xl sm:text-3xl tracking-[0.2em] uppercase italic text-white/90 text-center">TOUCH TO START</h2>
             </div>
-            <div className="flex justify-center mb-[20px] w-full px-4">
+            <div className="flex justify-center mb-[80px] w-full px-4">
               <p className="font-bold text-[10px] sm:text-xs tracking-[0.5em] uppercase text-white/40 text-center">PHOTOBOOTH</p>
             </div>
-            <div className="flex justify-center w-full" style={{ marginTop: '80px' }}>
+            <div className="flex justify-center w-full">
               <NeonButton onClick={() => setAppState("payment")} className="w-[75%] sm:w-[80%] text-2xl py-10">READY?</NeonButton>
             </div>
           </div>
@@ -508,7 +511,7 @@ export default function KioskPage() {
 
         {(appState === "setup" || appState === "test-camera") && (
           <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in duration-500 py-10 px-6">
-             <div className="relative w-full aspect-[3/4] max-h-[60vh] mx-auto overflow-hidden bg-zinc-900 border-2 border-white/20">
+             <div className="relative w-full aspect-[3/4] max-h-[60vh] mx-auto overflow-hidden bg-zinc-900 border-2 border-white/20 shadow-[0_0_30px_rgba(255,51,153,0.3)]">
                 {cameraError ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-black/60">
                      <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
@@ -518,7 +521,7 @@ export default function KioskPage() {
                   </div>
                 ) : (
                   <>
-                    <video ref={videoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover", selectedFilter.class)} />
+                    <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} />
                     {appState === "test-camera" && (
                       <div className="absolute top-4 left-4 bg-black/80 px-3 py-1.5 border border-primary/40">
                         <span className="text-[8px] font-black uppercase text-primary tracking-widest">Diagnostic Stream Active</span>
@@ -581,7 +584,7 @@ export default function KioskPage() {
               <div className="grid grid-cols-1 gap-4 pt-6">
                 {appState === "test-camera" ? (
                   <div className="space-y-4">
-                    <button onClick={takePhoto} className="w-full bg-primary/20 border border-primary text-[10px] font-black uppercase py-4">Capture Test Shot</button>
+                    <button onClick={() => setAppState("capturing")} className="w-full bg-primary/20 border border-primary text-[10px] font-black uppercase py-6">Test Countdown & Review</button>
                     <button onClick={resetSession} className="w-full border-2 border-white font-headline font-black text-xl py-8 italic uppercase hover:bg-white hover:text-black">EXIT TEST MODE</button>
                   </div>
                 ) : (
@@ -594,12 +597,12 @@ export default function KioskPage() {
 
         {appState === "capturing" && (
           <div className="w-full h-full flex flex-col items-center justify-center py-10 px-6">
-            <div className="relative aspect-[3/4] max-h-[65vh] w-full max-w-lg bg-zinc-900 overflow-hidden shadow-[0_0_60px_rgba(255,51,153,0.4)] border-4 border-white">
+            <div className="relative aspect-[3/4] max-h-[75vh] w-full max-w-lg bg-zinc-900 overflow-hidden shadow-[0_0_60px_rgba(255,51,153,0.4)] border-4 border-white">
                <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} />
                {isProcessing && <div className="absolute inset-0 bg-white z-30 animate-in fade-in out-fade-out duration-300" />}
                {countdown !== null && (
-                 <div className="absolute inset-0 flex items-center justify-center bg-black/20 z-20 pointer-events-none">
-                    <span className="text-[12rem] font-headline font-black italic text-white animate-bounce drop-shadow-[0_0_30px_rgba(255,51_153,0.9)]">{countdown}</span>
+                 <div className="absolute inset-0 flex items-center justify-center bg-transparent z-20 pointer-events-none">
+                    <span className="text-[12rem] font-headline font-black italic text-white animate-bounce drop-shadow-[0_0_30px_rgba(255,51,153,0.9)]">{countdown}</span>
                  </div>
                )}
             </div>
@@ -609,17 +612,17 @@ export default function KioskPage() {
         {appState === "review" && (
           <div className="w-full max-w-lg animate-in fade-in duration-500 text-center py-10 px-6">
             <h2 className="font-headline font-black text-4xl mb-6 italic uppercase">Looking Sharp!</h2>
-            <div className="w-full max-w-[450px] mb-8 mx-auto">
+            <div className="w-full max-w-[450px] mb-8 mx-auto shadow-[0_0_40px_rgba(0,0,0,0.5)] border-2 border-white/20">
                {selectedBlueprint && (
                  <BlueprintFrame blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.class} isPreview />
                )}
             </div>
             <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
                <NeonButton onClick={() => setAppState("decorating")} className="w-full py-8 text-xl flex items-center justify-center gap-2">
-                 <CheckCircle2 className="w-6 h-6" /> PROCEED
+                 <CheckCircle2 className="w-6 h-6" /> USE PHOTO
                </NeonButton>
-               <button onClick={() => setAppState("setup")} className="w-full border-2 border-white font-headline font-black text-xl py-8 italic uppercase hover:bg-white hover:text-black flex items-center justify-center gap-2">
-                 <RotateCcw className="w-6 h-6" /> RETAKE
+               <button onClick={() => { setCapturedPhotos([]); setAppState("setup"); }} className="w-full border-2 border-white font-headline font-black text-xl py-8 italic uppercase hover:bg-white hover:text-black flex items-center justify-center gap-2 transition-all active:scale-95">
+                 <RotateCcw className="w-6 h-6" /> RETAKE PHOTO
                </button>
             </div>
           </div>
@@ -695,8 +698,8 @@ export default function KioskPage() {
                </div>
             </div>
             <div className="grid grid-cols-1 gap-4 px-4">
-               <button onClick={() => { setPromoConsent(true); setAppState("printing"); }} className="w-full bg-primary py-8 text-xl font-headline font-black italic uppercase shadow-[0_0_20px_rgba(255,51,153,0.4)]">Yes, we allow it / Oo, pumapayag kami</button>
-               <button onClick={() => { setPromoConsent(false); setAppState("printing"); }} className="w-full border-2 border-white/20 font-headline font-black text-lg py-6 italic uppercase text-white/40">No, thank you / Hindi po</button>
+               <button onClick={() => { setPromoConsent(true); setAppState("printing"); }} className="w-full bg-primary py-8 text-xl font-headline font-black italic uppercase shadow-[0_0_20px_rgba(255,51,153,0.4)] transition-all active:scale-95">Yes, we allow it / Oo, pumapayag kami</button>
+               <button onClick={() => { setPromoConsent(false); setAppState("printing"); }} className="w-full border-2 border-white/20 font-headline font-black text-lg py-6 italic uppercase text-white/40 transition-all active:scale-95">No, thank you / Hindi po</button>
             </div>
           </div>
         )}
@@ -721,18 +724,18 @@ export default function KioskPage() {
                 <div className="flex flex-col items-center space-y-12 animate-in slide-in-from-bottom-8">
                    <h2 className="font-headline font-black text-5xl sm:text-6xl italic uppercase leading-none">THANK <span className="text-primary">YOU!</span></h2>
                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 w-full">
-                      <div className="bg-white/5 border border-white/10 p-8 flex flex-col items-center space-y-6 rounded-2xl">
+                      <div className="bg-white/5 border border-white/10 p-8 flex flex-col items-center space-y-6 rounded-2xl shadow-xl">
                          <QrCode className="w-12 h-12 text-primary" />
                          <h3 className="font-headline font-black text-xl uppercase italic">SOFT COPY</h3>
-                         <div className="aspect-square w-48 sm:w-64 bg-white p-4 rounded-2xl shadow-xl">
+                         <div className="aspect-square w-48 sm:w-64 bg-white p-4 rounded-2xl shadow-2xl">
                             <img src={softCopyQrUrl} alt="Soft Copy QR" className="w-full h-full object-contain" />
                          </div>
                          {promoConsent === false && <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest animate-pulse">Temporary Link - Auto-deletes soon</p>}
                       </div>
-                      <div className="bg-white/5 border border-white/10 p-8 flex flex-col items-center space-y-6 rounded-2xl">
+                      <div className="bg-white/5 border border-white/10 p-8 flex flex-col items-center space-y-6 rounded-2xl shadow-xl">
                          <Facebook className="w-12 h-12 text-blue-500" />
                          <h3 className="font-headline font-black text-xl uppercase italic">FOLLOW US</h3>
-                         <div className="aspect-square w-48 sm:w-64 bg-white p-4 rounded-2xl shadow-xl">
+                         <div className="aspect-square w-48 sm:w-64 bg-white p-4 rounded-2xl shadow-2xl">
                             <img src="https://picsum.photos/seed/fb-qr/500/500" alt="Facebook QR" className="w-full h-full object-contain" />
                          </div>
                       </div>

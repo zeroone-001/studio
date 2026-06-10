@@ -53,6 +53,7 @@ interface AdminControlsProps {
   cameras?: MediaDeviceInfo[];
   selectedCameraId?: string;
   onSelectCamera?: (id: string) => void;
+  resolution?: string;
 }
 
 export function AdminControls({ 
@@ -69,7 +70,8 @@ export function AdminControls({
   onTestCamera,
   cameras = [],
   selectedCameraId,
-  onSelectCamera
+  onSelectCamera,
+  resolution
 }: AdminControlsProps) {
   const [view, setView] = useState<'main' | 'logs' | 'diag' | 'hardware'>('main');
   const [stats, setStats] = useState({ used: '0MB', percent: '0', queue: 0 });
@@ -195,6 +197,10 @@ export function AdminControls({
                 <span className={cn("text-[8px] font-black uppercase", isCameraActive ? "text-green-500" : "text-red-500")}>
                   {isCameraActive ? "READY" : "OFFLINE"}
                 </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] font-black uppercase text-primary">Resolution</span>
+                <span className="text-[8px] font-black uppercase text-white">{resolution || 'Detecting...'}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-[8px] font-black uppercase text-primary">System Fit</span>

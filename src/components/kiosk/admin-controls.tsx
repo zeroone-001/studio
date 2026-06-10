@@ -25,11 +25,14 @@ import {
   HardDrive,
   Database,
   Wifi,
-  ShieldCheck
+  ShieldCheck,
+  Video,
+  MonitorSmartphone
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
 import { SessionStore } from "@/lib/kiosk/persistence";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "test-camera";
 
@@ -47,6 +50,9 @@ interface AdminControlsProps {
   onToggleDevMode: () => void;
   isCameraActive?: boolean;
   onTestCamera?: () => void;
+  cameras?: MediaDeviceInfo[];
+  selectedCameraId?: string;
+  onSelectCamera?: (id: string) => void;
 }
 
 export function AdminControls({ 
@@ -60,9 +66,12 @@ export function AdminControls({
   isDevMode,
   onToggleDevMode,
   isCameraActive = false,
-  onTestCamera
+  onTestCamera,
+  cameras = [],
+  selectedCameraId,
+  onSelectCamera
 }: AdminControlsProps) {
-  const [view, setView] = useState<'main' | 'logs' | 'diag'>('main');
+  const [view, setView] = useState<'main' | 'logs' | 'diag' | 'hardware'>('main');
   const [stats, setStats] = useState({ used: '0MB', percent: '0', queue: 0 });
   const [isMaintenance, setIsMaintenance] = useState(false);
   const logs = KioskLogger.getLogs();
@@ -93,10 +102,11 @@ export function AdminControls({
     <div className="fixed bottom-16 right-4 z-[100] flex flex-col items-end gap-2 scale-90 sm:scale-100 origin-bottom-right">
       <div className="bg-zinc-950/95 backdrop-blur-md border-2 border-primary/50 p-4 shadow-[0_0_30px_rgba(255,51,153,0.3)] w-80 animate-in slide-in-from-right-4">
         <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/10">
-          <div className="flex items-center gap-3">
-             <button onClick={() => setView('main')} className={cn("text-[10px] font-black uppercase tracking-tighter", view === 'main' ? "text-primary" : "text-white/40")}>Control</button>
-             <button onClick={() => setView('logs')} className={cn("text-[10px] font-black uppercase tracking-tighter", view === 'logs' ? "text-primary" : "text-white/40")}>Logs</button>
-             <button onClick={() => setView('diag')} className={cn("text-[10px] font-black uppercase tracking-tighter", view === 'diag' ? "text-primary" : "text-white/40")}>Diag</button>
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+             <button onClick={() => setView('main')} className={cn("text-[8px] font-black uppercase tracking-tighter px-1", view === 'main' ? "text-primary" : "text-white/40")}>Control</button>
+             <button onClick={() => setView('logs')} className={cn("text-[8px] font-black uppercase tracking-tighter px-1", view === 'logs' ? "text-primary" : "text-white/40")}>Logs</button>
+             <button onClick={() => setView('hardware')} className={cn("text-[8px] font-black uppercase tracking-tighter px-1", view === 'hardware' ? "text-primary" : "text-white/40")}>H/W</button>
+             <button onClick={() => setView('diag')} className={cn("text-[8px] font-black uppercase tracking-tighter px-1", view === 'diag' ? "text-primary" : "text-white/40")}>Diag</button>
           </div>
           <button onClick={onExitOwnerMode} className="text-white/40 hover:text-white">
             <LogOut className="w-4 h-4" />
@@ -131,10 +141,9 @@ export function AdminControls({
                 currentStatus === 'test-camera' ? "bg-primary border-primary text-white" : "bg-white/5 border-white/20 text-white/60"
               )}
             >
-              <Sparkles className="w-4 h-4" /> Visual Test Mode
+              <MonitorSmartphone className="w-4 h-4" /> Visual Test Mode
             </button>
 
-            {/* Owner access to skip payment and jump to packages */}
             <div className="grid grid-cols-2 gap-2">
                <button onClick={() => onBypassPayment(50)} className="bg-primary/20 border border-primary/40 py-2 text-[9px] font-black uppercase">P50 Bypass</button>
                <button onClick={() => onBypassPayment(100)} className="bg-primary/20 border border-primary/40 py-2 text-[9px] font-black uppercase">P100 Bypass</button>
@@ -159,6 +168,39 @@ export function AdminControls({
             <button onClick={onReset} className="w-full bg-red-500/10 border border-red-500/30 py-2 text-[10px] font-black uppercase text-red-500 flex items-center justify-center gap-2">
               <RefreshCcw className="w-3 h-3" /> Emergency Reset
             </button>
+          </div>
+        )}
+
+        {view === 'hardware' && (
+          <div className="space-y-4 animate-in fade-in duration-300">
+            <div className="space-y-2">
+              <label className="text-[8px] font-black uppercase text-white/40 tracking-widest">Select Video Source</label>
+              <Select value={selectedCameraId} onValueChange={onSelectCamera}>
+                <SelectTrigger className="bg-white/5 border-white/10 text-[10px] h-10 uppercase font-bold">
+                  <SelectValue placeholder="No Camera Detected" />
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-950 border-white/20">
+                  {cameras.map((camera) => (
+                    <SelectItem key={camera.deviceId} value={camera.deviceId} className="text-[10px] uppercase font-bold">
+                      {camera.label || `Camera ${camera.deviceId.slice(0, 5)}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="bg-primary/10 border border-primary/30 p-4 space-y-2 rounded-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] font-black uppercase text-primary">Camera State</span>
+                <span className={cn("text-[8px] font-black uppercase", isCameraActive ? "text-green-500" : "text-red-500")}>
+                  {isCameraActive ? "READY" : "OFFLINE"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] font-black uppercase text-primary">System Fit</span>
+                <span className="text-[8px] font-black uppercase text-white">Auto-Portrait</span>
+              </div>
+            </div>
           </div>
         )}
 
@@ -192,10 +234,6 @@ export function AdminControls({
                 <div className="flex justify-between text-[8px] font-bold uppercase">
                    <span className="text-white/40">Pending Sync</span>
                    <span className={cn(stats.queue > 0 ? "text-primary" : "text-white/40")}>{stats.queue} Items</span>
-                </div>
-                <div className="flex justify-between text-[8px] font-bold uppercase">
-                   <span className="text-white/40">Hardware Stream</span>
-                   <span className={isCameraActive ? "text-green-500" : "text-red-500"}>{isCameraActive ? "CONNECTED" : "OFFLINE"}</span>
                 </div>
                 <div className="flex justify-between text-[8px] font-bold uppercase">
                    <span className="text-white/40">USB Storage</span>

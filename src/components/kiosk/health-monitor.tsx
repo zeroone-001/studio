@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Printer, Wallet, Wifi, ShieldCheck, Database, RefreshCcw } from "lucide-react";
+import { Printer, Wallet, Wifi, ShieldCheck, Database, RefreshCcw, Video } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SessionStore } from "@/lib/kiosk/persistence";
 
@@ -13,6 +13,7 @@ export function HealthMonitor() {
     storagePercent: "0",
     syncPending: 0,
     printer: "ready",
+    camera: false
   });
 
   useEffect(() => {
@@ -20,12 +21,25 @@ export function HealthMonitor() {
       const stats = SessionStore.getStorageStats();
       const queue = SessionStore.getSyncQueue();
       
-      setStatus({
-        online: navigator.onLine,
-        storage: `${stats.usedMB}MB`,
-        storagePercent: stats.percent,
-        syncPending: queue.length,
-        printer: "ready",
+      // Simple probe to see if media devices are available
+      const checkCamera = async () => {
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          return devices.some(d => d.kind === 'videoinput');
+        } catch {
+          return false;
+        }
+      };
+
+      checkCamera().then(camActive => {
+        setStatus({
+          online: navigator.onLine,
+          storage: `${stats.usedMB}MB`,
+          storagePercent: stats.percent,
+          syncPending: queue.length,
+          printer: "ready",
+          camera: camActive
+        });
       });
     };
 
@@ -42,10 +56,14 @@ export function HealthMonitor() {
 
   return (
     <div className="fixed bottom-2 left-6 right-6 z-[40] flex justify-between items-center pointer-events-none select-none">
-      <div className="flex items-center gap-4 opacity-30 hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-4 opacity-30 hover:opacity-100 transition-opacity pointer-events-auto">
         <div className="flex items-center gap-1 text-[8px] font-black uppercase text-white tracking-tighter">
           <Wifi className={cn("w-2.5 h-2.5", status.online ? "text-green-500" : "text-red-500")} />
           <span>{status.online ? "Cloud Active" : "Offline Mode"}</span>
+        </div>
+        <div className="flex items-center gap-1 text-[8px] font-black uppercase text-white tracking-tighter">
+          <Video className={cn("w-2.5 h-2.5", status.camera ? "text-green-500" : "text-red-500")} />
+          <span>Stream: {status.camera ? "Active" : "Disconnected"}</span>
         </div>
         <div className="flex items-center gap-1 text-[8px] font-black uppercase text-white tracking-tighter">
           <Database className={cn("w-2.5 h-2.5", parseInt(status.storagePercent) > 80 ? "text-red-500" : "text-blue-400")} />

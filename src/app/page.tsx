@@ -11,7 +11,8 @@ import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
   Wallet, Sparkles, Frame, Quote, Trash2, Cat, Moon, Sun, 
   Coffee, Pizza, Flower2, Crown, Layers, CameraIcon, Flashlight, User, HeartIcon,
-  QrCode, Facebook, Printer, Usb, AlertCircle, Star, IceCream, Cookie, Ghost, PartyPopper
+  QrCode, Facebook, Printer, Usb, AlertCircle, Star, IceCream, Cookie, Ghost, PartyPopper,
+  CheckCircle2, RotateCcw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -118,6 +119,8 @@ export default function KioskPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState<string>("");
 
   const [selectedFilter, setSelectedFilter] = useState(FILTERS[0]);
   const [selectedBlueprint, setSelectedBlueprint] = useState<FrameBlueprint | null>(null);
@@ -168,7 +171,22 @@ export default function KioskPage() {
       setInterruptedSession(saved);
       KioskLogger.log('info', 'Recovery', `Found interrupted session at state: ${saved.state}`);
     }
-  }, []);
+    
+    // Hardware Handshake: Enumerate cameras on startup
+    const detectCameras = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        setAvailableCameras(videoDevices);
+        if (videoDevices.length > 0 && !selectedCameraId) {
+          setSelectedCameraId(videoDevices[0].deviceId);
+        }
+      } catch (err) {
+        KioskLogger.log('error', 'Camera', 'Failed to enumerate devices on startup.');
+      }
+    };
+    detectCameras();
+  }, [selectedCameraId]);
 
   const resumeSession = () => {
     if (interruptedSession) {
@@ -250,8 +268,6 @@ export default function KioskPage() {
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (appState === "printing" && printProgress === 100) {
-      // Logic: Ensure scan time before purging.
-      // 25s for NO users (Privacy), 45s for YES users.
       const timeout = promoConsent === false ? 25000 : 45000;
       timer = setTimeout(() => {
         resetSession();
@@ -260,8 +276,8 @@ export default function KioskPage() {
     return () => clearTimeout(timer);
   }, [appState, printProgress, resetSession, promoConsent]);
 
-  const startCamera = async () => {
-    if (cameraStream) return true;
+  const startCamera = async (deviceId?: string) => {
+    if (cameraStream) stopCamera();
     
     // Multi-stage Hardware Handshake for automatic camera detection
     const tryStream = async (constraints: MediaStreamConstraints) => {
@@ -270,7 +286,7 @@ export default function KioskPage() {
         setCameraStream(stream);
         if (videoRef.current) videoRef.current.srcObject = stream;
         setCameraError(null);
-        KioskLogger.log('info', 'Camera', 'Hardware handshake successful.');
+        KioskLogger.log('info', 'Camera', `Hardware handshake successful. Device: ${deviceId || 'default'}`);
         return true;
       } catch (e) {
         return false;
@@ -280,7 +296,8 @@ export default function KioskPage() {
     // Attempt 1: High-fidelity portrait (iPad/Tablet optimized)
     let success = await tryStream({
       video: { 
-        facingMode: "user", 
+        deviceId: deviceId ? { exact: deviceId } : undefined,
+        facingMode: deviceId ? undefined : "user", 
         width: { ideal: 1280 }, 
         height: { ideal: 1706 }, 
         frameRate: { ideal: 30 } 
@@ -290,7 +307,10 @@ export default function KioskPage() {
 
     // Attempt 2: Standard video fallback (Automatic detection)
     if (!success) {
-      success = await tryStream({ video: true, audio: false });
+      success = await tryStream({ 
+        video: deviceId ? { deviceId: { exact: deviceId } } : true, 
+        audio: false 
+      });
     }
 
     if (!success) {
@@ -351,13 +371,13 @@ export default function KioskPage() {
 
   useEffect(() => {
     if (appState === "setup" || appState === "capturing" || appState === "test-camera") {
-      startCamera();
+      startCamera(selectedCameraId);
     } else {
       if (!isOwnerMode) {
         stopCamera();
       }
     }
-  }, [appState, isOwnerMode]);
+  }, [appState, isOwnerMode, selectedCameraId]);
 
   useEffect(() => {
     if (appState === "capturing") {
@@ -433,9 +453,10 @@ export default function KioskPage() {
               isDevMode={isDevMode}
               onToggleDevMode={() => setIsDevMode(!isDevMode)}
               isCameraActive={!!cameraStream}
-              onTestCamera={() => {
-                setAppState("test-camera");
-              }}
+              onTestCamera={() => setAppState("test-camera")}
+              cameras={availableCameras}
+              selectedCameraId={selectedCameraId}
+              onSelectCamera={setSelectedCameraId}
             />
             <HealthMonitor />
           </>
@@ -493,10 +514,17 @@ export default function KioskPage() {
                      <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
                      <p className="text-xs font-black uppercase text-red-400 mb-2">Hardware Failed</p>
                      <p className="text-[10px] text-white/60 uppercase">{cameraError}</p>
-                     <button onClick={startCamera} className="mt-6 px-4 py-2 border border-white/20 text-[10px] font-black uppercase hover:bg-white/10">Retry Handshake</button>
+                     <button onClick={() => startCamera(selectedCameraId)} className="mt-6 px-4 py-2 border border-white/20 text-[10px] font-black uppercase hover:bg-white/10">Retry Handshake</button>
                   </div>
                 ) : (
-                  <video ref={videoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover", selectedFilter.class)} />
+                  <>
+                    <video ref={videoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover", selectedFilter.class)} />
+                    {appState === "test-camera" && (
+                      <div className="absolute top-4 left-4 bg-black/80 px-3 py-1.5 border border-primary/40">
+                        <span className="text-[8px] font-black uppercase text-primary tracking-widest">Diagnostic Stream Active</span>
+                      </div>
+                    )}
+                  </>
                 )}
              </div>
              <div className="space-y-6 sm:max-h-[70vh] overflow-y-auto pr-4 scrollbar-hide">
@@ -552,7 +580,10 @@ export default function KioskPage() {
               </div>
               <div className="grid grid-cols-1 gap-4 pt-6">
                 {appState === "test-camera" ? (
-                  <button onClick={resetSession} className="w-full border-2 border-white font-headline font-black text-xl py-8 italic uppercase hover:bg-white hover:text-black">EXIT TEST MODE</button>
+                  <div className="space-y-4">
+                    <button onClick={takePhoto} className="w-full bg-primary/20 border border-primary text-[10px] font-black uppercase py-4">Capture Test Shot</button>
+                    <button onClick={resetSession} className="w-full border-2 border-white font-headline font-black text-xl py-8 italic uppercase hover:bg-white hover:text-black">EXIT TEST MODE</button>
+                  </div>
                 ) : (
                   <NeonButton onClick={() => setAppState("capturing")} className="w-full !py-8" disabled={!!cameraError}>SHOOT</NeonButton>
                 )}
@@ -567,7 +598,7 @@ export default function KioskPage() {
                <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} />
                {isProcessing && <div className="absolute inset-0 bg-white z-30 animate-in fade-in out-fade-out duration-300" />}
                {countdown !== null && (
-                 <div className="absolute inset-0 flex items-center justify-center bg-black/20 z-20">
+                 <div className="absolute inset-0 flex items-center justify-center bg-black/20 z-20 pointer-events-none">
                     <span className="text-[12rem] font-headline font-black italic text-white animate-bounce drop-shadow-[0_0_30px_rgba(255,51_153,0.9)]">{countdown}</span>
                  </div>
                )}
@@ -584,8 +615,12 @@ export default function KioskPage() {
                )}
             </div>
             <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
-               <NeonButton onClick={() => setAppState("decorating")} className="w-full py-8 text-xl">DECORATE</NeonButton>
-               <button onClick={() => setAppState("setup")} className="w-full border-2 border-white font-headline font-black text-xl py-8 italic uppercase hover:bg-white hover:text-black">RETAKE</button>
+               <NeonButton onClick={() => setAppState("decorating")} className="w-full py-8 text-xl flex items-center justify-center gap-2">
+                 <CheckCircle2 className="w-6 h-6" /> PROCEED
+               </NeonButton>
+               <button onClick={() => setAppState("setup")} className="w-full border-2 border-white font-headline font-black text-xl py-8 italic uppercase hover:bg-white hover:text-black flex items-center justify-center gap-2">
+                 <RotateCcw className="w-6 h-6" /> RETAKE
+               </button>
             </div>
           </div>
         )}
@@ -660,7 +695,7 @@ export default function KioskPage() {
                </div>
             </div>
             <div className="grid grid-cols-1 gap-4 px-4">
-               <button onClick={() => { setPromoConsent(true); setAppState("printing"); }} className="w-full bg-primary py-8 text-xl font-headline font-black italic uppercase shadow-[0_0_20px_rgba(255,51_153,0.4)]">Yes, we allow it / Oo, pumapayag kami</button>
+               <button onClick={() => { setPromoConsent(true); setAppState("printing"); }} className="w-full bg-primary py-8 text-xl font-headline font-black italic uppercase shadow-[0_0_20px_rgba(255,51,153,0.4)]">Yes, we allow it / Oo, pumapayag kami</button>
                <button onClick={() => { setPromoConsent(false); setAppState("printing"); }} className="w-full border-2 border-white/20 font-headline font-black text-lg py-6 italic uppercase text-white/40">No, thank you / Hindi po</button>
             </div>
           </div>

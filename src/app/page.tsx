@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -281,7 +280,6 @@ export default function KioskPage() {
         setCameraStream(stream);
         if (videoRef.current) videoRef.current.srcObject = stream;
         
-        // Capture resolution for owner mode
         const track = stream.getVideoTracks()[0];
         const settings = track.getSettings();
         if (settings.width && settings.height) {
@@ -296,7 +294,6 @@ export default function KioskPage() {
       }
     };
 
-    // Stage 1: High Fidelity Portrait
     let success = await tryStream({
       video: { 
         deviceId: deviceId ? { exact: deviceId } : undefined,
@@ -308,7 +305,6 @@ export default function KioskPage() {
       audio: false
     });
 
-    // Stage 2: Standard Fallback
     if (!success) {
       success = await tryStream({ 
         video: deviceId ? { deviceId: { exact: deviceId } } : true, 
@@ -489,7 +485,7 @@ export default function KioskPage() {
         )}
 
         {appState === "payment" && (
-          <div className="w-full max-w-md animate-in slide-in-from-bottom-8 duration-500 text-center py-20 px-6">
+          <div className="w-full max-w-md animate-in slide-in-from-bottom-8 duration-500 text-center flex flex-col items-center justify-center h-full px-6">
             <div className="mb-10">
                <div className="w-28 h-28 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-dashed border-primary/30 animate-pulse">
                   <Wallet className="w-12 h-12 text-primary" />
@@ -497,11 +493,11 @@ export default function KioskPage() {
                <h2 className="font-headline font-black text-3xl mb-2 italic uppercase">INSERT CASH</h2>
                <p className="text-[10px] opacity-60 uppercase font-bold tracking-widest">AWAITING BILL</p>
             </div>
-            <div className="bg-white/5 border-2 border-white/10 p-8 mb-8">
+            <div className="bg-white/5 border-2 border-white/10 p-8 mb-8 w-full max-w-sm">
                <div className="text-5xl sm:text-6xl font-black italic text-primary mb-2">{paymentReceived} <span className="text-2xl text-white">PHP</span></div>
                <div className="text-[10px] font-bold opacity-40 uppercase tracking-[0.3em]">TOTAL DETECTED</div>
             </div>
-            <div className="grid grid-cols-1 gap-4 max-w-sm mx-auto">
+            <div className="grid grid-cols-1 gap-4 w-full max-w-sm">
               {paymentReceived >= 50 && (
                 <NeonButton onClick={() => { setPackageSelected(paymentReceived >= 100 ? 100 : 50); setAppState("setup"); }} className="w-full py-6 text-xl">START SESSION</NeonButton>
               )}
@@ -510,8 +506,8 @@ export default function KioskPage() {
         )}
 
         {(appState === "setup" || appState === "test-camera") && (
-          <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in duration-500 py-10 px-6">
-             <div className="relative w-full aspect-[3/4] max-h-[60vh] mx-auto overflow-hidden bg-zinc-900 border-2 border-white/20 shadow-[0_0_30px_rgba(255,51,153,0.3)]">
+          <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in duration-500 py-10 px-6">
+             <div className="relative w-full aspect-[3/4] max-h-[70vh] mx-auto overflow-hidden bg-zinc-900 border-2 border-white/20 shadow-[0_0_30px_rgba(255,51,153,0.3)]">
                 {cameraError ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-black/60">
                      <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
@@ -530,7 +526,7 @@ export default function KioskPage() {
                   </>
                 )}
              </div>
-             <div className="space-y-6 sm:max-h-[70vh] overflow-y-auto pr-4 scrollbar-hide">
+             <div className="space-y-6 sm:max-h-[75vh] overflow-y-auto pr-4 scrollbar-hide">
               <div className="flex items-center justify-between">
                 <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Styling</h2>
               </div>
@@ -597,7 +593,7 @@ export default function KioskPage() {
 
         {appState === "capturing" && (
           <div className="w-full h-full flex flex-col items-center justify-center py-10 px-6">
-            <div className="relative aspect-[3/4] max-h-[75vh] w-full max-w-lg bg-zinc-900 overflow-hidden shadow-[0_0_60px_rgba(255,51,153,0.4)] border-4 border-white">
+            <div className="relative aspect-[3/4] h-full max-h-[85vh] w-full max-w-lg bg-zinc-900 overflow-hidden shadow-[0_0_60px_rgba(255,51,153,0.4)] border-4 border-white">
                <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} />
                {isProcessing && <div className="absolute inset-0 bg-white z-30 animate-in fade-in out-fade-out duration-300" />}
                {countdown !== null && (
@@ -610,14 +606,14 @@ export default function KioskPage() {
         )}
 
         {appState === "review" && (
-          <div className="w-full max-w-lg animate-in fade-in duration-500 text-center py-10 px-6">
+          <div className="w-full max-w-lg flex flex-col items-center justify-center animate-in fade-in duration-500 text-center py-10 px-6">
             <h2 className="font-headline font-black text-4xl mb-6 italic uppercase">Looking Sharp!</h2>
-            <div className="w-full max-w-[450px] mb-8 mx-auto shadow-[0_0_40px_rgba(0,0,0,0.5)] border-2 border-white/20">
+            <div className="w-full max-w-[450px] mb-8 mx-auto shadow-[0_0_40px_rgba(0,0,0,0.5)] border-2 border-white/20 overflow-hidden">
                {selectedBlueprint && (
                  <BlueprintFrame blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.class} isPreview />
                )}
             </div>
-            <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
+            <div className="grid grid-cols-2 gap-4 w-full max-w-md">
                <NeonButton onClick={() => setAppState("decorating")} className="w-full py-8 text-xl flex items-center justify-center gap-2">
                  <CheckCircle2 className="w-6 h-6" /> USE PHOTO
                </NeonButton>
@@ -629,9 +625,9 @@ export default function KioskPage() {
         )}
 
         {appState === "decorating" && (
-          <div className="w-full max-w-6xl flex flex-col lg:flex-row gap-8 items-start animate-in fade-in duration-500 py-10 px-6">
-             <div className="relative flex-1 w-full max-h-[70vh] flex items-center justify-center">
-                <div className="relative w-full h-full max-w-[450px]">
+          <div className="w-full max-w-7xl flex flex-col lg:flex-row gap-8 items-start animate-in fade-in duration-500 py-10 px-6">
+             <div className="relative flex-1 w-full max-h-[80vh] flex items-center justify-center">
+                <div className="relative w-full h-full max-w-[450px] aspect-[3/4]">
                   {selectedBlueprint && (
                     <BlueprintFrame 
                       blueprint={selectedBlueprint} 
@@ -649,7 +645,7 @@ export default function KioskPage() {
                   )}
                 </div>
              </div>
-             <div className="w-full lg:w-96 space-y-6 lg:max-h-[75vh] overflow-y-auto pr-4 scrollbar-hide">
+             <div className="w-full lg:w-96 space-y-6 lg:max-h-[80vh] overflow-y-auto pr-4 scrollbar-hide">
                 <div className="flex items-center justify-between">
                   <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Decoration</h2>
                   <button onClick={() => setPlacedStickers([])} className="text-[10px] font-black uppercase text-red-500 bg-red-500/10 px-3 py-1.5 border border-red-500/20"><Trash2 className="w-3 h-3 inline mr-2" /> Clear All</button>
@@ -686,7 +682,7 @@ export default function KioskPage() {
         )}
 
         {appState === "consent" && (
-          <div className="w-full max-w-xl animate-in slide-in-from-bottom-8 duration-500 text-center py-20 px-6">
+          <div className="w-full max-w-xl animate-in slide-in-from-bottom-8 duration-500 text-center flex flex-col items-center justify-center h-full px-6">
             <div className="mb-10">
                <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-primary/30">
                   <Sparkles className="w-12 h-12 text-primary" />
@@ -697,7 +693,7 @@ export default function KioskPage() {
                  <p className="text-sm font-medium text-white/60 leading-relaxed italic">Maaari ba naming gamitin ang inyong moments mula sa photo booth na ito para sa promotional posts sa JNL STUDIO Facebook page?</p>
                </div>
             </div>
-            <div className="grid grid-cols-1 gap-4 px-4">
+            <div className="grid grid-cols-1 gap-4 px-4 w-full">
                <button onClick={() => { setPromoConsent(true); setAppState("printing"); }} className="w-full bg-primary py-8 text-xl font-headline font-black italic uppercase shadow-[0_0_20px_rgba(255,51,153,0.4)] transition-all active:scale-95">Yes, we allow it / Oo, pumapayag kami</button>
                <button onClick={() => { setPromoConsent(false); setAppState("printing"); }} className="w-full border-2 border-white/20 font-headline font-black text-lg py-6 italic uppercase text-white/40 transition-all active:scale-95">No, thank you / Hindi po</button>
             </div>
@@ -705,9 +701,9 @@ export default function KioskPage() {
         )}
 
         {appState === "printing" && (
-          <div className="w-full max-w-4xl animate-in fade-in duration-500 text-center py-20 px-6">
+          <div className="w-full max-w-4xl animate-in fade-in duration-500 text-center flex flex-col items-center justify-center h-full px-6">
              {printProgress < 100 ? (
-                <div className="space-y-8 py-12">
+                <div className="space-y-8 py-12 w-full">
                    <div className="relative w-32 h-32 mx-auto">
                       <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
                       <div className="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin" />
@@ -721,13 +717,13 @@ export default function KioskPage() {
                    </div>
                 </div>
              ) : (
-                <div className="flex flex-col items-center space-y-12 animate-in slide-in-from-bottom-8">
+                <div className="flex flex-col items-center space-y-12 animate-in slide-in-from-bottom-8 w-full">
                    <h2 className="font-headline font-black text-5xl sm:text-6xl italic uppercase leading-none">THANK <span className="text-primary">YOU!</span></h2>
-                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 w-full">
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
                       <div className="bg-white/5 border border-white/10 p-8 flex flex-col items-center space-y-6 rounded-2xl shadow-xl">
                          <QrCode className="w-12 h-12 text-primary" />
                          <h3 className="font-headline font-black text-xl uppercase italic">SOFT COPY</h3>
-                         <div className="aspect-square w-48 sm:w-64 bg-white p-4 rounded-2xl shadow-2xl">
+                         <div className="aspect-square w-full max-w-[250px] bg-white p-4 rounded-2xl shadow-2xl">
                             <img src={softCopyQrUrl} alt="Soft Copy QR" className="w-full h-full object-contain" />
                          </div>
                          {promoConsent === false && <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest animate-pulse">Temporary Link - Auto-deletes soon</p>}
@@ -735,7 +731,7 @@ export default function KioskPage() {
                       <div className="bg-white/5 border border-white/10 p-8 flex flex-col items-center space-y-6 rounded-2xl shadow-xl">
                          <Facebook className="w-12 h-12 text-blue-500" />
                          <h3 className="font-headline font-black text-xl uppercase italic">FOLLOW US</h3>
-                         <div className="aspect-square w-48 sm:w-64 bg-white p-4 rounded-2xl shadow-2xl">
+                         <div className="aspect-square w-full max-w-[250px] bg-white p-4 rounded-2xl shadow-2xl">
                             <img src="https://picsum.photos/seed/fb-qr/500/500" alt="Facebook QR" className="w-full h-full object-contain" />
                          </div>
                       </div>

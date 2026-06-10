@@ -54,7 +54,8 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     align-items: center;
     justify-content: flex-start;
   }

@@ -31,9 +31,8 @@ export function KioskLayout({ children, className }: KioskLayoutProps) {
   const [meteors, setMeteors] = useState<Meteor[]>([]);
 
   useEffect(() => {
-    // Generate stars only on the client
     setStars(
-      Array.from({ length: 200 }).map((_, i) => ({
+      Array.from({ length: 150 }).map((_, i) => ({
         id: i,
         top: `${Math.random() * 100}%`,
         left: `${Math.random() * 100}%`,
@@ -45,7 +44,7 @@ export function KioskLayout({ children, className }: KioskLayoutProps) {
     );
 
     setMeteors(
-      Array.from({ length: 12 }).map((_, i) => ({
+      Array.from({ length: 8 }).map((_, i) => ({
         id: i,
         top: `${Math.random() * 50}%`,
         right: `${Math.random() * 30}%`,
@@ -57,7 +56,6 @@ export function KioskLayout({ children, className }: KioskLayoutProps) {
 
   return (
     <div className="fixed inset-0 bg-black flex items-center justify-center overflow-hidden touch-none select-none w-screen h-[100dvh]">
-      {/* Background stays under all components */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
         {stars.map((star) => (
           <div
@@ -86,12 +84,11 @@ export function KioskLayout({ children, className }: KioskLayoutProps) {
             }}
           />
         ))}
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/15 via-transparent to-primary/15" />
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 via-transparent to-primary/10" />
       </div>
 
-      {/* Portrait Container - Optimized for Tablet Heights with Auto Screen Fit */}
       <div className={cn(
-        "portrait-container z-10 bg-black/20 backdrop-blur-[1px]",
+        "portrait-container z-10 bg-black/10 backdrop-blur-[1px]",
         className
       )}>
         {children}

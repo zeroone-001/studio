@@ -168,7 +168,6 @@ export default function KioskPage() {
     const saved = SessionStore.load();
     if (saved && saved.state !== "welcome") {
       setInterruptedSession(saved);
-      KioskLogger.log('info', 'Recovery', `Interrupted session detected at: ${saved.state}`);
     }
     
     const detectCameras = async () => {
@@ -194,7 +193,6 @@ export default function KioskPage() {
       setCapturedPhotos(interruptedSession.capturedPhotos);
       setPromoConsent(interruptedSession.promoConsent);
       setInterruptedSession(null);
-      KioskLogger.log('info', 'Recovery', 'Session resumed from storage.');
     }
   };
 
@@ -230,7 +228,6 @@ export default function KioskPage() {
     if (appState === "printing" && promoConsent === true) {
       if (usbHandle) {
         setIsSavingToUsb(true);
-        KioskLogger.log('info', 'Storage', 'Hybrid USB sync initiated.');
         const timer = setTimeout(() => {
           setIsSavingToUsb(false);
         }, 3000);
@@ -257,7 +254,6 @@ export default function KioskPage() {
     setPrintProgress(0);
     setPromoConsent(null);
     setIsSavingToUsb(false);
-    KioskLogger.log('info', 'System', 'Session cleared and reset.');
   }, []);
 
   useEffect(() => {
@@ -294,7 +290,6 @@ export default function KioskPage() {
           setCameraResolution(`${settings.width}x${settings.height}`);
         }
         setCameraError(null);
-        KioskLogger.log('info', 'Camera', 'Hardware handshake successful.');
         return true;
       } catch (e) {
         return false;
@@ -351,7 +346,6 @@ export default function KioskPage() {
     const totalShots = packageSelected === 50 ? 3 : 6;
     const photos: string[] = [];
     setCapturedPhotos([]); 
-    KioskLogger.log('info', 'Capture', `Sequence started: ${totalShots} shots.`);
     
     for (let i = 0; i < totalShots; i++) {
       setCurrentShotIndex(i + 1);
@@ -587,29 +581,29 @@ export default function KioskPage() {
         )}
 
         {appState === "capturing" && (
-          <div className="w-full h-full flex flex-col items-center justify-center py-10 px-6">
-            <div className="relative aspect-[3/4] h-full max-h-[85vh] w-full max-w-lg bg-zinc-900 overflow-hidden shadow-[0_0_60px_rgba(255,51,153,0.4)] border-4 border-white">
-               <video 
-                ref={videoRef} 
-                autoPlay 
-                playsInline 
-                muted 
-                className={cn("absolute inset-0 w-full h-full object-cover z-0", selectedFilter.class)} 
-               />
-               {isProcessing && <div className="absolute inset-0 bg-white z-30 animate-in fade-in out-fade-out duration-300" />}
-               {countdown !== null && (
-                 <div className="absolute inset-0 flex items-center justify-center bg-transparent z-20 pointer-events-none">
-                    <span className="text-[12rem] font-headline font-black italic text-white animate-bounce drop-shadow-[0_0_30px_rgba(255,51,153,0.9)]">{countdown}</span>
-                 </div>
-               )}
-            </div>
+          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black">
+             <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+                <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  playsInline 
+                  muted 
+                  className={cn("absolute inset-0 w-full h-full object-cover z-0", selectedFilter.class)} 
+                />
+                {isProcessing && <div className="absolute inset-0 bg-white z-30 animate-in fade-in out-fade-out duration-300" />}
+                {countdown !== null && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-transparent z-40 pointer-events-none">
+                     <span className="text-[15rem] font-headline font-black italic text-white animate-bounce drop-shadow-[0_0_40px_rgba(255,51,153,0.9)]">{countdown}</span>
+                  </div>
+                )}
+             </div>
           </div>
         )}
 
         {appState === "review" && (
-          <div className="w-full max-w-lg flex flex-col items-center justify-center animate-in fade-in duration-500 text-center py-10 px-6">
-            <h2 className="font-headline font-black text-4xl mb-6 italic uppercase">Looking Sharp!</h2>
-            <div className="w-full max-w-[450px] mb-8 mx-auto shadow-[0_0_40px_rgba(0,0,0,0.5)] border-2 border-white overflow-hidden">
+          <div className="w-full h-full flex flex-col items-center justify-center animate-in fade-in duration-500 py-10 px-6 overflow-y-auto scrollbar-hide">
+            <h2 className="font-headline font-black text-4xl mb-6 italic uppercase text-primary">Preview Result</h2>
+            <div className="w-full max-w-[450px] aspect-[3/4] mb-8 shadow-[0_0_60px_rgba(0,0,0,0.8)] border-4 border-white overflow-hidden relative">
                {selectedBlueprint && capturedPhotos.length > 0 ? (
                  <BlueprintFrame 
                    blueprint={selectedBlueprint} 
@@ -618,7 +612,7 @@ export default function KioskPage() {
                    isPreview 
                  />
                ) : (
-                 <div className="aspect-[3/4] bg-zinc-900 flex items-center justify-center">
+                 <div className="absolute inset-0 bg-zinc-900 flex items-center justify-center">
                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
                  </div>
                )}
@@ -628,7 +622,7 @@ export default function KioskPage() {
                  <CheckCircle2 className="w-6 h-6" /> USE PHOTO
                </NeonButton>
                <button onClick={() => { setCapturedPhotos([]); setAppState("setup"); }} className="w-full border-2 border-white font-headline font-black text-xl py-8 italic uppercase hover:bg-white hover:text-black flex items-center justify-center gap-2">
-                 <RotateCcw className="w-6 h-6" /> RETAKE PHOTO
+                 <RotateCcw className="w-6 h-6" /> RETAKE
                </button>
             </div>
           </div>

@@ -109,7 +109,6 @@ export default function KioskPage() {
   const [countdown, setCountdown] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
-  const [currentShotIndex, setCurrentShotIndex] = useState(0);
   const [printProgress, setPrintProgress] = useState(0);
   const [promoConsent, setPromoConsent] = useState<boolean | null>(null);
   const [isSavingToUsb, setIsSavingToUsb] = useState(false);
@@ -237,13 +236,11 @@ export default function KioskPage() {
   }, [appState, promoConsent, usbHandle]);
 
   const resetSession = useCallback(() => {
-    stopCamera();
     SessionStore.clear(); 
     setAppState("welcome");
     setPaymentReceived(0);
     setPackageSelected(null);
     setCapturedPhotos([]);
-    setCurrentShotIndex(0);
     setCountdown(null);
     setIsProcessing(false);
     setSelectedBlueprint(null);
@@ -348,7 +345,6 @@ export default function KioskPage() {
     setCapturedPhotos([]); 
     
     for (let i = 0; i < totalShots; i++) {
-      setCurrentShotIndex(i + 1);
       for (let c = 3; c > 0; c--) {
         setCountdown(c);
         await new Promise(r => setTimeout(r, 1000));
@@ -378,10 +374,13 @@ export default function KioskPage() {
   }, [appState, isOwnerMode, selectedCameraId]);
 
   useEffect(() => {
-    if (cameraStream && videoRef.current && videoRef.current.srcObject !== cameraStream) {
-      videoRef.current.srcObject = cameraStream;
+    if (cameraStream && videoRef.current) {
+      if (videoRef.current.srcObject !== cameraStream) {
+        videoRef.current.srcObject = cameraStream;
+        videoRef.current.play().catch(() => {});
+      }
     }
-  }, [appState, cameraStream]);
+  }, [cameraStream, appState]);
 
   useEffect(() => {
     if (appState === "capturing") {
@@ -499,7 +498,7 @@ export default function KioskPage() {
             <div className="bg-white/5 border-2 border-white/10 p-8 mb-8 w-full max-w-sm">
                <div className="text-5xl sm:text-6xl font-black italic text-primary mb-2">{paymentReceived} <span className="text-2xl text-white">PHP</span></div>
             </div>
-            <div className="grid grid-cols-1 gap-4 w-full max-w-sm">
+            <div className="grid grid-cols-1 gap-4 w-full max-sm:px-4">
               {paymentReceived >= 50 && (
                 <NeonButton onClick={() => { setPackageSelected(paymentReceived >= 100 ? 100 : 50); setAppState("setup"); }} className="w-full py-6 text-xl">START SESSION</NeonButton>
               )}

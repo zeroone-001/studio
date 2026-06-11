@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo, useRef, useState, useEffect } from "react";
@@ -51,7 +52,7 @@ export const BlueprintFrame = React.memo(({
 
   const CANVAS_W = 1600;
   const CANVAS_H = 2560;
-  const FOOTER_Y = 2420; // Maximum photo coverage to save paper
+  const FOOTER_Y = 2420;
 
   const displayDate = useMemo(() => {
     if (dateText) return dateText;
@@ -83,11 +84,11 @@ export const BlueprintFrame = React.memo(({
           {photos[index] ? (
             <Image
               src={photos[index]}
-              alt={`Portrait ${index + 1}`}
+              alt="Portrait result"
               fill
               className={cn("object-cover", filterClass)}
               sizes="1000px"
-              unoptimized // Important for base64 data URIs to avoid next/image processing overhead
+              unoptimized
             />
           ) : (
             <div className="w-full h-full bg-zinc-200 animate-pulse flex items-center justify-center">
@@ -97,7 +98,6 @@ export const BlueprintFrame = React.memo(({
         </div>
       ))}
 
-      {/* Stickers Layer */}
       <div className="absolute inset-0 z-40 pointer-events-none">
         {stickers.map((s) => {
           const def = STICKER_DEFS.find(d => d.id === s.type);
@@ -137,7 +137,6 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* Printed Frame Branding - Minimal per instructions */}
       <div 
         className="absolute left-0 right-0 bottom-0 bg-white"
         style={{ top: `${(FOOTER_Y / CANVAS_H) * 100}%` }}

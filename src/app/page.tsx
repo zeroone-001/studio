@@ -272,13 +272,23 @@ export default function KioskPage() {
   }, [appState, printProgress, resetSession, promoConsent]);
 
   const startCamera = async (deviceId?: string) => {
-    if (cameraStream) stopCamera();
+    // Optimization: If we already have a stream on the correct device, don't stop/start
+    if (cameraStream && videoRef.current && videoRef.current.srcObject === cameraStream) {
+      return true;
+    }
+
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+    }
     
     const tryStream = async (constraints: MediaStreamConstraints) => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         setCameraStream(stream);
-        if (videoRef.current) videoRef.current.srcObject = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
         
         const track = stream.getVideoTracks()[0];
         const settings = track.getSettings();
@@ -347,6 +357,7 @@ export default function KioskPage() {
   const startShotSequence = async () => {
     const totalShots = packageSelected === 50 ? 3 : 6;
     const photos: string[] = [];
+    setCapturedPhotos([]); // Reset for new session
     KioskLogger.log('info', 'Capture', `Beginning sequence for ${totalShots} shots.`);
     
     for (let i = 0; i < totalShots; i++) {
@@ -358,12 +369,15 @@ export default function KioskPage() {
       setCountdown(null);
       setIsProcessing(true);
       const shot = takePhoto();
-      if (shot) photos.push(shot);
+      if (shot) {
+        photos.push(shot);
+        // Progressive update so review screen shows actual frames
+        setCapturedPhotos([...photos]); 
+      }
       await new Promise(r => setTimeout(r, 600)); 
       setIsProcessing(false);
     }
     
-    setCapturedPhotos(photos);
     setAppState("review");
   };
 
@@ -376,6 +390,13 @@ export default function KioskPage() {
       }
     }
   }, [appState, isOwnerMode, selectedCameraId]);
+
+  // Ensure camera is re-attached instantly on state changes if the element remounts
+  useEffect(() => {
+    if (cameraStream && videoRef.current && videoRef.current.srcObject !== cameraStream) {
+      videoRef.current.srcObject = cameraStream;
+    }
+  }, [appState, cameraStream]);
 
   useEffect(() => {
     if (appState === "capturing") {
@@ -517,9 +538,15 @@ export default function KioskPage() {
                   </div>
                 ) : (
                   <>
-                    <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} />
+                    <video 
+                      ref={videoRef} 
+                      autoPlay 
+                      playsInline 
+                      muted 
+                      className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} 
+                    />
                     {appState === "test-camera" && (
-                      <div className="absolute top-4 left-4 bg-black/80 px-3 py-1.5 border border-primary/40">
+                      <div className="absolute top-4 left-4 bg-black/80 px-3 py-1.5 border border-primary/40 z-10">
                         <span className="text-[8px] font-black uppercase text-primary tracking-widest">Diagnostic Stream Active</span>
                       </div>
                     )}
@@ -594,8 +621,19 @@ export default function KioskPage() {
         {appState === "capturing" && (
           <div className="w-full h-full flex flex-col items-center justify-center py-10 px-6">
             <div className="relative aspect-[3/4] h-full max-h-[85vh] w-full max-w-lg bg-zinc-900 overflow-hidden shadow-[0_0_60px_rgba(255,51,153,0.4)] border-4 border-white">
-               <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} />
+               {/* Live camera feed must remain visible during countdown */}
+               <video 
+                ref={videoRef} 
+                autoPlay 
+                playsInline 
+                muted 
+                className={cn("absolute inset-0 w-full h-full object-cover z-0", selectedFilter.class)} 
+               />
+               
+               {/* Shutter flash effect */}
                {isProcessing && <div className="absolute inset-0 bg-white z-30 animate-in fade-in out-fade-out duration-300" />}
+               
+               {/* Floating countdown overlay */}
                {countdown !== null && (
                  <div className="absolute inset-0 flex items-center justify-center bg-transparent z-20 pointer-events-none">
                     <span className="text-[12rem] font-headline font-black italic text-white animate-bounce drop-shadow-[0_0_30px_rgba(255,51,153,0.9)]">{countdown}</span>
@@ -609,8 +647,17 @@ export default function KioskPage() {
           <div className="w-full max-w-lg flex flex-col items-center justify-center animate-in fade-in duration-500 text-center py-10 px-6">
             <h2 className="font-headline font-black text-4xl mb-6 italic uppercase">Looking Sharp!</h2>
             <div className="w-full max-w-[450px] mb-8 mx-auto shadow-[0_0_40px_rgba(0,0,0,0.5)] border-2 border-white/20 overflow-hidden">
-               {selectedBlueprint && (
-                 <BlueprintFrame blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.class} isPreview />
+               {selectedBlueprint && capturedPhotos.length > 0 ? (
+                 <BlueprintFrame 
+                   blueprint={selectedBlueprint} 
+                   photos={capturedPhotos} 
+                   filterClass={selectedFilter.class} 
+                   isPreview 
+                 />
+               ) : (
+                 <div className="aspect-[3/4] bg-zinc-900 flex items-center justify-center">
+                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                 </div>
                )}
             </div>
             <div className="grid grid-cols-2 gap-4 w-full max-w-md">

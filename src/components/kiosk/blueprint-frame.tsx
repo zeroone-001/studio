@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useMemo, useRef, useState, useEffect } from "react";
@@ -81,13 +80,20 @@ export const BlueprintFrame = React.memo(({
             height: `${(slot.h / CANVAS_H) * 100}%`,
           }}
         >
-          <Image
-            src={photos[index] || "https://picsum.photos/seed/placeholder/800/1200"}
-            alt=""
-            fill
-            className={cn("object-cover", filterClass)}
-            sizes="1000px"
-          />
+          {photos[index] ? (
+            <Image
+              src={photos[index]}
+              alt={`Portrait ${index + 1}`}
+              fill
+              className={cn("object-cover", filterClass)}
+              sizes="1000px"
+              unoptimized // Important for base64 data URIs to avoid next/image processing overhead
+            />
+          ) : (
+            <div className="w-full h-full bg-zinc-200 animate-pulse flex items-center justify-center">
+              <span className="text-[10px] text-black/20 font-black uppercase">Awaiting Capture</span>
+            </div>
+          )}
         </div>
       ))}
 

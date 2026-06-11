@@ -88,7 +88,7 @@ export function KioskLayout({ children, className }: KioskLayoutProps) {
       </div>
 
       <div className={cn(
-        "portrait-container z-10 bg-black/10 backdrop-blur-[1px]",
+        "kiosk-container z-10 bg-black/10 backdrop-blur-[1px]",
         className
       )}>
         {children}

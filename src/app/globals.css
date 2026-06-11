@@ -32,10 +32,12 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground selection:bg-primary/30 overflow-hidden touch-none;
+    @apply bg-background text-white selection:bg-primary/30 overflow-hidden touch-none select-none;
     font-feature-settings: "rlig" 1, "calt" 1;
     height: 100dvh;
     width: 100vw;
+    position: fixed;
+    inset: 0;
   }
 }
 
@@ -46,16 +48,13 @@
   .neon-border {
     box-shadow: 0 0 15px rgba(255, 51, 153, 0.6), inset 0 0 8px rgba(255, 51, 153, 0.3);
   }
-  .portrait-container {
-    width: 100%;
+  .kiosk-container {
+    width: 100vw;
     height: 100dvh;
-    max-width: 100%;
-    margin: 0 auto;
     position: relative;
     display: flex;
     flex-direction: column;
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow: hidden;
     align-items: center;
     justify-content: flex-start;
   }

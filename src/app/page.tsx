@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -137,6 +136,21 @@ export default function KioskPage() {
   const [logoTapCount, setLogoTapCount] = useState(0);
   const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Landscape Lock Handshake
+  useEffect(() => {
+    const lockLandscape = async () => {
+      try {
+        if (typeof screen !== 'undefined' && 'orientation' in screen && 'lock' in screen.orientation) {
+          // @ts-ignore
+          await screen.orientation.lock('landscape');
+        }
+      } catch (e) {
+        KioskLogger.log('info', 'Hardware', 'Orientation lock pending user interaction.');
+      }
+    };
+    lockLandscape();
+  }, []);
+
   const handleHiddenTrigger = useCallback(() => {
     setLogoTapCount((prev) => {
       const newCount = prev + 1;
@@ -223,18 +237,6 @@ export default function KioskPage() {
     }
   }, [appState, printProgress]);
 
-  useEffect(() => {
-    if (appState === "printing" && promoConsent === true) {
-      if (usbHandle) {
-        setIsSavingToUsb(true);
-        const timer = setTimeout(() => {
-          setIsSavingToUsb(false);
-        }, 3000);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [appState, promoConsent, usbHandle]);
-
   const resetSession = useCallback(() => {
     SessionStore.clear(); 
     setAppState("welcome");
@@ -261,7 +263,7 @@ export default function KioskPage() {
         resetSession();
       }, timeout); 
     }
-    return () => clearTimeout(timer);
+    return () => clearInterval(timer);
   }, [appState, printProgress, resetSession, promoConsent]);
 
   const startCamera = async (deviceId?: string) => {
@@ -415,7 +417,7 @@ export default function KioskPage() {
     <KioskLayout>
       <canvas ref={canvasRef} className="hidden" />
       
-      <div className="flex-1 w-full h-full flex flex-col items-center overflow-y-auto scrollbar-hide safe-area-spacing">
+      <div className="flex-1 w-full h-full flex flex-col items-center overflow-hidden kiosk-container safe-area-spacing">
         
         {interruptedSession && appState === "welcome" && (
           <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
@@ -464,12 +466,12 @@ export default function KioskPage() {
         )}
 
         {appState === "welcome" && (
-          <div className="flex flex-col items-center w-full max-w-lg animate-in fade-in duration-1000" style={{ paddingTop: '120px' }}>
+          <div className="flex flex-col items-center w-full max-w-4xl animate-in fade-in duration-1000" style={{ paddingTop: '120px' }}>
             <div className="flex justify-center mb-[40px]" onClick={handleHiddenTrigger}>
               <JnlLogo variant="icon" color="light" className="w-32 h-32" />
             </div>
             <div className="flex justify-center mb-[30px] w-full px-4">
-              <h1 className="font-headline font-black text-5xl sm:text-7xl tracking-tight uppercase italic text-center whitespace-nowrap flex items-center gap-4">
+              <h1 className="font-headline font-black text-5xl sm:text-7xl tracking-tight uppercase italic text-center flex items-center gap-4">
                 <span className="text-white">JNL</span>
                 <span className="text-primary">STUDIO</span>
               </h1>
@@ -481,24 +483,24 @@ export default function KioskPage() {
               <p className="font-bold text-[10px] sm:text-xs tracking-[0.5em] uppercase text-white/40 text-center">PHOTOBOOTH</p>
             </div>
             <div className="flex justify-center w-full">
-              <NeonButton onClick={() => setAppState("payment")} className="w-[75%] sm:w-[80%] text-2xl py-10">READY?</NeonButton>
+              <NeonButton onClick={() => setAppState("payment")} className="w-[75%] sm:w-[60%] lg:w-[40%] text-2xl py-10">READY?</NeonButton>
             </div>
           </div>
         )}
 
         {appState === "payment" && (
-          <div className="w-full max-w-md animate-in slide-in-from-bottom-8 duration-500 text-center flex flex-col items-center justify-center h-full px-6">
+          <div className="w-full max-w-2xl animate-in slide-in-from-bottom-8 duration-500 text-center flex flex-col items-center justify-center h-full px-6">
             <div className="mb-10">
-               <div className="w-28 h-28 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-dashed border-primary/30">
-                  <Wallet className="w-12 h-12 text-primary" />
+               <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-dashed border-primary/30">
+                  <Wallet className="w-10 h-10 text-primary" />
                </div>
-               <h2 className="font-headline font-black text-3xl mb-2 italic uppercase">INSERT CASH</h2>
+               <h2 className="font-headline font-black text-4xl mb-2 italic uppercase">INSERT CASH</h2>
                <p className="text-[10px] opacity-60 uppercase font-bold tracking-widest">AWAITING BILL</p>
             </div>
-            <div className="bg-white/5 border-2 border-white/10 p-8 mb-8 w-full max-w-sm">
-               <div className="text-5xl sm:text-6xl font-black italic text-primary mb-2">{paymentReceived} <span className="text-2xl text-white">PHP</span></div>
+            <div className="bg-white/5 border-2 border-white/10 p-10 mb-8 w-full max-w-md">
+               <div className="text-6xl font-black italic text-primary mb-2">{paymentReceived} <span className="text-2xl text-white">PHP</span></div>
             </div>
-            <div className="grid grid-cols-1 gap-4 w-full max-sm:px-4">
+            <div className="grid grid-cols-1 gap-4 w-full max-w-sm">
               {paymentReceived >= 50 && (
                 <NeonButton onClick={() => { setPackageSelected(paymentReceived >= 100 ? 100 : 50); setAppState("setup"); }} className="w-full py-6 text-xl">START SESSION</NeonButton>
               )}
@@ -507,8 +509,8 @@ export default function KioskPage() {
         )}
 
         {(appState === "setup" || appState === "test-camera") && (
-          <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-start animate-in fade-in duration-500 py-10 px-6">
-             <div className="relative w-full aspect-[3/4] max-h-[70vh] mx-auto overflow-hidden bg-zinc-900 border-2 border-white shadow-[0_0_30px_rgba(255,51,153,0.3)]">
+          <div className="w-full h-full max-w-7xl flex flex-col lg:flex-row gap-8 items-center lg:items-start animate-in fade-in duration-500 py-10 px-8">
+             <div className="relative w-full lg:flex-1 aspect-[3/4] max-h-[70vh] bg-zinc-900 border-4 border-white shadow-[0_0_30px_rgba(255,51,153,0.3)] overflow-hidden">
                 {cameraError ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-black/60">
                      <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
@@ -525,26 +527,19 @@ export default function KioskPage() {
                   />
                 )}
              </div>
-             <div className="space-y-6 sm:max-h-[75vh] overflow-y-auto pr-4 scrollbar-hide">
-              <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Styling</h2>
-              <div className="space-y-8">
+             <div className="w-full lg:w-[450px] space-y-8 max-h-[75vh] overflow-y-auto scrollbar-hide">
+              <h2 className="font-headline font-black text-4xl italic uppercase text-primary">Styling</h2>
+              <div className="space-y-10">
                 <div>
                   <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
                     <Frame className="w-4 h-4 text-primary" /> Select Layout
                   </div>
-                  <div className="grid grid-cols-5 gap-2">
+                  <div className="grid grid-cols-5 gap-3">
                     {availableBlueprints.map((bp) => (
-                      <button 
-                        key={bp.id} 
-                        onClick={() => setSelectedBlueprint(bp)} 
-                        className={cn(
-                          "aspect-[3/4] relative border-2 transition-all p-1", 
-                          selectedBlueprint?.id === bp.id ? "bg-primary/20 border-primary" : "bg-white/5 border-white/10"
-                        )}
-                      >
+                      <button key={bp.id} onClick={() => setSelectedBlueprint(bp)} className={cn("aspect-[3/4] relative border-2 transition-all p-1", selectedBlueprint?.id === bp.id ? "bg-primary/20 border-primary shadow-[0_0_15px_#FF3399]" : "bg-white/5 border-white/10")}>
                         <div className="relative w-full h-full bg-zinc-800/50">
                           {bp.slots.map((slot, i) => (
-                            <div key={i} className="absolute bg-white/20 border border-white/10" style={{ left: `${(slot.x / 1600) * 100}%`, top: `${(slot.y / 2560) * 100}%`, width: `${(slot.w / 1600) * 100}%`, height: `${(slot.h / 2560) * 100}%` }} />
+                            <div key={i} className="absolute bg-white/20 border border-white/5" style={{ left: `${(slot.x / 1600) * 100}%`, top: `${(slot.y / 2560) * 100}%`, width: `${(slot.w / 1600) * 100}%`, height: `${(slot.h / 2560) * 100}%` }} />
                           ))}
                         </div>
                       </button>
@@ -555,16 +550,9 @@ export default function KioskPage() {
                   <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
                     <Sparkles className="w-4 h-4 text-primary" /> Filters
                   </div>
-                  <div className="grid grid-cols-5 gap-2">
+                  <div className="grid grid-cols-5 gap-3">
                     {availableFilters.map((f) => (
-                      <button 
-                        key={f.id} 
-                        onClick={() => setSelectedFilter(f)} 
-                        className={cn(
-                          "aspect-square relative transition-all border-2 overflow-hidden", 
-                          selectedFilter.id === f.id ? "border-primary" : "border-white/10"
-                        )}
-                      >
+                      <button key={f.id} onClick={() => setSelectedFilter(f)} className={cn("aspect-square relative transition-all border-2 overflow-hidden", selectedFilter.id === f.id ? "border-primary shadow-[0_0_10px_#FF3399]" : "border-white/10")}>
                         <div className={cn("absolute inset-0 bg-gradient-to-br from-zinc-700 to-zinc-900", f.class)} />
                         <span className={cn("relative z-10 text-[8px] font-black italic", selectedFilter.id === f.id ? "text-white" : "text-white/60")}>{f.label}</span>
                       </button>
@@ -572,65 +560,55 @@ export default function KioskPage() {
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-4 pt-6">
-                <NeonButton onClick={() => setAppState("capturing")} className="w-full !py-8" disabled={!!cameraError}>SHOOT</NeonButton>
-              </div>
+              <NeonButton onClick={() => setAppState("capturing")} className="w-full !py-10 text-2xl" disabled={!!cameraError}>SHOOT</NeonButton>
             </div>
           </div>
         )}
 
         {appState === "capturing" && (
-          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black">
-             <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
-                <video 
-                  ref={videoRef} 
-                  autoPlay 
-                  playsInline 
-                  muted 
-                  className={cn("absolute inset-0 w-full h-full object-cover z-0", selectedFilter.class)} 
-                />
-                {isProcessing && <div className="absolute inset-0 bg-white z-30 animate-in fade-in out-fade-out duration-300" />}
-                {countdown !== null && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-transparent z-40 pointer-events-none">
-                     <span className="text-[15rem] font-headline font-black italic text-white animate-bounce drop-shadow-[0_0_40px_rgba(255,51,153,0.9)]">{countdown}</span>
-                  </div>
-                )}
-             </div>
+          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black animate-in fade-in duration-500">
+             <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover z-0", selectedFilter.class)} />
+             {isProcessing && <div className="absolute inset-0 bg-white z-30 animate-in fade-in out-fade-out duration-300" />}
+             {countdown !== null && (
+               <div className="absolute inset-0 flex items-center justify-center bg-transparent z-40 pointer-events-none">
+                  <span className="text-[25rem] font-headline font-black italic text-white animate-bounce drop-shadow-[0_0_60px_rgba(255,51,153,0.9)]">{countdown}</span>
+               </div>
+             )}
           </div>
         )}
 
         {appState === "review" && (
-          <div className="w-full h-full flex flex-col items-center justify-center animate-in fade-in duration-500 py-10 px-6 overflow-y-auto scrollbar-hide">
-            <h2 className="font-headline font-black text-4xl mb-6 italic uppercase text-primary">Preview Result</h2>
-            <div className="w-full max-w-[450px] aspect-[3/4] mb-8 shadow-[0_0_60px_rgba(0,0,0,0.8)] border-4 border-white overflow-hidden relative">
-               {selectedBlueprint && capturedPhotos.length > 0 ? (
-                 <BlueprintFrame 
-                   blueprint={selectedBlueprint} 
-                   photos={capturedPhotos} 
-                   filterClass={selectedFilter.class} 
-                   isPreview 
-                 />
-               ) : (
-                 <div className="absolute inset-0 bg-zinc-900 flex items-center justify-center">
-                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-                 </div>
-               )}
+          <div className="w-full h-full max-w-7xl flex flex-col lg:flex-row items-center justify-center gap-12 animate-in fade-in duration-500 py-10 px-8">
+            <div className="relative w-full lg:flex-1 max-h-[80vh] flex items-center justify-center">
+              <div className="w-full max-w-[450px] aspect-[3/4] shadow-[0_0_60px_rgba(0,0,0,0.8)] border-4 border-white overflow-hidden relative">
+                 {selectedBlueprint && capturedPhotos.length > 0 ? (
+                   <BlueprintFrame blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.class} isPreview />
+                 ) : (
+                   <div className="absolute inset-0 bg-zinc-900 flex items-center justify-center">
+                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                   </div>
+                 )}
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-4 w-full max-w-md">
-               <NeonButton onClick={() => setAppState("decorating")} className="w-full py-8 text-xl flex items-center justify-center gap-2">
-                 <CheckCircle2 className="w-6 h-6" /> USE PHOTO
-               </NeonButton>
-               <button onClick={() => { setCapturedPhotos([]); setAppState("setup"); }} className="w-full border-2 border-white font-headline font-black text-xl py-8 italic uppercase hover:bg-white hover:text-black flex items-center justify-center gap-2">
-                 <RotateCcw className="w-6 h-6" /> RETAKE
-               </button>
+            <div className="w-full lg:w-96 space-y-6 flex flex-col items-center lg:items-start">
+               <h2 className="font-headline font-black text-5xl italic uppercase text-primary leading-none">PREVIEW</h2>
+               <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-4">CHECK YOUR POSE BEFORE STYLING</p>
+               <div className="grid grid-cols-1 gap-4 w-full">
+                  <NeonButton onClick={() => setAppState("decorating")} className="w-full !py-10 text-2xl flex items-center justify-center gap-3">
+                    <CheckCircle2 className="w-8 h-8" /> USE PHOTO
+                  </NeonButton>
+                  <button onClick={() => { setCapturedPhotos([]); setAppState("setup"); }} className="w-full border-4 border-white font-headline font-black text-xl py-8 italic uppercase hover:bg-white hover:text-black flex items-center justify-center gap-3 transition-colors">
+                    <RotateCcw className="w-8 h-8" /> RETAKE
+                  </button>
+               </div>
             </div>
           </div>
         )}
 
         {appState === "decorating" && (
-          <div className="w-full max-w-7xl flex flex-col lg:flex-row gap-8 items-start animate-in fade-in duration-500 py-10 px-6">
+          <div className="w-full max-w-7xl flex flex-col lg:flex-row gap-12 items-center lg:items-start animate-in fade-in duration-500 py-10 px-8">
              <div className="relative flex-1 w-full max-h-[80vh] flex items-center justify-center">
-                <div className="relative w-full h-full max-w-[450px] aspect-[3/4]">
+                <div className="relative w-full h-full max-w-[450px] aspect-[3/4] shadow-[0_0_40px_rgba(255,51,153,0.2)]">
                   {selectedBlueprint && (
                     <BlueprintFrame 
                       blueprint={selectedBlueprint} 
@@ -648,22 +626,22 @@ export default function KioskPage() {
                   )}
                 </div>
              </div>
-             <div className="w-full lg:w-96 space-y-6 lg:max-h-[80vh] overflow-y-auto pr-4 scrollbar-hide">
-                <div className="flex items-center justify-between">
-                  <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Decoration</h2>
-                  <button onClick={() => setPlacedStickers([])} className="text-[10px] font-black uppercase text-red-500"><Trash2 className="w-3 h-3 inline mr-2" /> Clear All</button>
+             <div className="w-full lg:w-[450px] space-y-8 lg:max-h-[80vh] overflow-y-auto scrollbar-hide">
+                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                  <h2 className="font-headline font-black text-4xl italic uppercase text-primary">Decor</h2>
+                  <button onClick={() => setPlacedStickers([])} className="text-[10px] font-black uppercase text-red-500 hover:text-red-400 transition-colors"><Trash2 className="w-4 h-4 inline mr-2" /> Clear All</button>
                 </div>
-                <div className="space-y-8">
+                <div className="space-y-10">
                   <Tabs defaultValue="HEARTS" onValueChange={setActiveStickerCategory} className="w-full">
-                    <TabsList className="w-full grid grid-cols-5 bg-white/10 border border-white/20 mb-4 h-12 rounded-2xl p-1">
+                    <TabsList className="w-full grid grid-cols-5 bg-white/10 border border-white/20 mb-6 h-14 rounded-2xl p-1">
                       {["HEARTS", "CUTE", "PHOTO", "AESTHETIC", "TEXT"].map((cat) => (
-                        <TabsTrigger key={cat} value={cat} className="text-[8px] font-black">{cat}</TabsTrigger>
+                        <TabsTrigger key={cat} value={cat} className="text-[10px] font-black tracking-tighter">{cat}</TabsTrigger>
                       ))}
                     </TabsList>
-                    <div className="grid grid-cols-4 gap-3 max-h-56 overflow-y-auto scrollbar-hide">
+                    <div className="grid grid-cols-4 gap-4 max-h-[30vh] overflow-y-auto scrollbar-hide pr-2">
                       {STICKER_DEFS.filter(s => s.category === activeStickerCategory).map((s) => (
-                        <button key={s.id} onClick={() => addSticker(s.id)} className="aspect-square flex items-center justify-center bg-white/5 border-2 border-white/10 rounded-2xl hover:border-primary/50 transition-all">
-                          <s.icon className={cn("w-8 h-8", s.color)} />
+                        <button key={s.id} onClick={() => addSticker(s.id)} className="aspect-square flex items-center justify-center bg-white/5 border-2 border-white/10 rounded-2xl hover:border-primary/50 transition-all hover:scale-105 active:scale-95">
+                          <s.icon className={cn("w-10 h-10", s.color)} />
                         </button>
                       ))}
                     </div>
@@ -672,68 +650,71 @@ export default function KioskPage() {
                     <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
                       <Quote className="w-4 h-4 text-primary" /> Inspiration
                     </div>
-                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto scrollbar-hide">
+                    <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto scrollbar-hide pr-2">
                       {QUOTES.map((q) => (
-                        <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("py-3 px-4 text-[10px] font-black uppercase border-2 italic text-left rounded-xl", selectedQuote.id === q.id ? "bg-primary border-primary text-white" : "bg-white/5 border-white/10 text-white/40")}>{q.label}</button>
+                        <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("py-4 px-4 text-[11px] font-black uppercase border-2 italic text-left rounded-xl transition-all", selectedQuote.id === q.id ? "bg-primary border-primary text-white shadow-[0_0_10px_#FF3399]" : "bg-white/5 border-white/10 text-white/40 hover:border-white/30")}>{q.label}</button>
                       ))}
                     </div>
                   </div>
                 </div>
-                <NeonButton onClick={() => setAppState("consent")} className="w-full !py-8 mt-6">FINISH CREATING</NeonButton>
+                <NeonButton onClick={() => setAppState("consent")} className="w-full !py-10 text-2xl mt-6">FINISH SESSION</NeonButton>
              </div>
           </div>
         )}
 
         {appState === "consent" && (
-          <div className="w-full max-w-xl animate-in slide-in-from-bottom-8 duration-500 text-center flex flex-col items-center justify-center h-full px-6">
-             <h2 className="font-headline font-black text-4xl mb-4 italic uppercase">Help Us Share Happy Memories ✨</h2>
-             <div className="space-y-4 mb-10">
-               <p className="text-lg font-bold text-white">May we use your moments from this photo booth for promotional posts on JNL STUDIO Facebook page?</p>
-               <p className="text-sm text-white/60 italic">Maaari ba naming gamitin ang inyong moments mula sa photo booth na ito para sa promotional posts sa JNL STUDIO Facebook page?</p>
+          <div className="w-full max-w-3xl animate-in slide-in-from-bottom-8 duration-500 text-center flex flex-col items-center justify-center h-full px-12">
+             <h2 className="font-headline font-black text-5xl mb-6 italic uppercase leading-tight">Help Us Share <br /><span className="text-primary">Happy Memories ✨</span></h2>
+             <div className="space-y-6 mb-12">
+               <p className="text-xl font-bold text-white/90">May we use your moments from this photo booth for promotional posts on JNL STUDIO Facebook page?</p>
+               <p className="text-sm text-white/40 italic">Maaari ba naming gamitin ang inyong moments mula sa photo booth na ito para sa promotional posts sa JNL STUDIO Facebook page?</p>
              </div>
-             <div className="grid grid-cols-1 gap-4 px-4 w-full">
-               <button onClick={() => { setPromoConsent(true); setAppState("printing"); }} className="w-full bg-primary py-8 text-xl font-headline font-black italic uppercase">Yes, we allow it / Oo, pumapayag kami</button>
-               <button onClick={() => { setPromoConsent(false); setAppState("printing"); }} className="w-full border-2 border-white/20 font-headline font-black text-lg py-6 italic uppercase text-white/40">No, thank you / Hindi po</button>
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
+               <NeonButton onClick={() => { setPromoConsent(true); setAppState("printing"); }} className="w-full !py-10 text-xl">YES, WE ALLOW IT</NeonButton>
+               <button onClick={() => { setPromoConsent(false); setAppState("printing"); }} className="w-full border-4 border-white/20 font-headline font-black text-xl py-10 italic uppercase text-white/40 hover:text-white hover:border-white transition-all">NO, THANK YOU</button>
             </div>
           </div>
         )}
 
         {appState === "printing" && (
-          <div className="w-full max-w-4xl animate-in fade-in duration-500 text-center flex flex-col items-center justify-center h-full px-6">
+          <div className="w-full max-w-6xl animate-in fade-in duration-500 text-center flex flex-col items-center justify-center h-full px-10">
              {printProgress < 100 ? (
-                <div className="space-y-8 py-12 w-full">
-                   <div className="relative w-32 h-32 mx-auto">
+                <div className="space-y-12 py-12 w-full">
+                   <div className="relative w-40 h-40 mx-auto">
                       <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
                       <div className="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin" />
                       <div className="absolute inset-0 flex items-center justify-center">
-                         {isSavingToUsb ? <Usb className="w-12 h-12 text-primary animate-bounce" /> : <Printer className="w-12 h-12 text-primary animate-pulse" />}
+                         {isSavingToUsb ? <Usb className="w-16 h-16 text-primary animate-bounce" /> : <Printer className="w-16 h-16 text-primary animate-pulse" />}
                       </div>
                    </div>
-                   <h2 className="font-headline font-black text-3xl italic uppercase">{isSavingToUsb ? "Syncing Hybrid Storage..." : "Printing Portrait..."}</h2>
-                   <div className="max-w-md mx-auto">
-                      <Progress value={printProgress} className="h-3 bg-white/5" />
+                   <div className="space-y-2">
+                     <h2 className="font-headline font-black text-4xl italic uppercase">{isSavingToUsb ? "Syncing Hybrid Storage..." : "Printing Portrait..."}</h2>
+                     <p className="text-[10px] uppercase font-black tracking-[0.5em] text-white/40">PLEASE WAIT A MOMENT</p>
+                   </div>
+                   <div className="max-w-xl mx-auto">
+                      <Progress value={printProgress} className="h-4 bg-white/5" />
                    </div>
                 </div>
              ) : (
-                <div className="flex flex-col items-center space-y-12 animate-in slide-in-from-bottom-8 w-full">
-                   <h2 className="font-headline font-black text-5xl sm:text-6xl italic uppercase leading-none">THANK <span className="text-primary">YOU!</span></h2>
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
-                      <div className="bg-white/5 border border-white/10 p-8 flex flex-col items-center space-y-6 rounded-2xl shadow-xl">
-                         <QrCode className="w-12 h-12 text-primary" />
-                         <h3 className="font-headline font-black text-xl uppercase italic">SOFT COPY</h3>
-                         <div className="aspect-square w-full max-w-[250px] bg-white p-4 rounded-2xl">
+                <div className="flex flex-col items-center space-y-16 animate-in slide-in-from-bottom-8 w-full py-10">
+                   <h2 className="font-headline font-black text-6xl sm:text-8xl italic uppercase leading-none">THANK <span className="text-primary">YOU!</span></h2>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-12 w-full max-w-5xl">
+                      <div className="bg-white/5 border-2 border-white/10 p-12 flex flex-col items-center space-y-8 rounded-3xl shadow-2xl">
+                         <QrCode className="w-16 h-16 text-primary" />
+                         <h3 className="font-headline font-black text-2xl uppercase italic">SOFT COPY</h3>
+                         <div className="aspect-square w-full max-w-[280px] bg-white p-6 rounded-3xl">
                             <img src={softCopyQrUrl} alt="Soft Copy QR" className="w-full h-full object-contain" />
                          </div>
                       </div>
-                      <div className="bg-white/5 border border-white/10 p-8 flex flex-col items-center space-y-6 rounded-2xl shadow-xl">
-                         <Facebook className="w-12 h-12 text-blue-500" />
-                         <h3 className="font-headline font-black text-xl uppercase italic">FOLLOW US</h3>
-                         <div className="aspect-square w-full max-w-[250px] bg-white p-4 rounded-2xl">
+                      <div className="bg-white/5 border-2 border-white/10 p-12 flex flex-col items-center space-y-8 rounded-3xl shadow-2xl">
+                         <Facebook className="w-16 h-16 text-blue-500" />
+                         <h3 className="font-headline font-black text-2xl uppercase italic">FOLLOW US</h3>
+                         <div className="aspect-square w-full max-w-[280px] bg-white p-6 rounded-3xl">
                             <img src="https://picsum.photos/seed/fb-qr/500/500" alt="Facebook QR" className="w-full h-full object-contain" />
                          </div>
                       </div>
                    </div>
-                   <NeonButton onClick={resetSession} className="px-24 !py-8 text-2xl">FINISH SESSION</NeonButton>
+                   <NeonButton onClick={resetSession} className="px-32 !py-10 text-3xl">FINISH SESSION</NeonButton>
                 </div>
              )}
           </div>

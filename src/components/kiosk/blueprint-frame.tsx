@@ -46,7 +46,7 @@ export const BlueprintFrame = React.memo(({
     if (containerRef.current) {
       setCanvasRect(containerRef.current.getBoundingClientRect());
     }
-  }, [isPreview, blueprint]);
+  }, [isPreview, blueprint, photos]); // Recalculate on photo change too
 
   if (!blueprint || !blueprint.slots) return null;
 
@@ -73,7 +73,7 @@ export const BlueprintFrame = React.memo(({
         zIndex: 0
       }}
     >
-      {/* Background Photos */}
+      {/* Background Photos - Z-0 ensures they stay behind everything */}
       <div className="absolute inset-0 z-0">
         {blueprint.slots.map((slot, index) => (
           <div
@@ -105,7 +105,7 @@ export const BlueprintFrame = React.memo(({
         ))}
       </div>
 
-      {/* Decorative Layer (Stickers) */}
+      {/* Decorative Layer (Stickers) - Z-40 ensures they stay above photos but below branding */}
       <div className="absolute inset-0 z-40 pointer-events-none">
         {stickers.map((s) => {
           const def = STICKER_DEFS.find(d => d.id === s.type);
@@ -145,26 +145,26 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* Footer Branding Layer */}
+      {/* Footer Branding Layer - Z-50. Height reduced to 10% to minimize free space. */}
       <div 
-        className="absolute left-0 right-0 bottom-0 bg-white z-50"
+        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-end pb-[2%]"
         style={{ height: '10%' }}
       >
         {quoteText && (
-          <div className="absolute left-0 right-0 flex items-center justify-center top-1">
-            <span className="font-headline font-black italic uppercase text-black/40 text-center px-4" style={{ fontSize: isStrip ? '10px' : '14px', letterSpacing: '0.1em' }}>{quoteText}</span>
+          <div className="mb-auto pt-1 flex items-center justify-center">
+            <span className="font-headline font-black italic uppercase text-black/40 text-center px-4 leading-none" style={{ fontSize: isStrip ? '10px' : '14px', letterSpacing: '0.1em' }}>{quoteText}</span>
           </div>
         )}
 
-        <div className="absolute bottom-[10%] left-[8%] right-[8%] flex justify-between items-end">
-          <div className="flex flex-col items-start">
+        <div className="w-[90%] mx-auto flex justify-between items-end">
+          <div className="flex flex-col items-start leading-none">
              <span className="font-headline font-black italic uppercase text-black flex items-center gap-1" style={{ fontSize: isStrip ? '16px' : '22px' }}>
                <span>JNL</span>
                <span className="text-[#FF3399]">STUDIO</span>
              </span>
              <span className="font-bold uppercase tracking-[0.4em] text-black/30" style={{ fontSize: isStrip ? '5px' : '7px' }}>PHOTOBOOTH</span>
           </div>
-          <span className="font-bold uppercase tracking-[0.3em] text-black/30" style={{ fontSize: isStrip ? '8px' : '12px' }}>{displayDate}</span>
+          <span className="font-bold uppercase tracking-[0.3em] text-black/30 leading-none" style={{ fontSize: isStrip ? '8px' : '12px' }}>{displayDate}</span>
         </div>
       </div>
     </div>
@@ -179,6 +179,7 @@ export const BlueprintFrame = React.memo(({
         width: isPreview ? "auto" : `${CANVAS_W}px`,
         height: isPreview ? "100%" : `${CANVAS_H}px`,
         maxHeight: isPreview ? '100%' : 'none',
+        zIndex: 10
       }}
       onPointerDown={() => isPreview && onSelectSticker?.("")}
     >

@@ -140,8 +140,8 @@ export default function KioskPage() {
   const [softCopyQrUrl, setSoftCopyQrUrl] = useState("");
   const [facebookQrUrl, setFacebookQrUrl] = useState("");
 
+  // Safe QR generation on client
   useEffect(() => {
-    // Generate QR codes only on the client after hydration
     if (typeof window !== 'undefined') {
       const sessionId = SessionStore.load()?.id || `sess_${Date.now()}`;
       const baseUrl = window.location.origin;
@@ -153,6 +153,7 @@ export default function KioskPage() {
     }
   }, [appState]);
 
+  // Orientation Lock
   useEffect(() => {
     const lockLandscape = async () => {
       try {
@@ -239,10 +240,10 @@ export default function KioskPage() {
     if (!canvasRef.current) return;
     const finalDataUrl = canvasRef.current.toDataURL('image/jpeg', 0.95);
     
-    // 1. Save Locally (IndexedDB) - ENSURES PERSISTENCE
+    // 1. Save Locally (IndexedDB)
     await SessionStore.savePhotoLocally(sessionId, finalDataUrl);
     
-    // 2. Export to Lexar USB (if connected)
+    // 2. Export to Lexar USB
     if (usbDirectoryHandle) {
       try {
         const filename = `JNL_${sessionId}.jpg`;
@@ -258,11 +259,10 @@ export default function KioskPage() {
       }
     }
 
-    // 3. Upload to Cloud (Firebase) for Soft Copy QR Retrieval - NON-BLOCKING
+    // 3. Upload to Cloud (Firebase) for Soft Copy
     try {
       const { storage } = initializeFirebase();
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
-      // Start upload in background
       uploadString(photoRef, finalDataUrl, 'data_url').catch(e => {
         KioskLogger.log('warn', 'Cloud', 'Soft Copy Upload Failed. Offline mode active.');
       });

@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Session persistence and Hybrid Sync Queue for JNL Studio Kiosk.
  * Upgraded to use IndexedDB for high-resolution photo storage and USB sync management.

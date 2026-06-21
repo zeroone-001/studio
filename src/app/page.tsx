@@ -149,8 +149,7 @@ export default function KioskPage() {
   const initBillAcceptor = useCallback(async () => {
     if (typeof navigator === 'undefined' || !('serial' in navigator)) return;
     try {
-      // @ts-ignore
-      const ports = await navigator.serial.getPorts();
+      const ports = await (navigator as any).serial.getPorts();
       if (ports.length > 0) {
         const port = ports[0];
         await port.open({ baudRate: 9600 });
@@ -199,8 +198,7 @@ export default function KioskPage() {
     const lockLandscape = async () => {
       try {
         if (typeof screen !== 'undefined' && 'orientation' in screen && 'lock' in screen.orientation) {
-          // @ts-ignore
-          await screen.orientation.lock('landscape');
+          await (screen.orientation as any).lock('landscape');
         }
       } catch (e) {}
     };
@@ -221,7 +219,7 @@ export default function KioskPage() {
   }, []);
 
   useEffect(() => {
-    if (appState !== "welcome" && appState !== "printing" && appState !== "test-camera") {
+    if (typeof window !== 'undefined' && appState !== "welcome" && appState !== "printing" && appState !== "test-camera") {
       SessionStore.save({
         state: appState,
         packageSelected,
@@ -344,16 +342,17 @@ export default function KioskPage() {
     }
 
     const assemblyTime = performance.now() - startTime;
-    KioskLogger.log('info', 'Performance', `Photo Assembly: ${assemblyTime.toFixed(2)}ms`);
+    KioskLogger.log('info', 'Performance', `Assembly: ${assemblyTime.toFixed(0)}ms`);
 
-    // AUTO-PRINT & USB
+    // High Quality Print Data
     const printDataUrl = exportCanvas.toDataURL('image/jpeg', 0.95);
     initiatePrint(printDataUrl);
 
+    // USB Write
     if (usbDirectoryHandle) {
       try {
         const filename = `JNL_${sessionId}.jpg`;
-        const fileHandle = await usbDirectoryHandle.getFileHandle(filename, { create: true });
+        const fileHandle = await (usbDirectoryHandle as any).getFileHandle(filename, { create: true });
         const writable = await fileHandle.createWritable();
         const response = await fetch(printDataUrl);
         const blob = await response.blob();
@@ -365,13 +364,13 @@ export default function KioskPage() {
 
     setUploadPercent(30);
 
-    // CLOUD UPLOAD (OPTIMIZED BLOB)
+    // Optimized Cloud Upload
     try {
       const uploadStartTime = performance.now();
       const { storage } = initializeFirebase();
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       
-      // Convert to Blob for faster upload than string
+      // Use Blob with optimized quality for faster upload
       const blob: Blob = await new Promise((resolve) => {
         exportCanvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.82);
       });
@@ -384,7 +383,7 @@ export default function KioskPage() {
       const downloadUrl = await getDownloadURL(photoRef);
       const urlDuration = performance.now() - urlStartTime;
 
-      KioskLogger.log('info', 'Performance', `Upload: ${uploadDuration.toFixed(2)}ms | URL Gen: ${urlDuration.toFixed(2)}ms`);
+      KioskLogger.log('info', 'Performance', `Upload: ${uploadDuration.toFixed(0)}ms | URL: ${urlDuration.toFixed(0)}ms`);
 
       const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
       setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
@@ -393,7 +392,7 @@ export default function KioskPage() {
       setUploadPercent(100);
     } catch (e) {
       setUploadStatus("error");
-      KioskLogger.log('error', 'Cloud', 'Soft Copy Failed. Retrying in background...');
+      KioskLogger.log('error', 'Cloud', 'Soft Copy Failed.');
     }
   }, [usbDirectoryHandle, selectedBlueprint, capturedPhotos, selectedFilter]);
 
@@ -568,8 +567,7 @@ export default function KioskPage() {
             usbStatus={usbDirectoryHandle ? "connected" : "disconnected"}
             onSetupUsb={async () => {
               try {
-                // @ts-ignore
-                const handle = await window.showDirectoryPicker();
+                const handle = await (window as any).showDirectoryPicker();
                 setUsbDirectoryHandle(handle);
                 KioskLogger.log('info', 'Hardware', 'USB Mounted.');
               } catch (e) {}
@@ -577,8 +575,7 @@ export default function KioskPage() {
             onSetupBillAcceptor={async () => {
               try {
                 if ('serial' in navigator) {
-                  // @ts-ignore
-                  await navigator.serial.requestPort();
+                  await (navigator as any).serial.requestPort();
                   initBillAcceptor();
                 }
               } catch (e) {}
@@ -819,34 +816,37 @@ export default function KioskPage() {
                    </div>
                 </div>
 
-                <div className="bg-white/5 border-2 border-white/10 p-8 flex flex-col items-center space-y-4 rounded-3xl shadow-2xl w-full lg:w-80 transition-all">
+                <div className="bg-white/5 border-2 border-white/10 p-8 flex flex-col items-center space-y-4 rounded-3xl shadow-2xl w-full lg:w-80 transition-all min-h-[400px]">
                    {uploadStatus === "idle" || uploadStatus === "uploading" ? (
-                     <div className="flex flex-col items-center space-y-6 py-8">
+                     <div className="flex flex-col items-center space-y-6 py-12">
                        <Loader2 className="w-12 h-12 text-primary animate-spin" />
                        <div className="space-y-2 text-center">
                          <h3 className="font-headline font-black text-xl uppercase italic">SOFT COPY</h3>
-                         <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Processing High-Res...</p>
+                         <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Uploading to CDN...</p>
                        </div>
-                       <Progress value={uploadPercent} className="w-32 h-2 bg-white/5" />
+                       <Progress value={uploadPercent} className="w-48 h-2 bg-white/5" />
                      </div>
                    ) : uploadStatus === "complete" ? (
-                     <div className="animate-in zoom-in-95 duration-500 flex flex-col items-center space-y-4">
-                       <QrCode className="w-10 h-10 text-primary" />
-                       <h3 className="font-headline font-black text-xl uppercase italic">SCAN NOW</h3>
-                       <div className="aspect-square w-full bg-white p-4 rounded-2xl shadow-xl">
+                     <div className="animate-in zoom-in-95 duration-500 flex flex-col items-center space-y-6">
+                       <div className="flex items-center gap-2">
+                         <QrCode className="w-6 h-6 text-primary" />
+                         <h3 className="font-headline font-black text-xl uppercase italic">SCAN TO SAVE</h3>
+                       </div>
+                       <div className="aspect-square w-full bg-white p-4 rounded-2xl shadow-[0_0_30px_rgba(255,51,153,0.3)]">
                           {softCopyQrUrl && <img src={softCopyQrUrl} alt="Soft Copy QR" className="w-full h-full object-contain" />}
                        </div>
-                       <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest">Instant HD Download</p>
+                       <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest text-center">Instant HD Download Ready</p>
                      </div>
                    ) : (
-                     <div className="flex flex-col items-center space-y-4 py-8 text-red-500">
+                     <div className="flex flex-col items-center space-y-6 py-12 text-red-500">
                        <AlertCircle className="w-12 h-12" />
-                       <p className="text-[10px] font-black uppercase text-center">Soft Copy Offline. Please use Lexar USB drive.</p>
+                       <p className="text-[10px] font-black uppercase text-center leading-relaxed">Soft Copy Sync Failed.<br />Please use Lexar USB.</p>
+                       <button onClick={() => handleFinalExport()} className="text-[10px] underline font-bold">RETRY SYNC</button>
                      </div>
                    )}
                    
                    {printProgress === 100 && (
-                     <button onClick={() => setAppState("thankyou")} className="w-full mt-4 bg-primary py-4 font-headline font-black italic uppercase rounded-xl">FINISH SESSION</button>
+                     <button onClick={() => setAppState("thankyou")} className="w-full mt-4 bg-primary py-4 font-headline font-black italic uppercase rounded-xl shadow-lg active:scale-95 transition-transform">FINISH SESSION</button>
                    )}
                 </div>
              </div>

@@ -26,15 +26,16 @@ export default function RetrievePage() {
       try {
         const { storage } = initializeFirebase();
         const photoRef = ref(storage, `photos/${id}.jpg`);
-        // Instant direct URL fetch
+        
+        // Fast path: target Google Cloud CDN directly
         const url = await getDownloadURL(photoRef);
         const duration = performance.now() - startTime;
         
         setImageUrl(url);
-        setRetrievalStats(`CDN Retrieval: ${duration.toFixed(0)}ms`);
+        setRetrievalStats(`Instant CDN Sync: ${duration.toFixed(0)}ms`);
         setLoading(false);
       } catch (err) {
-        // Only retry once after 500ms if initial load fails (likely a race condition with slow internet)
+        // Silent background retry once for edge-case race conditions
         setTimeout(async () => {
           try {
             const { storage } = initializeFirebase();
@@ -43,7 +44,7 @@ export default function RetrievePage() {
             setImageUrl(url);
             setLoading(false);
           } catch (e) {
-            setError("Your photo is being finalized. Please refresh in a moment.");
+            setError("Your HD portrait is being finalized. Refresh in 3 seconds.");
             setLoading(false);
           }
         }, 500);
@@ -76,7 +77,7 @@ export default function RetrievePage() {
     try {
       await navigator.share({
         title: 'JNL Studio Portrait',
-        text: 'Check out my studio portrait from JNL Studio Booth!',
+        text: 'My studio portrait from JNL Studio Booth!',
         url: window.location.href,
       });
     } catch (e) {}
@@ -84,24 +85,24 @@ export default function RetrievePage() {
 
   return (
     <KioskLayout className="bg-zinc-950 overflow-y-auto scrollbar-hide">
-      <div className="flex flex-col items-center justify-center min-h-screen w-full px-4 py-12 text-center">
-        <JnlLogo variant="icon" className="mb-8 w-24 h-24 animate-in fade-in zoom-in duration-700" />
+      <div className="flex flex-col items-center justify-center min-h-screen w-full px-4 py-8 text-center">
+        <JnlLogo variant="icon" className="mb-6 w-20 h-20" />
         
-        <div className="w-full max-w-lg bg-zinc-900 border border-white/10 p-6 sm:p-10 rounded-[3rem] shadow-2xl backdrop-blur-3xl animate-in slide-in-from-bottom-12 duration-700">
+        <div className="w-full max-w-lg bg-zinc-900 border border-white/10 p-6 rounded-[2.5rem] shadow-2xl backdrop-blur-3xl animate-in slide-in-from-bottom-8 duration-500">
           {loading ? (
-            <div className="flex flex-col items-center py-20 space-y-6">
+            <div className="flex flex-col items-center py-24 space-y-6">
               <Loader2 className="w-16 h-16 text-primary animate-spin" />
-              <p className="text-white/60 font-black uppercase tracking-[0.3em] text-[10px]">Connecting to Studio CDN...</p>
+              <p className="text-white/40 font-black uppercase tracking-[0.3em] text-[10px]">Retrieving from CDN...</p>
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center py-20 space-y-6">
+            <div className="flex flex-col items-center py-24 space-y-6">
               <AlertCircle className="w-16 h-16 text-red-500" />
-              <p className="text-white/80 font-bold uppercase text-sm leading-relaxed">{error}</p>
-              <NeonButton onClick={() => window.location.reload()} className="!py-4 mt-4 w-full">TRY AGAIN</NeonButton>
+              <p className="text-white/80 font-bold uppercase text-xs leading-relaxed max-w-[250px]">{error}</p>
+              <NeonButton onClick={() => window.location.reload()} className="!py-4 mt-4 w-full text-sm">TRY AGAIN</NeonButton>
             </div>
           ) : (
-            <div className="space-y-10">
-              <div className="relative aspect-[2/3] w-full rounded-[2rem] overflow-hidden shadow-inner border-4 border-white bg-zinc-950">
+            <div className="space-y-8">
+              <div className="relative aspect-[2/3] w-full rounded-[1.5rem] overflow-hidden shadow-inner border-4 border-white bg-zinc-950">
                 <img 
                   src={imageUrl!} 
                   alt="Your HD Portrait" 
@@ -110,24 +111,24 @@ export default function RetrievePage() {
               </div>
               
               <div className="space-y-6">
-                <div className="space-y-2">
-                  <h2 className="text-3xl font-headline font-black italic uppercase text-primary tracking-tight">HD SOFT COPY</h2>
+                <div className="space-y-1">
+                  <h2 className="text-2xl font-headline font-black italic uppercase text-primary tracking-tight">HD SOFT COPY</h2>
                   {retrievalStats && (
-                    <div className="flex items-center justify-center gap-2 text-[8px] font-black uppercase text-white/30 tracking-[0.4em]">
-                      <Activity className="w-3 h-3" /> {retrievalStats}
+                    <div className="flex items-center justify-center gap-2 text-[7px] font-black uppercase text-white/20 tracking-[0.4em]">
+                      <Activity className="w-2.5 h-2.5" /> {retrievalStats}
                     </div>
                   )}
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <NeonButton onClick={handleDownload} className="w-full flex items-center justify-center gap-3 !py-6 text-lg">
-                    <Download className="w-6 h-6" /> SAVE
+                <div className="grid grid-cols-1 gap-4">
+                  <NeonButton onClick={handleDownload} className="w-full flex items-center justify-center gap-3 !py-5 text-lg">
+                    <Download className="w-6 h-6" /> SAVE TO GALLERY
                   </NeonButton>
                   <button 
                     onClick={handleShare}
-                    className="w-full border-4 border-white font-headline font-black text-lg py-6 italic uppercase hover:bg-white hover:text-black transition-all flex items-center justify-center gap-3"
+                    className="w-full border-2 border-white/20 font-headline font-black text-xs py-4 italic uppercase text-white/60 hover:text-white transition-all flex items-center justify-center gap-2"
                   >
-                    <Share2 className="w-6 h-6" /> SHARE
+                    <Share2 className="w-4 h-4" /> SHARE MOMENT
                   </button>
                 </div>
               </div>
@@ -135,7 +136,7 @@ export default function RetrievePage() {
           )}
         </div>
 
-        <p className="mt-16 mb-8 text-[9px] font-black uppercase tracking-[0.6em] text-white/10">
+        <p className="mt-12 text-[8px] font-black uppercase tracking-[0.6em] text-white/10">
           © JNL STUDIO PORTRAITS
         </p>
       </div>

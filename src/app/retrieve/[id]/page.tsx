@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -11,13 +10,15 @@ import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { Download, Loader2, AlertCircle } from "lucide-react";
 
 export default function RetrievePage() {
-  const { id } = useParams();
+  const params = useParams();
+  const id = params?.id as string;
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchPhoto = async () => {
+      if (!id) return;
       try {
         const { storage } = initializeFirebase();
         const photoRef = ref(storage, `photos/${id}.jpg`);
@@ -31,7 +32,7 @@ export default function RetrievePage() {
       }
     };
 
-    if (id) fetchPhoto();
+    fetchPhoto();
   }, [id]);
 
   const handleDownload = async () => {
@@ -54,7 +55,7 @@ export default function RetrievePage() {
 
   return (
     <KioskLayout className="bg-zinc-950">
-      <div className="flex flex-col items-center justify-center min-h-screen w-full px-6 py-12 text-center">
+      <div className="flex flex-col items-center justify-center min-h-screen w-full px-6 py-12 text-center overflow-y-auto">
         <JnlLogo variant="icon" className="mb-8 w-20 h-20" />
         
         <div className="w-full max-w-md bg-white/5 border border-white/10 p-8 rounded-3xl shadow-2xl backdrop-blur-xl">
@@ -67,7 +68,7 @@ export default function RetrievePage() {
             <div className="flex flex-col items-center py-12 space-y-4">
               <AlertCircle className="w-12 h-12 text-red-500" />
               <p className="text-white/80 font-bold uppercase text-sm">{error}</p>
-              <NeonButton onClick={() => window.location.reload()} className="!py-4">Retry</NeonButton>
+              <NeonButton onClick={() => window.location.reload()} className="!py-4 mt-4">Retry</NeonButton>
             </div>
           ) : (
             <div className="space-y-8">
@@ -87,7 +88,7 @@ export default function RetrievePage() {
           )}
         </div>
 
-        <p className="mt-12 text-[8px] font-black uppercase tracking-[0.4em] text-white/20">
+        <p className="mt-12 mb-8 text-[8px] font-black uppercase tracking-[0.4em] text-white/20">
           © JNL STUDIO PHOTOBOOTH
         </p>
       </div>

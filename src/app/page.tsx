@@ -141,13 +141,15 @@ export default function KioskPage() {
 
   useEffect(() => {
     // Generate QR codes only on the client after hydration
-    const sessionId = SessionStore.load()?.id || `sess_${Date.now()}`;
-    const baseUrl = window.location.origin;
-    const retrievalUrl = `${baseUrl}/retrieve/${sessionId}`;
-    setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
+    if (typeof window !== 'undefined') {
+      const sessionId = SessionStore.load()?.id || `sess_${Date.now()}`;
+      const baseUrl = window.location.origin;
+      const retrievalUrl = `${baseUrl}/retrieve/${sessionId}`;
+      setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
 
-    const fbLink = "https://www.facebook.com/share/18vTg5nLF3/";
-    setFacebookQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(fbLink)}`);
+      const fbLink = "https://www.facebook.com/share/18vTg5nLF3/";
+      setFacebookQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(fbLink)}`);
+    }
   }, [appState]);
 
   useEffect(() => {
@@ -193,11 +195,13 @@ export default function KioskPage() {
   useEffect(() => {
     const detectHardware = async () => {
       try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = devices.filter(device => device.kind === 'videoinput');
-        setAvailableCameras(videoDevices);
-        if (videoDevices.length > 0 && !selectedCameraId) {
-          setSelectedCameraId(videoDevices[0].deviceId);
+        if (typeof navigator !== 'undefined' && navigator.mediaDevices) {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const videoDevices = devices.filter(device => device.kind === 'videoinput');
+          setAvailableCameras(videoDevices);
+          if (videoDevices.length > 0 && !selectedCameraId) {
+            setSelectedCameraId(videoDevices[0].deviceId);
+          }
         }
       } catch (err) {
         KioskLogger.log('warn', 'Hardware', 'Hardware enumeration pending.');

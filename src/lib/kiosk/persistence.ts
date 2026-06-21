@@ -88,7 +88,7 @@ export const SessionStore = {
         });
       }
     } catch (e) {
-      if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+      if (typeof window !== 'undefined' && e instanceof DOMException && e.name === 'QuotaExceededError') {
         localStorage.removeItem(SYNC_QUEUE_KEY);
       }
     }

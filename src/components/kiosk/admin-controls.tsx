@@ -30,7 +30,8 @@ import {
   MonitorSmartphone,
   FolderOpen,
   CheckCircle2,
-  Printer
+  Printer,
+  Banknote
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
@@ -49,6 +50,7 @@ interface AdminControlsProps {
   onBypassPayment: (pkg: 50 | 100) => void;
   usbStatus: "connected" | "disconnected";
   onSetupUsb: () => void;
+  onSetupBillAcceptor: () => void;
   isDevMode: boolean;
   onToggleDevMode: () => void;
   isCameraActive?: boolean;
@@ -67,6 +69,7 @@ export function AdminControls({
   onBypassPayment,
   usbStatus,
   onSetupUsb,
+  onSetupBillAcceptor,
   isDevMode,
   onToggleDevMode,
   isCameraActive = false,
@@ -217,10 +220,6 @@ export function AdminControls({
                 <span className="text-[8px] font-black uppercase text-primary">Resolution</span>
                 <span className="text-[8px] font-black uppercase text-white">{resolution || 'Detecting...'}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[8px] font-black uppercase text-primary">System Fit</span>
-                <span className="text-[8px] font-black uppercase text-white">Auto-Portrait</span>
-              </div>
             </div>
 
             <div className="space-y-2">
@@ -233,6 +232,13 @@ export function AdminControls({
               >
                 {usbStatus === 'connected' ? <CheckCircle2 className="w-4 h-4" /> : <FolderOpen className="w-4 h-4" />}
                 {usbStatus === 'connected' ? "LEXAR USB MOUNTED" : "SELECT LEXAR DRIVE"}
+              </button>
+
+              <button 
+                onClick={onSetupBillAcceptor} 
+                className="w-full py-3 bg-zinc-800 text-[10px] font-black uppercase text-white/60 border-2 border-white/10 hover:border-white/30 transition-all flex items-center justify-center gap-2"
+              >
+                <Banknote className="w-4 h-4" /> Pair Bill Acceptor
               </button>
 
               <button 

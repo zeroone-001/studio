@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -11,7 +12,7 @@ import {
   Wallet, Sparkles, Frame, Quote, Trash2, Cat, Moon, Sun, 
   Coffee, Pizza, Flower2, Crown, Layers, CameraIcon, Flashlight, User, HeartIcon,
   QrCode, Facebook, Printer, Usb, AlertCircle, Star, Ghost, PartyPopper,
-  CheckCircle2, RotateCcw, Cookie as CookieIcon
+  CheckCircle2, RotateCcw, Cookie as CookieIcon, Banknote
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -140,6 +141,56 @@ export default function KioskPage() {
   const [softCopyQrUrl, setSoftCopyQrUrl] = useState("");
   const [facebookQrUrl, setFacebookQrUrl] = useState("");
   const exportTriggeredRef = useRef(false);
+
+  const serialPortRef = useRef<any>(null);
+
+  // Hardware Hub: Bill Acceptor Listener (Web Serial)
+  const initBillAcceptor = useCallback(async () => {
+    if (typeof navigator === 'undefined' || !('serial' in navigator)) return;
+    try {
+      // @ts-ignore
+      const ports = await navigator.serial.getPorts();
+      if (ports.length > 0) {
+        const port = ports[0];
+        await port.open({ baudRate: 9600 }); // Standard baud rate for bill acceptors
+        serialPortRef.current = port;
+        KioskLogger.log('info', 'Hardware', 'Bill Acceptor linked via UGreen hub.');
+
+        const reader = port.readable.getReader();
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          // Most bill acceptors send a specific byte for each currency value
+          // This logic assumes a generic pulse/byte mapping for bill values
+          if (value && value.length > 0) {
+            const byte = value[0];
+            let detectedAmount = 0;
+            // Common ICT/Apex bill acceptor byte values (example mapping)
+            if (byte === 0x41) detectedAmount = 20;
+            else if (byte === 0x42) detectedAmount = 50;
+            else if (byte === 0x43) detectedAmount = 100;
+            else detectedAmount = 1; // Pulse default
+
+            if (detectedAmount > 0) {
+              setPaymentReceived(prev => prev + detectedAmount);
+              KioskLogger.log('info', 'Payment', `Cash Inserted: PHP ${detectedAmount}`);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      KioskLogger.log('warn', 'Hardware', 'Bill Acceptor handshake pending.');
+    }
+  }, []);
+
+  useEffect(() => {
+    initBillAcceptor();
+    return () => {
+      if (serialPortRef.current) {
+        serialPortRef.current.close().catch(() => {});
+      }
+    };
+  }, [initBillAcceptor]);
 
   // QR generation logic deferred to client hydration
   useEffect(() => {
@@ -305,13 +356,13 @@ export default function KioskPage() {
 
     const finalDataUrl = exportCanvas.toDataURL('image/jpeg', 0.9);
     
-    // Auto-Print Signal
+    // Auto-Print Signal (Sends to any connected brand)
     initiatePrint(finalDataUrl);
 
     // IndexedDB Local Storage
     await SessionStore.savePhotoLocally(sessionId, finalDataUrl);
     
-    // Lexar USB Transfer
+    // Lexar USB Transfer (Concurrent with printing)
     if (usbDirectoryHandle) {
       try {
         const filename = `JNL_${sessionId}.jpg`;
@@ -327,7 +378,7 @@ export default function KioskPage() {
       }
     }
 
-    // Cloud Upload for QR
+    // Cloud Upload for QR Soft Copy
     try {
       const { storage } = initializeFirebase();
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
@@ -517,6 +568,17 @@ export default function KioskPage() {
                 KioskLogger.log('error', 'Hardware', 'USB Failed.');
               }
             }}
+            onSetupBillAcceptor={async () => {
+              try {
+                if ('serial' in navigator) {
+                  // @ts-ignore
+                  await navigator.serial.requestPort();
+                  initBillAcceptor();
+                }
+              } catch (e) {
+                KioskLogger.log('error', 'Hardware', 'Bill Acceptor Pairing Failed.');
+              }
+            }}
             isDevMode={isDevMode}
             onToggleDevMode={() => setIsDevMode(!isDevMode)}
             isCameraActive={!!cameraStream}
@@ -557,10 +619,10 @@ export default function KioskPage() {
           <div className="w-full max-w-2xl animate-in slide-in-from-bottom-8 duration-500 text-center flex flex-col items-center justify-center h-full px-6">
             <div className="mb-10">
                <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-dashed border-primary/30">
-                  <Wallet className="w-10 h-10 text-primary" />
+                  <Banknote className="w-10 h-10 text-primary" />
                </div>
                <h2 className="font-headline font-black text-4xl mb-2 italic uppercase">INSERT CASH</h2>
-               <p className="text-[10px] opacity-60 uppercase font-bold tracking-widest">AWAITING BILL</p>
+               <p className="text-[10px] opacity-60 uppercase font-bold tracking-widest">AWAITING BILL VIA UGREEN HUB</p>
             </div>
             <div className="bg-white/5 border-2 border-white/10 p-10 mb-8 w-full max-w-md">
                <div className="text-6xl font-black italic text-primary mb-2">{paymentReceived} <span className="text-2xl text-white">PHP</span></div>

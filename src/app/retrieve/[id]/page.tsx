@@ -8,7 +8,7 @@ import { ref, getDownloadURL } from "firebase/storage";
 import { KioskLayout } from "@/components/kiosk/kiosk-layout";
 import { NeonButton } from "@/components/kiosk/neon-button";
 import { JnlLogo } from "@/components/kiosk/jnl-logo";
-import { Download, Loader2, AlertCircle } from "lucide-react";
+import { Download, Loader2, AlertCircle, Share2 } from "lucide-react";
 
 export default function RetrievePage() {
   const params = useParams();
@@ -23,19 +23,29 @@ export default function RetrievePage() {
       try {
         const { storage } = initializeFirebase();
         const photoRef = ref(storage, `photos/${id}.jpg`);
-        // Using high priority retrieval
         const url = await getDownloadURL(photoRef);
         setImageUrl(url);
       } catch (err) {
-        console.error("Fetch Error:", err);
-        setError("Your photo is still being processed. Please refresh in a moment.");
+        // Retry logic for potential race conditions
+        setTimeout(async () => {
+          try {
+            const { storage } = initializeFirebase();
+            const photoRef = ref(storage, `photos/${id}.jpg`);
+            const url = await getDownloadURL(photoRef);
+            setImageUrl(url);
+          } catch (e) {
+            setError("Your photo is being finalized. Please refresh in a moment.");
+          } finally {
+            setLoading(false);
+          }
+        }, 2000);
       } finally {
-        setLoading(false);
+        if (imageUrl) setLoading(false);
       }
     };
 
     fetchPhoto();
-  }, [id]);
+  }, [id, imageUrl]);
 
   const handleDownload = async () => {
     if (!imageUrl) return;
@@ -45,7 +55,7 @@ export default function RetrievePage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `JNL_Studio_${id}.jpg`;
+      a.download = `JNL_Studio_HD_${id}.jpg`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -55,48 +65,68 @@ export default function RetrievePage() {
     }
   };
 
+  const handleShare = async () => {
+    if (!imageUrl || !navigator.share) return;
+    try {
+      await navigator.share({
+        title: 'JNL Studio Portrait',
+        text: 'Check out my studio portrait from JNL Studio Booth!',
+        url: window.location.href,
+      });
+    } catch (e) {}
+  };
+
   return (
-    <KioskLayout className="bg-zinc-950">
-      <div className="flex flex-col items-center justify-center min-h-screen w-full px-6 py-12 text-center overflow-y-auto scrollbar-hide">
-        <JnlLogo variant="icon" className="mb-8 w-20 h-20" />
+    <KioskLayout className="bg-zinc-950 overflow-y-auto scrollbar-hide">
+      <div className="flex flex-col items-center justify-center min-h-screen w-full px-4 py-12 text-center">
+        <JnlLogo variant="icon" className="mb-8 w-24 h-24 animate-in fade-in zoom-in duration-700" />
         
-        <div className="w-full max-w-md bg-white/5 border border-white/10 p-8 rounded-3xl shadow-2xl backdrop-blur-xl animate-in zoom-in-95 duration-500">
+        <div className="w-full max-w-lg bg-zinc-900 border border-white/10 p-6 sm:p-10 rounded-[3rem] shadow-2xl backdrop-blur-3xl animate-in slide-in-from-bottom-12 duration-700">
           {loading ? (
-            <div className="flex flex-col items-center py-12 space-y-4">
-              <Loader2 className="w-12 h-12 text-primary animate-spin" />
-              <p className="text-white/60 font-black uppercase tracking-widest text-[10px]">Retrieving Memory...</p>
+            <div className="flex flex-col items-center py-20 space-y-6">
+              <Loader2 className="w-16 h-16 text-primary animate-spin" />
+              <p className="text-white/60 font-black uppercase tracking-[0.3em] text-[10px]">Assembling HD Quality...</p>
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center py-12 space-y-4">
-              <AlertCircle className="w-12 h-12 text-red-500" />
-              <p className="text-white/80 font-bold uppercase text-sm">{error}</p>
-              <NeonButton onClick={() => window.location.reload()} className="!py-4 mt-4">Refresh</NeonButton>
+            <div className="flex flex-col items-center py-20 space-y-6">
+              <AlertCircle className="w-16 h-16 text-red-500" />
+              <p className="text-white/80 font-bold uppercase text-sm leading-relaxed">{error}</p>
+              <NeonButton onClick={() => window.location.reload()} className="!py-4 mt-4 w-full">TRY AGAIN</NeonButton>
             </div>
           ) : (
-            <div className="space-y-8">
-              <div className="relative aspect-[2/3] w-full rounded-xl overflow-hidden shadow-2xl border-4 border-white bg-zinc-900">
+            <div className="space-y-10">
+              <div className="relative aspect-[2/3] w-full rounded-[2rem] overflow-hidden shadow-inner border-4 border-white bg-zinc-950">
                 <img 
                   src={imageUrl!} 
-                  alt="Your Portrait" 
+                  alt="Your HD Portrait" 
                   className="w-full h-full object-contain"
-                  onLoad={() => setLoading(false)}
                 />
               </div>
               
-              <div className="space-y-4">
-                <h2 className="text-2xl font-headline font-black italic uppercase text-primary">Your Studio Copy</h2>
-                <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">Digital Download Ready</p>
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-headline font-black italic uppercase text-primary tracking-tight">HD SOFT COPY</h2>
+                  <p className="text-[10px] text-white/40 font-black uppercase tracking-[0.5em]">CERTIFIED PREMIUM STUDIO</p>
+                </div>
                 
-                <NeonButton onClick={handleDownload} className="w-full flex items-center justify-center gap-2 !py-6">
-                  <Download className="w-5 h-5" /> Download HD
-                </NeonButton>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <NeonButton onClick={handleDownload} className="w-full flex items-center justify-center gap-3 !py-6 text-lg">
+                    <Download className="w-6 h-6" /> SAVE
+                  </NeonButton>
+                  <button 
+                    onClick={handleShare}
+                    className="w-full border-4 border-white font-headline font-black text-lg py-6 italic uppercase hover:bg-white hover:text-black transition-all flex items-center justify-center gap-3"
+                  >
+                    <Share2 className="w-6 h-6" /> SHARE
+                  </button>
+                </div>
               </div>
             </div>
           )}
         </div>
 
-        <p className="mt-12 mb-8 text-[8px] font-black uppercase tracking-[0.4em] text-white/20">
-          © JNL STUDIO PHOTOBOOTH
+        <p className="mt-16 mb-8 text-[9px] font-black uppercase tracking-[0.6em] text-white/10">
+          © JNL STUDIO PORTRAITS
         </p>
       </div>
     </KioskLayout>

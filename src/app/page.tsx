@@ -12,7 +12,7 @@ import {
   Wallet, Sparkles, Frame, Quote, Trash2, Cat, Moon, Sun, 
   Coffee, Pizza, Flower2, Crown, Layers, CameraIcon, Flashlight, User, HeartIcon,
   QrCode, Facebook, Printer, Usb, AlertCircle, Star, Ghost, PartyPopper,
-  CheckCircle2, RotateCcw, Cookie as CookieIcon, Banknote
+  CheckCircle2, RotateCcw, Cookie as CookieIcon, Banknote, Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -23,7 +23,7 @@ import * as Kawaii from "@/components/kiosk/kawaii-stickers";
 import { SessionStore } from "@/lib/kiosk/persistence";
 import { KioskLogger } from "@/lib/kiosk/logger";
 import { initializeFirebase } from "@/firebase";
-import { ref, uploadString } from "firebase/storage";
+import { ref, uploadString, getDownloadURL } from "firebase/storage";
 
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "thankyou" | "test-camera";
 
@@ -140,11 +140,12 @@ export default function KioskPage() {
 
   const [softCopyQrUrl, setSoftCopyQrUrl] = useState("");
   const [facebookQrUrl, setFacebookQrUrl] = useState("");
+  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "complete" | "error">("idle");
+  const [uploadPercent, setUploadPercent] = useState(0);
   const exportTriggeredRef = useRef(false);
 
   const serialPortRef = useRef<any>(null);
 
-  // Hardware Hub: Bill Acceptor Listener (Web Serial)
   const initBillAcceptor = useCallback(async () => {
     if (typeof navigator === 'undefined' || !('serial' in navigator)) return;
     try {
@@ -152,24 +153,19 @@ export default function KioskPage() {
       const ports = await navigator.serial.getPorts();
       if (ports.length > 0) {
         const port = ports[0];
-        await port.open({ baudRate: 9600 }); // Standard baud rate for bill acceptors
+        await port.open({ baudRate: 9600 });
         serialPortRef.current = port;
-        KioskLogger.log('info', 'Hardware', 'Bill Acceptor linked via UGreen hub.');
-
         const reader = port.readable.getReader();
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
-          // Most bill acceptors send a specific byte for each currency value
-          // This logic assumes a generic pulse/byte mapping for bill values
           if (value && value.length > 0) {
             const byte = value[0];
             let detectedAmount = 0;
-            // Common ICT/Apex bill acceptor byte values (example mapping)
             if (byte === 0x41) detectedAmount = 20;
             else if (byte === 0x42) detectedAmount = 50;
             else if (byte === 0x43) detectedAmount = 100;
-            else detectedAmount = 1; // Pulse default
+            else detectedAmount = 1;
 
             if (detectedAmount > 0) {
               setPaymentReceived(prev => prev + detectedAmount);
@@ -192,20 +188,13 @@ export default function KioskPage() {
     };
   }, [initBillAcceptor]);
 
-  // QR generation logic deferred to client hydration
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const sessionId = SessionStore.load()?.id || `sess_${Date.now()}`;
-      const baseUrl = window.location.origin;
-      const retrievalUrl = `${baseUrl}/retrieve/${sessionId}`;
-      setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-
+    if (typeof window !== 'undefined' && appState === "printing") {
       const fbLink = "https://www.facebook.com/share/18vTg5nLF3/";
       setFacebookQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(fbLink)}`);
     }
   }, [appState]);
 
-  // Orientation Lock
   useEffect(() => {
     const lockLandscape = async () => {
       try {
@@ -213,9 +202,7 @@ export default function KioskPage() {
           // @ts-ignore
           await screen.orientation.lock('landscape');
         }
-      } catch (e) {
-        KioskLogger.log('info', 'Hardware', 'Orientation lock pending.');
-      }
+      } catch (e) {}
     };
     lockLandscape();
   }, []);
@@ -225,7 +212,6 @@ export default function KioskPage() {
       const newCount = prev + 1;
       if (newCount >= 5) {
         setIsAdminDialogOpen(true);
-        KioskLogger.log('info', 'System', 'Admin mastery panel requested.');
         return 0;
       }
       if (tapTimeoutRef.current) clearTimeout(tapTimeoutRef.current);
@@ -257,9 +243,7 @@ export default function KioskPage() {
             setSelectedCameraId(videoDevices[0].deviceId);
           }
         }
-      } catch (err) {
-        KioskLogger.log('warn', 'Hardware', 'Hardware enumeration pending.');
-      }
+      } catch (err) {}
     };
     detectHardware();
   }, [selectedCameraId]);
@@ -314,6 +298,9 @@ export default function KioskPage() {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     const sessionId = SessionStore.load()?.id || `sess_${Date.now()}`;
     
+    setUploadStatus("uploading");
+    setUploadPercent(10);
+
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1600;
     exportCanvas.height = 2400;
@@ -323,6 +310,7 @@ export default function KioskPage() {
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, 1600, 2400);
 
+    // Apply Filter & Render Photos
     const filterClass = selectedFilter.class;
     if (filterClass.includes('grayscale')) ctx.filter = 'grayscale(1)';
     if (filterClass.includes('sepia')) ctx.filter = 'sepia(0.4)';
@@ -330,65 +318,68 @@ export default function KioskPage() {
 
     const isStrip = selectedBlueprint.package === 50;
 
-    const drawStrip = (offsetX: number) => {
-      selectedBlueprint.slots.forEach((slot, i) => {
+    const drawPhotos = async (offsetX: number) => {
+      for (let i = 0; i < selectedBlueprint.slots.length; i++) {
+        const slot = selectedBlueprint.slots[i];
         const photo = capturedPhotos[i];
-        if (!photo) return;
+        if (!photo) continue;
+        
         const img = new Image();
         img.src = photo;
+        await new Promise(resolve => img.onload = resolve);
+        
         const sX = isStrip ? slot.x / 2 : slot.x;
         const sW = isStrip ? slot.w / 2 : slot.w;
         ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
-      });
-      
-      // Branding Footer
-      ctx.fillStyle = '#000000';
-      ctx.font = 'bold 30px Arial';
-      ctx.fillText("JNL STUDIO", 50 + offsetX, 2350);
+      }
     };
 
     if (isStrip) {
-      drawStrip(0);
-      drawStrip(800);
+      await drawPhotos(0);
+      await drawPhotos(800);
     } else {
-      drawStrip(0);
+      await drawPhotos(0);
     }
 
-    const finalDataUrl = exportCanvas.toDataURL('image/jpeg', 0.9);
-    
-    // Auto-Print Signal (Sends to any connected brand)
-    initiatePrint(finalDataUrl);
+    setUploadPercent(40);
 
-    // IndexedDB Local Storage
-    await SessionStore.savePhotoLocally(sessionId, finalDataUrl);
+    // Assembly Data URL (Master Quality)
+    const masterDataUrl = exportCanvas.toDataURL('image/jpeg', 0.95);
     
-    // Lexar USB Transfer (Concurrent with printing)
+    // Auto-Print Signal
+    initiatePrint(masterDataUrl);
+
+    // Lexar USB Transfer
     if (usbDirectoryHandle) {
       try {
         const filename = `JNL_${sessionId}.jpg`;
         const fileHandle = await usbDirectoryHandle.getFileHandle(filename, { create: true });
         const writable = await fileHandle.createWritable();
-        const response = await fetch(finalDataUrl);
+        const response = await fetch(masterDataUrl);
         const blob = await response.blob();
         await writable.write(blob);
         await writable.close();
-        KioskLogger.log('info', 'Hardware', `Auto-exported to Lexar USB: ${filename}`);
-      } catch (e) {
-        KioskLogger.log('error', 'Hardware', 'USB Write Error.');
-      }
+      } catch (e) {}
     }
 
-    // Cloud Upload for QR Soft Copy
+    setUploadPercent(60);
+
+    // Optimized Cloud Upload (JPEG 0.85 Quality)
+    const cloudDataUrl = exportCanvas.toDataURL('image/jpeg', 0.85);
     try {
       const { storage } = initializeFirebase();
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
-      uploadString(photoRef, finalDataUrl, 'data_url').then(() => {
-        KioskLogger.log('info', 'Cloud', 'Soft Copy Ready.');
-      }).catch(e => {
-        KioskLogger.log('warn', 'Cloud', 'Soft Copy Upload Failed.');
-      });
+      
+      await uploadString(photoRef, cloudDataUrl, 'data_url');
+      setUploadPercent(90);
+      
+      const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
+      setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
+      setUploadStatus("complete");
+      setUploadPercent(100);
     } catch (e) {
-      KioskLogger.log('warn', 'Cloud', 'Cloud handshake pending.');
+      setUploadStatus("error");
+      KioskLogger.log('error', 'Cloud', 'Soft Copy Upload Failed.');
     }
   }, [usbDirectoryHandle, selectedBlueprint, capturedPhotos, selectedFilter]);
 
@@ -399,6 +390,9 @@ export default function KioskPage() {
     }
     if (appState === "welcome") {
       exportTriggeredRef.current = false;
+      setUploadStatus("idle");
+      setUploadPercent(0);
+      setSoftCopyQrUrl("");
     }
   }, [appState, handleFinalExport]);
 
@@ -461,7 +455,7 @@ export default function KioskPage() {
       success = await tryStream({ video: deviceId ? { deviceId: { exact: deviceId } } : true, audio: false });
     }
     if (!success) {
-      setCameraError("Check OTG Connection.");
+      setCameraError("Check Connection.");
       return false;
     }
     return true;
@@ -564,9 +558,7 @@ export default function KioskPage() {
                 const handle = await window.showDirectoryPicker();
                 setUsbDirectoryHandle(handle);
                 KioskLogger.log('info', 'Hardware', 'USB Mounted.');
-              } catch (e) {
-                KioskLogger.log('error', 'Hardware', 'USB Failed.');
-              }
+              } catch (e) {}
             }}
             onSetupBillAcceptor={async () => {
               try {
@@ -575,9 +567,7 @@ export default function KioskPage() {
                   await navigator.serial.requestPort();
                   initBillAcceptor();
                 }
-              } catch (e) {
-                KioskLogger.log('error', 'Hardware', 'Bill Acceptor Pairing Failed.');
-              }
+              } catch (e) {}
             }}
             isDevMode={isDevMode}
             onToggleDevMode={() => setIsDevMode(!isDevMode)}
@@ -622,7 +612,7 @@ export default function KioskPage() {
                   <Banknote className="w-10 h-10 text-primary" />
                </div>
                <h2 className="font-headline font-black text-4xl mb-2 italic uppercase">INSERT CASH</h2>
-               <p className="text-[10px] opacity-60 uppercase font-bold tracking-widest">AWAITING BILL VIA UGREEN HUB</p>
+               <p className="text-[10px] opacity-60 uppercase font-bold tracking-widest">AWAITING BILL ACCEPTOR</p>
             </div>
             <div className="bg-white/5 border-2 border-white/10 p-10 mb-8 w-full max-w-md">
                <div className="text-6xl font-black italic text-primary mb-2">{paymentReceived} <span className="text-2xl text-white">PHP</span></div>
@@ -808,21 +798,42 @@ export default function KioskPage() {
                    </div>
                    <div className="space-y-2">
                      <h2 className="font-headline font-black text-3xl italic uppercase">Printing Portrait...</h2>
-                     <p className="text-[10px] uppercase font-black tracking-[0.5em] text-white/40">PLEASE WAIT A MOMENT</p>
+                     <p className="text-[10px] uppercase font-black tracking-[0.5em] text-white/40">COLLECT YOUR COPIES SOON</p>
                    </div>
                    <div className="w-full">
                      <Progress value={printProgress} className="h-3 bg-white/5" />
                    </div>
                 </div>
-                <div className="bg-white/5 border-2 border-white/10 p-8 flex flex-col items-center space-y-4 rounded-3xl shadow-2xl w-full lg:w-80">
-                   <QrCode className="w-10 h-10 text-primary" />
-                   <h3 className="font-headline font-black text-xl uppercase italic">SOFT COPY</h3>
-                   <div className="aspect-square w-full bg-white p-4 rounded-2xl">
-                      {softCopyQrUrl && <img src={softCopyQrUrl} alt="Soft Copy QR" className="w-full h-full object-contain" />}
-                   </div>
-                   <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest">Scan while you wait</p>
+
+                {/* Optimized Soft Copy Area */}
+                <div className="bg-white/5 border-2 border-white/10 p-8 flex flex-col items-center space-y-4 rounded-3xl shadow-2xl w-full lg:w-80 transition-all">
+                   {uploadStatus === "idle" || uploadStatus === "uploading" ? (
+                     <div className="flex flex-col items-center space-y-6 py-8">
+                       <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                       <div className="space-y-2 text-center">
+                         <h3 className="font-headline font-black text-xl uppercase italic">SOFT COPY</h3>
+                         <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Processing High-Res...</p>
+                       </div>
+                       <Progress value={uploadPercent} className="w-32 h-2 bg-white/5" />
+                     </div>
+                   ) : uploadStatus === "complete" ? (
+                     <div className="animate-in zoom-in-95 duration-500 flex flex-col items-center space-y-4">
+                       <QrCode className="w-10 h-10 text-primary" />
+                       <h3 className="font-headline font-black text-xl uppercase italic">SCAN NOW</h3>
+                       <div className="aspect-square w-full bg-white p-4 rounded-2xl shadow-xl">
+                          {softCopyQrUrl && <img src={softCopyQrUrl} alt="Soft Copy QR" className="w-full h-full object-contain" />}
+                       </div>
+                       <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest">Instant HD Download</p>
+                     </div>
+                   ) : (
+                     <div className="flex flex-col items-center space-y-4 py-8 text-red-500">
+                       <AlertCircle className="w-12 h-12" />
+                       <p className="text-[10px] font-black uppercase text-center">Soft Copy Offline. Please use Lexar USB drive.</p>
+                     </div>
+                   )}
+                   
                    {printProgress === 100 && (
-                     <button onClick={() => setAppState("thankyou")} className="w-full mt-4 bg-primary py-4 font-headline font-black italic uppercase rounded-xl">FINISH</button>
+                     <button onClick={() => setAppState("thankyou")} className="w-full mt-4 bg-primary py-4 font-headline font-black italic uppercase rounded-xl">FINISH SESSION</button>
                    )}
                 </div>
              </div>
@@ -835,11 +846,11 @@ export default function KioskPage() {
                 <h2 className="font-headline font-black text-6xl italic uppercase leading-none">THANK <span className="text-primary">YOU!</span></h2>
                 <div className="bg-white/5 border-2 border-white/10 p-10 flex flex-col items-center space-y-6 rounded-3xl shadow-2xl w-full">
                    <Facebook className="w-16 h-16 text-blue-500" />
-                   <h3 className="font-headline font-black text-2xl uppercase italic text-center">FOLLOW OUR MOMENTS</h3>
+                   <h3 className="font-headline font-black text-2xl uppercase italic text-center">JOIN OUR COMMUNITY</h3>
                    <div className="aspect-square w-full max-w-[240px] bg-white p-6 rounded-3xl">
                       {facebookQrUrl && <img src={facebookQrUrl} alt="Facebook QR" className="w-full h-full object-contain" />}
                    </div>
-                   <p className="text-xs text-white/60 font-medium">Find your photos on JNL STUDIO Facebook Page</p>
+                   <p className="text-xs text-white/60 font-medium italic">Share your best moments with #JNLSTUDIO</p>
                 </div>
                 <NeonButton onClick={resetSession} className="px-20 !py-8 text-2xl">DONE</NeonButton>
              </div>

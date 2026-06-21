@@ -220,11 +220,16 @@ export default function KioskPage() {
     return FILTERS.slice(0, packageSelected === 100 ? 10 : 5);
   }, [packageSelected, appState]);
 
+  // Handle blueprint auto-selection and reset when package changes
   useEffect(() => {
     if (packageSelected || appState === "test-camera") {
       const filterSet = appState === "test-camera" ? BLUEPRINTS : availableBlueprints;
-      const first = filterSet[0];
-      if (first && !selectedBlueprint) setSelectedBlueprint(first);
+      
+      // If no blueprint selected, or current one is for wrong package, reset
+      if (!selectedBlueprint || selectedBlueprint.package !== packageSelected) {
+        const first = filterSet[0];
+        if (first) setSelectedBlueprint(first);
+      }
     }
   }, [packageSelected, appState, availableBlueprints, selectedBlueprint]);
 

@@ -17,16 +17,16 @@ export type FrameBlueprint = {
 };
 
 export const BLUEPRINTS: FrameBlueprint[] = [
-  // ₱50 PACKAGE (3 SHOTS) - 2x6 STRIP ASPECT RATIO (1:3)
-  // Internal Canvas: 1600x4800
+  // ₱50 PACKAGE (3 SHOTS) - 2x6 STRIP (Internal units scaled to 1600x2400 sheet)
+  // Each strip is 800 units wide. Coordinates below are relative to a 1600 wide sheet.
   {
     id: "p50-l1",
     label: "CLASSIC STRIP",
     package: 50,
     slots: [
-      { x: 150, y: 150, w: 1300, h: 1100 },
-      { x: 150, y: 1400, w: 1300, h: 1100 },
-      { x: 150, y: 2650, w: 1300, h: 1100 },
+      { x: 150, y: 100, w: 1300, h: 600 },
+      { x: 150, y: 750, w: 1300, h: 600 },
+      { x: 150, y: 1400, w: 1300, h: 600 },
     ],
   },
   {
@@ -34,19 +34,19 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "MODERN STRIP",
     package: 50,
     slots: [
-      { x: 100, y: 200, w: 1400, h: 900 },
-      { x: 100, y: 1250, w: 1400, h: 900 },
-      { x: 100, y: 2300, w: 1400, h: 900 },
+      { x: 100, y: 150, w: 1400, h: 550 },
+      { x: 100, y: 750, w: 1400, h: 550 },
+      { x: 100, y: 1350, w: 1400, h: 550 },
     ],
   },
   {
     id: "p50-l3",
-    label: "ZIGZAG STRIP",
+    label: "SQUARE STRIP",
     package: 50,
     slots: [
-      { x: 100, y: 150, w: 1100, h: 1100 },
-      { x: 400, y: 1350, w: 1100, h: 1100 },
-      { x: 100, y: 2550, w: 1100, h: 1100 },
+      { x: 200, y: 100, w: 1200, h: 600 },
+      { x: 200, y: 750, w: 1200, h: 600 },
+      { x: 200, y: 1400, w: 1200, h: 600 },
     ],
   },
   {
@@ -54,9 +54,9 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "HERO STRIP",
     package: 50,
     slots: [
-      { x: 100, y: 100, w: 1400, h: 1800 },
-      { x: 100, y: 2050, w: 650, h: 800 },
-      { x: 850, y: 2050, w: 650, h: 800 },
+      { x: 100, y: 100, w: 1400, h: 1000 },
+      { x: 100, y: 1150, w: 650, h: 600 },
+      { x: 850, y: 1150, w: 650, h: 600 },
     ],
   },
   {
@@ -64,14 +64,13 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "MINIMAL STRIP",
     package: 50,
     slots: [
-      { x: 200, y: 300, w: 1200, h: 1000 },
-      { x: 200, y: 1450, w: 1200, h: 1000 },
-      { x: 200, y: 2600, w: 1200, h: 1000 },
+      { x: 300, y: 200, w: 1000, h: 500 },
+      { x: 300, y: 750, w: 1000, h: 500 },
+      { x: 300, y: 1300, w: 1000, h: 500 },
     ],
   },
 
-  // ₱100 PACKAGE (6 SHOTS) - 4x6 PHOTO ASPECT RATIO (2:3)
-  // Internal Canvas: 1600x2400
+  // ₱100 PACKAGE (6 SHOTS) - 4x6 PHOTO (Internal units 1600x2400)
   {
     id: "p100-l1",
     label: "GRID 2x3",
@@ -91,9 +90,9 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     package: 100,
     slots: Array.from({ length: 6 }).map((_, i) => ({
       x: 100,
-      y: 80 + i * 360,
+      y: 80 + i * 320,
       w: 1400,
-      h: 330
+      h: 280
     })),
   },
   {
@@ -116,9 +115,9 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     package: 100,
     slots: Array.from({ length: 6 }).map((_, i) => ({
       x: i % 2 === 0 ? 100 : 850,
-      y: 100 + Math.floor(i / 2) * 700,
+      y: 100 + Math.floor(i / 2) * 650,
       w: 650,
-      h: 650
+      h: 600
     })),
   },
   {
@@ -139,8 +138,8 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "VERTICAL SPLIT",
     package: 100,
     slots: [
-      ...Array.from({ length: 3 }).map((_, i) => ({ x: 100, y: 100 + i * 720, w: 650, h: 680 })),
-      ...Array.from({ length: 3 }).map((_, i) => ({ x: 850, y: 100 + i * 720, w: 650, h: 680 })),
+      ...Array.from({ length: 3 }).map((_, i) => ({ x: 100, y: 100 + i * 650, w: 650, h: 600 })),
+      ...Array.from({ length: 3 }).map((_, i) => ({ x: 850, y: 100 + i * 650, w: 650, h: 600 })),
     ],
   },
   {
@@ -151,9 +150,9 @@ export const BLUEPRINTS: FrameBlueprint[] = [
       { x: 50, y: 50, w: 1000, h: 1000 },
       { x: 1100, y: 50, w: 450, h: 450 },
       { x: 1100, y: 550, w: 450, h: 500 },
-      { x: 50, y: 1100, w: 450, h: 1100 },
-      { x: 550, y: 1100, w: 1000, h: 520 },
-      { x: 550, y: 1680, w: 1000, h: 520 },
+      { x: 50, y: 1100, w: 450, h: 1000 },
+      { x: 550, y: 1100, w: 1000, h: 480 },
+      { x: 550, y: 1620, w: 1000, h: 480 },
     ],
   },
   {
@@ -162,9 +161,9 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     package: 100,
     slots: Array.from({ length: 6 }).map((_, i) => ({
       x: i < 3 ? 100 : 850,
-      y: 100 + (i % 3) * 720,
+      y: 100 + (i % 3) * 650,
       w: 650,
-      h: 680
+      h: 600
     })),
   },
   {
@@ -172,10 +171,10 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "DIAGONAL",
     package: 100,
     slots: Array.from({ length: 6 }).map((_, i) => ({
-      x: 50 + i * 200,
-      y: 50 + i * 350,
-      w: 500,
-      h: 500
+      x: 50 + i * 180,
+      y: 50 + i * 320,
+      w: 450,
+      h: 450
     })),
   },
   {
@@ -183,12 +182,12 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "ULTIMATE",
     package: 100,
     slots: [
-      { x: 50, y: 50, w: 1500, h: 1000 },
+      { x: 50, y: 50, w: 1500, h: 800 },
       ...Array.from({ length: 5 }).map((_, i) => ({
         x: 50 + i * 300,
-        y: 1100,
+        y: 900,
         w: 280,
-        h: 1200
+        h: 1000
       }))
     ],
   }

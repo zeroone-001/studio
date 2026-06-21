@@ -176,11 +176,6 @@ export default function KioskPage() {
   }, [appState, packageSelected, paymentReceived, capturedPhotos, promoConsent]);
 
   useEffect(() => {
-    const saved = SessionStore.load();
-    if (saved && saved.state !== "welcome") {
-      // Logic for recovering session if needed
-    }
-    
     const detectHardware = async () => {
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
@@ -204,12 +199,13 @@ export default function KioskPage() {
 
   const availableFilters = useMemo(() => {
     if (appState === "test-camera") return FILTERS;
-    return FILTERS.slice(0, packageSelected === 100 ? 10 : 5);
+    if (packageSelected === 50) return FILTERS.slice(0, 5);
+    return FILTERS.slice(0, 10);
   }, [packageSelected, appState]);
 
   useEffect(() => {
     if (packageSelected || appState === "test-camera") {
-      const filterSet = appState === "test-camera" ? BLUEPRINTS : availableBlueprints;
+      const filterSet = availableBlueprints;
       if (!selectedBlueprint || selectedBlueprint.package !== packageSelected) {
         const first = filterSet[0];
         if (first) setSelectedBlueprint(first);
@@ -373,6 +369,11 @@ export default function KioskPage() {
     return `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=https://jnlstudio.gallery/retrieve/${sessionId}`;
   }, []);
 
+  const facebookQrUrl = useMemo(() => {
+    const fbLink = "https://www.facebook.com/share/18vTg5nLF3/";
+    return `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(fbLink)}`;
+  }, []);
+
   return (
     <KioskLayout>
       <canvas ref={canvasRef} className="hidden" />
@@ -475,7 +476,7 @@ export default function KioskPage() {
                       <button key={bp.id} onClick={() => setSelectedBlueprint(bp)} className={cn("aspect-[3/4] relative border-2 transition-all p-1", selectedBlueprint?.id === bp.id ? "bg-primary/20 border-primary shadow-[0_0_15px_#FF3399]" : "bg-white/5 border-white/10")}>
                         <div className="relative w-full h-full bg-zinc-800/50">
                           {bp.slots.map((slot, i) => (
-                            <div key={i} className="absolute bg-white/20 border border-white/5" style={{ left: `${(slot.x / 1600) * 100}%`, top: `${(slot.y / 2400) * 100}%`, width: `${(slot.w / 1600) * 100}%`, height: `${(slot.h / 2400) * 100}%` }} />
+                            <div key={i} className="absolute bg-white/20 border border-white/5" style={{ left: `${(slot.x / (bp.package === 50 ? 1600 : 1600)) * 100}%`, top: `${(slot.y / 2400) * 100}%`, width: `${(slot.w / (bp.package === 50 ? 1600 : 1600)) * 100}%`, height: `${(slot.h / 2400) * 100}%` }} />
                           ))}
                         </div>
                       </button>
@@ -502,7 +503,7 @@ export default function KioskPage() {
         )}
 
         {appState === "capturing" && (
-          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black animate-in fade-in duration-500">
+          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black animate-in fade-in duration-500 w-full h-full">
              <div className="relative w-full h-full overflow-hidden">
                <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover z-0", selectedFilter.class)} />
                {isProcessing && <div className="absolute inset-0 bg-white z-30 animate-in fade-in out-fade-out duration-300" />}
@@ -648,7 +649,7 @@ export default function KioskPage() {
                       <Facebook className="w-16 h-16 text-blue-500" />
                       <h3 className="font-headline font-black text-2xl uppercase italic text-center">FOLLOW OUR MOMENTS</h3>
                       <div className="aspect-square w-full max-w-[240px] bg-white p-6 rounded-3xl">
-                         <img src="https://picsum.photos/seed/fb-qr/500/500" alt="Facebook QR" className="w-full h-full object-contain" />
+                         <img src={facebookQrUrl} alt="Facebook QR" className="w-full h-full object-contain" />
                       </div>
                       <p className="text-xs text-white/60 font-medium">Find your photos on JNL STUDIO Facebook Page</p>
                    </div>

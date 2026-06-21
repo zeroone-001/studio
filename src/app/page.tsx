@@ -11,8 +11,8 @@ import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
   Wallet, Sparkles, Frame, Quote, Trash2, Cat, Moon, Sun, 
   Coffee, Pizza, Flower2, Crown, Layers, CameraIcon, Flashlight, User, HeartIcon,
-  QrCode, Facebook, Printer, Usb, AlertCircle, Star, IceCream, Cookie, Ghost, PartyPopper,
-  CheckCircle2, RotateCcw
+  QrCode, Facebook, Printer, Usb, AlertCircle, Star, Ghost, PartyPopper,
+  CheckCircle2, RotateCcw, Cookie
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -47,9 +47,9 @@ export const STICKER_DEFS = [
   { id: "panda", icon: Kawaii.KawaiiPanda, color: "", category: "CUTE" },
   { id: "cat-face", icon: Cat, color: "text-orange-200", category: "CUTE" },
   { id: "pizza", icon: Pizza, color: "text-yellow-600", category: "CUTE" },
+  { id: "cookie", icon: Cookie, color: "text-amber-700", category: "CUTE" },
   { id: "coffee", icon: Coffee, color: "text-amber-900", category: "CUTE" },
   { id: "ice-cream", icon: Kawaii.IceCreamSticker, color: "", category: "CUTE" },
-  { id: "cookie", icon: Cookie, color: "text-amber-700", category: "CUTE" },
   { id: "sushi", icon: Kawaii.SushiSticker, color: "", category: "CUTE" },
   { id: "mini-camera", icon: CameraIcon, color: "text-zinc-400", category: "PHOTO" },
   { id: "film", icon: Layers, color: "text-zinc-500", category: "PHOTO" },
@@ -137,7 +137,6 @@ export default function KioskPage() {
   const [logoTapCount, setLogoTapCount] = useState(0);
   const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Screen Fit Logic for Honor Pad X10
   useEffect(() => {
     const lockLandscape = async () => {
       try {
@@ -296,7 +295,6 @@ export default function KioskPage() {
       }
     };
 
-    // Honor Pad X10 optimized Portrait Framing
     let success = await tryStream({
       video: { 
         deviceId: deviceId ? { exact: deviceId } : undefined,
@@ -569,7 +567,7 @@ export default function KioskPage() {
 
         {appState === "capturing" && (
           <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black animate-in fade-in duration-500">
-             <div className="relative w-full h-full max-w-4xl aspect-[3/4] mx-auto overflow-hidden">
+             <div className="relative w-full h-full overflow-hidden">
                <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover z-0", selectedFilter.class)} />
                {isProcessing && <div className="absolute inset-0 bg-white z-30 animate-in fade-in out-fade-out duration-300" />}
                {countdown !== null && (
@@ -582,19 +580,19 @@ export default function KioskPage() {
         )}
 
         {appState === "review" && (
-          <div className="w-full h-full max-w-7xl flex flex-col lg:flex-row items-center justify-center gap-12 animate-in fade-in duration-500 py-10 px-8">
-            <div className="relative w-full lg:flex-1 max-h-[80vh] flex items-center justify-center">
-              <div className="w-full max-w-[450px] aspect-[3/4] shadow-[0_0_60px_rgba(0,0,0,0.8)] border-4 border-white overflow-hidden relative">
+          <div className="w-full h-full max-w-7xl flex flex-col lg:flex-row items-center justify-center gap-12 animate-in fade-in duration-500 py-6 px-8">
+            <div className="relative w-full lg:flex-1 h-full flex items-center justify-center overflow-hidden">
+              <div className="h-full w-auto max-w-full shadow-[0_0_60px_rgba(0,0,0,0.8)] relative border-4 border-white">
                  {selectedBlueprint && capturedPhotos.length > 0 ? (
                    <BlueprintFrame blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.class} isPreview />
                  ) : (
-                   <div className="absolute inset-0 bg-zinc-900 flex items-center justify-center">
+                   <div className="absolute inset-0 bg-zinc-900 flex items-center justify-center w-full h-full">
                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
                    </div>
                  )}
               </div>
             </div>
-            <div className="w-full lg:w-96 space-y-6 flex flex-col items-center lg:items-start">
+            <div className="w-full lg:w-96 space-y-6 flex flex-col items-center lg:items-start shrink-0">
                <h2 className="font-headline font-black text-5xl italic uppercase text-primary leading-none">PREVIEW</h2>
                <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-4">CHECK YOUR POSE BEFORE DECORATING</p>
                <div className="grid grid-cols-1 gap-4 w-full">
@@ -612,7 +610,7 @@ export default function KioskPage() {
         {appState === "decorating" && (
           <div className="w-full max-w-7xl flex flex-col lg:flex-row gap-12 items-center lg:items-start animate-in fade-in duration-500 py-10 px-8">
              <div className="relative flex-1 w-full max-h-[80vh] flex items-center justify-center">
-                <div className="relative w-full h-full max-w-[450px] aspect-[3/4] shadow-[0_0_40px_rgba(255,51,153,0.2)]">
+                <div className="relative h-full w-auto max-w-[450px] shadow-[0_0_40px_rgba(255,51,153,0.2)]">
                   {selectedBlueprint && (
                     <BlueprintFrame 
                       blueprint={selectedBlueprint} 

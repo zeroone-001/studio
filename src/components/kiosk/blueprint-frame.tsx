@@ -50,15 +50,16 @@ export const BlueprintFrame = React.memo(({
 
   if (!blueprint || !blueprint.slots) return null;
 
-  // Standard Paper size is 4x6 inches (Aspect Ratio 2:3)
-  // Internal Canvas resolution: 1600x2400
+  // Internal Canvas resolution: 1600x2400 (4x6 paper)
   const CANVAS_W = 1600;
   const CANVAS_H = 2400;
 
-  // For Package 50 (2x6 strips), we duplicate the strip side-by-side to fit 4x6 paper
+  // Package 50 uses 2x6 strips. 
+  // For Preview: We show only ONE 800x2400 strip centered.
+  // For Print (not preview): We show TWO 800x2400 strips side-by-side.
   const isStrip = blueprint.package === 50;
   
-  // A single 2x6 strip is 800x2400. Two of them make 1600x2400 for 1 piece of 4x6 paper.
+  // Base strip dimensions
   const STRIP_W = isStrip ? 800 : CANVAS_W;
   const STRIP_H = CANVAS_H;
 
@@ -67,13 +68,13 @@ export const BlueprintFrame = React.memo(({
     return new Date().toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
   }, [dateText]);
 
-  const renderStripContent = (offsetX: number = 0) => (
+  const renderStripContent = (offsetX: number = 0, isSecondCopy: boolean = false) => (
     <div 
       className="absolute h-full overflow-hidden bg-white" 
       style={{ 
-        width: `${(STRIP_W / CANVAS_W) * 100}%`, 
-        left: `${(offsetX / CANVAS_W) * 100}%`,
-        borderRight: isStrip && offsetX === 0 ? '1px dashed #e5e7eb' : 'none'
+        width: `${(STRIP_W / (isStrip && !isPreview ? CANVAS_W : STRIP_W)) * 100}%`, 
+        left: `${(offsetX / (isStrip && !isPreview ? CANVAS_W : STRIP_W)) * 100}%`,
+        borderRight: isStrip && !isSecondCopy && !isPreview ? '1px dashed #e5e7eb' : 'none'
       }}
     >
       {blueprint.slots.map((slot, index) => (
@@ -81,8 +82,7 @@ export const BlueprintFrame = React.memo(({
           key={index}
           className="absolute bg-zinc-100 overflow-hidden"
           style={{
-            // Scale slot coordinates to fit within the strip (800w or 1600w)
-            // If P50, slots are defined in 1600w space, so we divide by 2 for the 800w strip
+            // Scale slot coordinates to fit within the strip
             left: `${((isStrip ? slot.x / 2 : slot.x) / STRIP_W) * 100}%`,
             top: `${(slot.y / 2400) * 100}%`, 
             width: `${((isStrip ? slot.w / 2 : slot.w) / STRIP_W) * 100}%`,
@@ -100,7 +100,7 @@ export const BlueprintFrame = React.memo(({
             />
           ) : (
             <div className="w-full h-full bg-zinc-200 flex items-center justify-center">
-              <span className="text-[10px] text-black/20 font-black uppercase">Pose {index + 1}</span>
+              <span className="text-[10px] text-black/20 font-black uppercase">POSE {index + 1}</span>
             </div>
           )}
         </div>
@@ -113,7 +113,8 @@ export const BlueprintFrame = React.memo(({
           if (!def) return null;
           const StickerIcon = def.icon;
 
-          if (isPreview && offsetX === 0) {
+          // Only allow editor interaction on the first copy during preview
+          if (isPreview && !isSecondCopy) {
             return (
               <StickerEditor
                 key={s.id}
@@ -174,21 +175,25 @@ export const BlueprintFrame = React.memo(({
   return (
     <div
       ref={containerRef}
-      className={cn("relative bg-white text-black overflow-hidden shadow-2xl touch-none", className)}
+      className={cn("relative bg-white text-black overflow-hidden shadow-2xl touch-none mx-auto", className)}
       style={{
-        aspectRatio: `${CANVAS_W} / ${CANVAS_H}`,
-        width: isPreview ? "100%" : `${CANVAS_W}px`,
-        height: isPreview ? "auto" : `${CANVAS_H}px`,
+        // During preview for strips, the aspect ratio of the container is 800x2400 (1:3)
+        // For grid/4x6, it is always 1600x2400 (2:3)
+        aspectRatio: isStrip && isPreview ? '800 / 2400' : '1600 / 2400',
+        width: isPreview ? "auto" : `${CANVAS_W}px`,
+        height: isPreview ? "100%" : `${CANVAS_H}px`,
+        maxHeight: isPreview ? '100%' : 'none',
       }}
       onPointerDown={() => isPreview && onSelectSticker?.("")}
     >
       {isStrip ? (
         <>
-          {renderStripContent(0)}
-          {!isPreview && renderStripContent(800)}
+          {/* Only show one strip copy in preview. Show both for final print/saving */}
+          {renderStripContent(0, false)}
+          {!isPreview && renderStripContent(800, true)}
         </>
       ) : (
-        renderStripContent(0)
+        renderStripContent(0, false)
       )}
     </div>
   );

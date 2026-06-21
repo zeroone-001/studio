@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -20,8 +19,10 @@ import { BlueprintFrame } from "@/components/kiosk/blueprint-frame";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import * as Kawaii from "@/components/kiosk/kawaii-stickers";
-import { SessionStore, KioskSession } from "@/lib/kiosk/persistence";
+import { SessionStore } from "@/lib/kiosk/persistence";
 import { KioskLogger } from "@/lib/kiosk/logger";
+import { initializeFirebase } from "@/firebase";
+import { ref, uploadString } from "firebase/storage";
 
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "thankyou" | "test-camera";
 
@@ -135,6 +136,20 @@ export default function KioskPage() {
   const [logoTapCount, setLogoTapCount] = useState(0);
   const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [softCopyQrUrl, setSoftCopyQrUrl] = useState("");
+  const [facebookQrUrl, setFacebookQrUrl] = useState("");
+
+  useEffect(() => {
+    // Generate QR codes only on the client after hydration
+    const sessionId = SessionStore.load()?.id || `sess_${Date.now()}`;
+    const baseUrl = window.location.origin;
+    const retrievalUrl = `${baseUrl}/retrieve/${sessionId}`;
+    setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
+
+    const fbLink = "https://www.facebook.com/share/18vTg5nLF3/";
+    setFacebookQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(fbLink)}`);
+  }, [appState]);
+
   useEffect(() => {
     const lockLandscape = async () => {
       try {
@@ -219,8 +234,10 @@ export default function KioskPage() {
     if (!canvasRef.current) return;
     const finalDataUrl = canvasRef.current.toDataURL('image/jpeg', 0.95);
     
+    // 1. Save Locally (IndexedDB) - ENSURES PERSISTENCE
     await SessionStore.savePhotoLocally(sessionId, finalDataUrl);
     
+    // 2. Export to Lexar USB (if connected)
     if (usbDirectoryHandle) {
       try {
         const filename = `JNL_${sessionId}.jpg`;
@@ -234,6 +251,18 @@ export default function KioskPage() {
       } catch (e) {
         KioskLogger.log('error', 'Hardware', 'USB Write Error. Check Lexar Drive Connection.');
       }
+    }
+
+    // 3. Upload to Cloud (Firebase) for Soft Copy QR Retrieval - NON-BLOCKING
+    try {
+      const { storage } = initializeFirebase();
+      const photoRef = ref(storage, `photos/${sessionId}.jpg`);
+      // Start upload in background
+      uploadString(photoRef, finalDataUrl, 'data_url').catch(e => {
+        KioskLogger.log('warn', 'Cloud', 'Soft Copy Upload Failed. Offline mode active.');
+      });
+    } catch (e) {
+      KioskLogger.log('warn', 'Cloud', 'Cloud service handshake pending.');
     }
   }, [usbDirectoryHandle]);
 
@@ -383,16 +412,6 @@ export default function KioskPage() {
 
   const handleBringToFront = useCallback((id: string) => {
     setPlacedStickers(prev => [...prev.filter(s => s.id !== id), prev.find(s => s.id === id)!]);
-  }, []);
-
-  const softCopyQrUrl = useMemo(() => {
-    const sessionId = SessionStore.load()?.id || Date.now();
-    return `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(`https://jnlstudio.gallery/retrieve/${sessionId}`)}`;
-  }, [appState]);
-
-  const facebookQrUrl = useMemo(() => {
-    const fbLink = "https://www.facebook.com/share/18vTg5nLF3/";
-    return `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(fbLink)}`;
   }, []);
 
   return (
@@ -666,7 +685,7 @@ export default function KioskPage() {
                    <QrCode className="w-10 h-10 text-primary" />
                    <h3 className="font-headline font-black text-xl uppercase italic">SOFT COPY</h3>
                    <div className="aspect-square w-full bg-white p-4 rounded-2xl">
-                      <img src={softCopyQrUrl} alt="Soft Copy QR" className="w-full h-full object-contain" />
+                      {softCopyQrUrl && <img src={softCopyQrUrl} alt="Soft Copy QR" className="w-full h-full object-contain" />}
                    </div>
                    <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest">Scan while you wait</p>
                    {printProgress === 100 && (
@@ -685,7 +704,7 @@ export default function KioskPage() {
                    <Facebook className="w-16 h-16 text-blue-500" />
                    <h3 className="font-headline font-black text-2xl uppercase italic text-center">FOLLOW OUR MOMENTS</h3>
                    <div className="aspect-square w-full max-w-[240px] bg-white p-6 rounded-3xl">
-                      <img src={facebookQrUrl} alt="Facebook QR" className="w-full h-full object-contain" />
+                      {facebookQrUrl && <img src={facebookQrUrl} alt="Facebook QR" className="w-full h-full object-contain" />}
                    </div>
                    <p className="text-xs text-white/60 font-medium">Find your photos on JNL STUDIO Facebook Page</p>
                 </div>

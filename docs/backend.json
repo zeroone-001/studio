@@ -1,0 +1,25 @@
+
+{
+  "entities": {
+    "PhotoResult": {
+      "title": "PhotoResult",
+      "description": "Metadata for a captured photobooth session result.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique session ID" },
+        "storagePath": { "type": "string", "description": "Path to photo in Firebase Storage" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "storagePath", "timestamp"]
+    }
+  },
+  "auth": {
+    "providers": ["anonymous"]
+  },
+  "firestore": {
+    "/photos/{photoId}": {
+      "schema": "PhotoResult",
+      "description": "Collection for digital photo retrieval links."
+    }
+  }
+}

@@ -32,6 +32,7 @@ export const SessionStore = {
   // Initialize IndexedDB for large photo storage
   initDB: (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
+      if (typeof window === 'undefined') return reject('IndexedDB not available on server');
       const request = indexedDB.open(DB_NAME, 1);
       request.onupgradeneeded = () => {
         const db = request.result;
@@ -47,6 +48,7 @@ export const SessionStore = {
   // Save photo to IndexedDB for local persistence
   savePhotoLocally: async (id: string, dataUrl: string) => {
     try {
+      if (typeof window === 'undefined') return;
       const db = await SessionStore.initDB();
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
@@ -63,6 +65,7 @@ export const SessionStore = {
   // Save session locally
   save: (session: Partial<KioskSession>) => {
     try {
+      if (typeof window === 'undefined') return;
       const existing = SessionStore.load();
       const updated = {
         ...existing,
@@ -93,6 +96,7 @@ export const SessionStore = {
 
   load: (): KioskSession | null => {
     try {
+      if (typeof window === 'undefined') return null;
       const data = localStorage.getItem(STORAGE_KEY);
       if (!data) return null;
       const session = JSON.parse(data) as KioskSession;
@@ -107,11 +111,13 @@ export const SessionStore = {
   },
 
   clear: () => {
+    if (typeof window === 'undefined') return;
     localStorage.removeItem(STORAGE_KEY);
   },
 
   addToSyncQueue: (item: SyncItem) => {
     try {
+      if (typeof window === 'undefined') return;
       const queue = SessionStore.getSyncQueue();
       const index = queue.findIndex(i => i.id === item.id);
       if (index > -1) {
@@ -127,6 +133,7 @@ export const SessionStore = {
 
   getSyncQueue: (): SyncItem[] => {
     try {
+      if (typeof window === 'undefined') return [];
       const data = localStorage.getItem(SYNC_QUEUE_KEY);
       return data ? JSON.parse(data) : [];
     } catch (e) {
@@ -135,6 +142,7 @@ export const SessionStore = {
   },
 
   updateSyncStatus: (id: string, status: SyncItem['status']) => {
+    if (typeof window === 'undefined') return;
     const queue = SessionStore.getSyncQueue().map(i => 
       i.id === id ? { ...i, status, retryCount: status === 'failed' ? i.retryCount + 1 : i.retryCount } : i
     );
@@ -143,7 +151,7 @@ export const SessionStore = {
 
   getStorageStats: () => {
     let total = 0;
-    if (typeof localStorage !== 'undefined') {
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
       for (const key in localStorage) {
         if (localStorage.hasOwnProperty(key)) {
           total += ((localStorage[key].length + key.length) * 2);

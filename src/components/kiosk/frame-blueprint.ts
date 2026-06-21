@@ -26,7 +26,7 @@ const CANVAS_H = 2400;
 const MAX_H = CANVAS_H - FOOTER_HEIGHT; // 2160 units for photos
 
 export const BLUEPRINTS: FrameBlueprint[] = [
-  // ₱50 PACKAGE (3 SHOTS) - 2x6 STRIP
+  // ₱50 PACKAGE (3 SHOTS) - 2x6 STRIP (Internal Width is 800 for the strip itself)
   {
     id: "p50-l1",
     label: "CLASSIC",
@@ -79,7 +79,6 @@ export const BLUEPRINTS: FrameBlueprint[] = [
   },
 
   // ₱100 PACKAGE (6 SHOTS) - 4x6 PHOTO (1600x2400)
-  // Layout 1: Standard Balanced Grid
   {
     id: "p100-l1",
     label: "GRID",
@@ -90,7 +89,6 @@ export const BLUEPRINTS: FrameBlueprint[] = [
       { x: 20, y: 1440, w: 770, h: 690 }, { x: 810, y: 1440, w: 770, h: 690 },
     ],
   },
-  // Layout 2: Top Hero
   {
     id: "p100-l2",
     label: "THE HERO",
@@ -101,7 +99,6 @@ export const BLUEPRINTS: FrameBlueprint[] = [
       { x: 20, y: 1655, w: 770, h: 485 }, { x: 810, y: 1655, w: 770, h: 485 },
     ],
   },
-  // Layout 3: Storyboard Strips
   {
     id: "p100-l3",
     label: "STORY",
@@ -113,7 +110,6 @@ export const BLUEPRINTS: FrameBlueprint[] = [
       h: 335
     })),
   },
-  // Layout 4: Filmstrip Style
   {
     id: "p100-l4",
     label: "FILMSTRIP",
@@ -125,7 +121,6 @@ export const BLUEPRINTS: FrameBlueprint[] = [
       h: 710
     })),
   },
-  // Layout 5: Mosaic Mix
   {
     id: "p100-l5",
     label: "MOSAIC",
@@ -139,7 +134,6 @@ export const BLUEPRINTS: FrameBlueprint[] = [
       { x: 540, y: 1580, w: 1040, h: 540 },
     ],
   },
-  // Layout 6: The V-Shape rhythm
   {
     id: "p100-l6",
     label: "RHYTHM",
@@ -150,7 +144,6 @@ export const BLUEPRINTS: FrameBlueprint[] = [
       { x: 20, y: 1600, w: 505, h: 540 }, { x: 545, y: 1600, w: 505, h: 540 }, { x: 1070, y: 1600, w: 510, h: 540 },
     ],
   },
-  // Layout 7: Cinematic Wide
   {
     id: "p100-l7",
     label: "CINEMA",
@@ -162,7 +155,6 @@ export const BLUEPRINTS: FrameBlueprint[] = [
       h: 355
     })),
   },
-  // Layout 8: Bottom Focus
   {
     id: "p100-l8",
     label: "FOCUS",
@@ -173,7 +165,6 @@ export const BLUEPRINTS: FrameBlueprint[] = [
       { x: 20, y: 1060, w: 1560, h: 1080 },
     ],
   },
-  // Layout 9: Split Screen
   {
     id: "p100-l9",
     label: "SPLIT",
@@ -184,7 +175,6 @@ export const BLUEPRINTS: FrameBlueprint[] = [
       { x: 20, y: 1635, w: 770, h: 510 }, { x: 810, y: 1635, w: 770, h: 510 },
     ],
   },
-  // Layout 10: Clean (No-Gutter)
   {
     id: "p100-l10",
     label: "CLEAN",

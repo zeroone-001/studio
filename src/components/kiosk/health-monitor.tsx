@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -43,13 +42,13 @@ export function HealthMonitor() {
         storage: `${stats.usedMB}MB`,
         storagePercent: stats.percent,
         syncPending: queue.length,
-        printer: hasUsb ? "PRINTER READY (OTG)" : "HUB PENDING",
+        printer: hasUsb ? "PRINTER READY" : "HUB PENDING",
         camera: hasCam,
         usbHub: hasUsb
       });
 
       if (hasUsb && !status.usbHub) {
-        KioskLogger.log('info', 'Hardware', 'OTG Hub / Printer detected.');
+        KioskLogger.log('info', 'Hardware', 'Hardware Hub / Printer detected.');
       }
     } catch (e) {
       KioskLogger.log('warn', 'Hardware', 'Health check handshake pending.');

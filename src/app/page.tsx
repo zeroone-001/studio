@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -116,6 +115,7 @@ export default function KioskPage() {
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const printIframeRef = useRef<HTMLIFrameElement>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
@@ -235,30 +235,49 @@ export default function KioskPage() {
     }
   }, [packageSelected, appState, availableBlueprints, selectedBlueprint]);
 
+  const initiatePrint = (dataUrl: string) => {
+    if (!printIframeRef.current) return;
+    const iframe = printIframeRef.current;
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) return;
+
+    doc.open();
+    doc.write(`
+      <html>
+        <head>
+          <style>
+            @page { size: 4in 6in; margin: 0; }
+            body { margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; background: white; }
+            img { width: 4in; height: 6in; object-fit: contain; }
+          </style>
+        </head>
+        <body>
+          <img src="${dataUrl}" onload="window.print();" />
+        </body>
+      </html>
+    `);
+    doc.close();
+  };
+
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     const sessionId = SessionStore.load()?.id || `sess_${Date.now()}`;
     
-    // Create a high-res offscreen canvas for assembly
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1600;
     exportCanvas.height = 2400;
     const ctx = exportCanvas.getContext('2d');
     if (!ctx) return;
 
-    // Draw background
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, 1600, 2400);
 
-    // Composite photos with filters
     const filterClass = selectedFilter.class;
-    // Note: Applying complex CSS filters to canvas can be tricky, we'll use a basic fallback or native canvas filters
     if (filterClass.includes('grayscale')) ctx.filter = 'grayscale(1)';
     if (filterClass.includes('sepia')) ctx.filter = 'sepia(0.4)';
     if (filterClass.includes('contrast')) ctx.filter = 'contrast(1.2)';
 
     const isStrip = selectedBlueprint.package === 50;
-    const stripWidth = isStrip ? 800 : 1600;
 
     const drawStrip = (offsetX: number) => {
       selectedBlueprint.slots.forEach((slot, i) => {
@@ -266,21 +285,12 @@ export default function KioskPage() {
         if (!photo) return;
         const img = new Image();
         img.src = photo;
-        // Slots are defined for a 1600 width system, if strip we halve the x and w
         const sX = isStrip ? slot.x / 2 : slot.x;
         const sW = isStrip ? slot.w / 2 : slot.w;
-        
         ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
       });
-
-      // Draw stickers
-      placedStickers.forEach(s => {
-        const def = STICKER_DEFS.find(d => d.id === s.type);
-        if (!def) return;
-        // For stickers we'd ideally render SVG to canvas, but for speed we'll use simple markers or a pre-render
-      });
-
-      // Footer
+      
+      // Branding Footer
       ctx.fillStyle = '#000000';
       ctx.font = 'bold 30px Arial';
       ctx.fillText("JNL STUDIO", 50 + offsetX, 2350);
@@ -295,10 +305,13 @@ export default function KioskPage() {
 
     const finalDataUrl = exportCanvas.toDataURL('image/jpeg', 0.9);
     
-    // 1. Save Locally (IndexedDB)
+    // Auto-Print Signal
+    initiatePrint(finalDataUrl);
+
+    // IndexedDB Local Storage
     await SessionStore.savePhotoLocally(sessionId, finalDataUrl);
     
-    // 2. Export to Lexar USB
+    // Lexar USB Transfer
     if (usbDirectoryHandle) {
       try {
         const filename = `JNL_${sessionId}.jpg`;
@@ -314,21 +327,20 @@ export default function KioskPage() {
       }
     }
 
-    // 3. Upload to Cloud (Firebase) for Immediate Retrieval
+    // Cloud Upload for QR
     try {
       const { storage } = initializeFirebase();
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       uploadString(photoRef, finalDataUrl, 'data_url').then(() => {
-        KioskLogger.log('info', 'Cloud', 'Soft Copy Ready for immediate download.');
+        KioskLogger.log('info', 'Cloud', 'Soft Copy Ready.');
       }).catch(e => {
-        KioskLogger.log('warn', 'Cloud', 'Soft Copy Upload Failed. Offline mode active.');
+        KioskLogger.log('warn', 'Cloud', 'Soft Copy Upload Failed.');
       });
     } catch (e) {
       KioskLogger.log('warn', 'Cloud', 'Cloud handshake pending.');
     }
-  }, [usbDirectoryHandle, selectedBlueprint, capturedPhotos, selectedFilter, placedStickers]);
+  }, [usbDirectoryHandle, selectedBlueprint, capturedPhotos, selectedFilter]);
 
-  // Immediate upload trigger when entering printing phase
   useEffect(() => {
     if (appState === "printing" && !exportTriggeredRef.current) {
       exportTriggeredRef.current = true;
@@ -476,6 +488,7 @@ export default function KioskPage() {
   return (
     <KioskLayout>
       <canvas ref={canvasRef} className="hidden" />
+      <iframe ref={printIframeRef} className="hidden" title="print-frame" />
       <div className="flex-1 w-full h-full flex flex-col items-center overflow-hidden kiosk-container safe-area-spacing landscape-container">
         
         <AdminAuthDialog 

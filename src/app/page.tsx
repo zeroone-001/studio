@@ -232,8 +232,8 @@ export default function KioskPage() {
   useEffect(() => {
     if (appState === "printing" && printProgress < 100) {
       const timer = setInterval(() => {
-        setPrintProgress(prev => Math.min(prev + 2, 100));
-      }, 100);
+        setPrintProgress(prev => Math.min(prev + 1, 100));
+      }, 150);
       return () => clearInterval(timer);
     }
   }, [appState, printProgress]);
@@ -681,44 +681,47 @@ export default function KioskPage() {
         )}
 
         {appState === "printing" && (
-          <div className="w-full max-w-6xl animate-in fade-in duration-500 text-center flex flex-col items-center justify-center h-full px-10">
+          <div className="w-full max-w-7xl animate-in fade-in duration-500 text-center flex flex-col items-center justify-center h-full px-10">
              {printProgress < 100 ? (
-                <div className="space-y-12 py-12 w-full">
-                   <div className="relative w-40 h-40 mx-auto">
-                      <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
-                      <div className="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin" />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                         {isSavingToUsb ? <Usb className="w-16 h-16 text-primary animate-bounce" /> : <Printer className="w-16 h-16 text-primary animate-pulse" />}
+                <div className="flex flex-col lg:flex-row items-center gap-16 w-full max-w-5xl">
+                   <div className="flex-1 space-y-10">
+                      <div className="relative w-32 h-32 mx-auto">
+                        <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
+                        <div className="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                           {isSavingToUsb ? <Usb className="w-12 h-12 text-primary animate-bounce" /> : <Printer className="w-12 h-12 text-primary animate-pulse" />}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <h2 className="font-headline font-black text-3xl italic uppercase">{isSavingToUsb ? "Syncing..." : "Printing Portrait..."}</h2>
+                        <p className="text-[10px] uppercase font-black tracking-[0.5em] text-white/40">PLEASE WAIT A MOMENT</p>
+                      </div>
+                      <div className="w-full">
+                        <Progress value={printProgress} className="h-3 bg-white/5" />
                       </div>
                    </div>
-                   <div className="space-y-2">
-                     <h2 className="font-headline font-black text-4xl italic uppercase">{isSavingToUsb ? "Syncing Dual Output..." : "Printing Portait..."}</h2>
-                     <p className="text-[10px] uppercase font-black tracking-[0.5em] text-white/40">PLEASE WAIT A MOMENT</p>
-                   </div>
-                   <div className="max-w-xl mx-auto">
-                      <Progress value={printProgress} className="h-4 bg-white/5" />
+                   
+                   <div className="bg-white/5 border-2 border-white/10 p-8 flex flex-col items-center space-y-4 rounded-3xl shadow-2xl w-full lg:w-80">
+                      <QrCode className="w-10 h-10 text-primary" />
+                      <h3 className="font-headline font-black text-xl uppercase italic">SOFT COPY</h3>
+                      <div className="aspect-square w-full bg-white p-4 rounded-2xl">
+                         <img src={softCopyQrUrl} alt="Soft Copy QR" className="w-full h-full object-contain" />
+                      </div>
+                      <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest">Scan while you wait</p>
                    </div>
                 </div>
              ) : (
-                <div className="flex flex-col items-center space-y-16 animate-in slide-in-from-bottom-8 w-full py-10">
-                   <h2 className="font-headline font-black text-6xl sm:text-8xl italic uppercase leading-none">THANK <span className="text-primary">YOU!</span></h2>
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-12 w-full max-w-5xl">
-                      <div className="bg-white/5 border-2 border-white/10 p-12 flex flex-col items-center space-y-8 rounded-3xl shadow-2xl">
-                         <QrCode className="w-16 h-16 text-primary" />
-                         <h3 className="font-headline font-black text-2xl uppercase italic">SOFT COPY</h3>
-                         <div className="aspect-square w-full max-w-[280px] bg-white p-6 rounded-3xl">
-                            <img src={softCopyQrUrl} alt="Soft Copy QR" className="w-full h-full object-contain" />
-                         </div>
+                <div className="flex flex-col items-center space-y-10 animate-in slide-in-from-bottom-8 w-full max-w-3xl">
+                   <h2 className="font-headline font-black text-6xl italic uppercase leading-none">THANK <span className="text-primary">YOU!</span></h2>
+                   <div className="bg-white/5 border-2 border-white/10 p-10 flex flex-col items-center space-y-6 rounded-3xl shadow-2xl w-full">
+                      <Facebook className="w-16 h-16 text-blue-500" />
+                      <h3 className="font-headline font-black text-2xl uppercase italic text-center">FOLLOW OUR MOMENTS</h3>
+                      <div className="aspect-square w-full max-w-[240px] bg-white p-6 rounded-3xl">
+                         <img src="https://picsum.photos/seed/fb-qr/500/500" alt="Facebook QR" className="w-full h-full object-contain" />
                       </div>
-                      <div className="bg-white/5 border-2 border-white/10 p-12 flex flex-col items-center space-y-8 rounded-3xl shadow-2xl">
-                         <Facebook className="w-16 h-16 text-blue-500" />
-                         <h3 className="font-headline font-black text-2xl uppercase italic">FOLLOW US</h3>
-                         <div className="aspect-square w-full max-w-[280px] bg-white p-6 rounded-3xl">
-                            <img src="https://picsum.photos/seed/fb-qr/500/500" alt="Facebook QR" className="w-full h-full object-contain" />
-                         </div>
-                      </div>
+                      <p className="text-xs text-white/60 font-medium">Find your photos on JNL STUDIO Facebook Page</p>
                    </div>
-                   <NeonButton onClick={resetSession} className="px-32 !py-10 text-3xl">FINISH SESSION</NeonButton>
+                   <NeonButton onClick={resetSession} className="px-20 !py-8 text-2xl">DONE</NeonButton>
                 </div>
              )}
           </div>

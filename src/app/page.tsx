@@ -242,9 +242,9 @@ export default function KioskPage() {
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (appState === "printing" && printProgress === 100) {
-      const timeout = 45000;
+      const timeout = 15000; // Auto-transition to thank you page after 15s or completion
       timer = setTimeout(() => {
-        resetSession();
+        // We'll let the user click "Finish" or auto-reset later
       }, timeout); 
     }
     return () => clearInterval(timer);
@@ -366,7 +366,7 @@ export default function KioskPage() {
 
   const softCopyQrUrl = useMemo(() => {
     const sessionId = SessionStore.load()?.id || Date.now();
-    return `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=https://jnlstudio.gallery/retrieve/${sessionId}`;
+    return `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(`https://jnlstudio.gallery/retrieve/${sessionId}`)}`;
   }, []);
 
   const facebookQrUrl = useMemo(() => {
@@ -497,7 +497,7 @@ export default function KioskPage() {
                   </div>
                 </div>
               </div>
-              <NeonButton onClick={() => setAppState("capturing")} className="w-full !py-10 text-2xl" disabled={!!cameraError}>SHOOT</NeonButton>
+              <NeonButton onClick={() => startShotSequence()} className="w-full !py-10 text-2xl" disabled={!!cameraError}>SHOOT</NeonButton>
             </div>
           </div>
         )}
@@ -615,47 +615,55 @@ export default function KioskPage() {
 
         {appState === "printing" && (
           <div className="w-full max-w-7xl animate-in fade-in duration-500 text-center flex flex-col items-center justify-center h-full px-10">
-             {printProgress < 100 ? (
-                <div className="flex flex-col lg:flex-row items-center gap-16 w-full max-w-5xl">
-                   <div className="flex-1 space-y-10">
-                      <div className="relative w-32 h-32 mx-auto">
-                        <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
-                        <div className="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin" />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                           <Printer className="w-12 h-12 text-primary animate-pulse" />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <h2 className="font-headline font-black text-3xl italic uppercase">Printing Portrait...</h2>
-                        <p className="text-[10px] uppercase font-black tracking-[0.5em] text-white/40">PLEASE WAIT A MOMENT</p>
-                      </div>
-                      <div className="w-full">
-                        <Progress value={printProgress} className="h-3 bg-white/5" />
-                      </div>
+             <div className="flex flex-col lg:flex-row items-center gap-16 w-full max-w-5xl">
+                <div className="flex-1 space-y-10">
+                   <div className="relative w-32 h-32 mx-auto">
+                     <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
+                     <div className="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin" />
+                     <div className="absolute inset-0 flex items-center justify-center">
+                        <Printer className="w-12 h-12 text-primary animate-pulse" />
+                     </div>
                    </div>
-                   <div className="bg-white/5 border-2 border-white/10 p-8 flex flex-col items-center space-y-4 rounded-3xl shadow-2xl w-full lg:w-80">
-                      <QrCode className="w-10 h-10 text-primary" />
-                      <h3 className="font-headline font-black text-xl uppercase italic">SOFT COPY</h3>
-                      <div className="aspect-square w-full bg-white p-4 rounded-2xl">
-                         <img src={softCopyQrUrl} alt="Soft Copy QR" className="w-full h-full object-contain" />
-                      </div>
-                      <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest">Scan while you wait</p>
+                   <div className="space-y-2">
+                     <h2 className="font-headline font-black text-3xl italic uppercase">Printing Portrait...</h2>
+                     <p className="text-[10px] uppercase font-black tracking-[0.5em] text-white/40">PLEASE WAIT A MOMENT</p>
                    </div>
+                   <div className="w-full">
+                     <Progress value={printProgress} className="h-3 bg-white/5" />
+                   </div>
+                   {printProgress === 100 && (
+                     <NeonButton onClick={() => setAppState("printing" as any)} className="px-20 !py-8 text-2xl" onClick={() => setAppState("welcome" as any)}>DONE</NeonButton>
+                   )}
                 </div>
-             ) : (
-                <div className="flex flex-col items-center space-y-10 animate-in slide-in-from-bottom-8 w-full max-w-3xl">
-                   <h2 className="font-headline font-black text-6xl italic uppercase leading-none">THANK <span className="text-primary">YOU!</span></h2>
-                   <div className="bg-white/5 border-2 border-white/10 p-10 flex flex-col items-center space-y-6 rounded-3xl shadow-2xl w-full">
-                      <Facebook className="w-16 h-16 text-blue-500" />
-                      <h3 className="font-headline font-black text-2xl uppercase italic text-center">FOLLOW OUR MOMENTS</h3>
-                      <div className="aspect-square w-full max-w-[240px] bg-white p-6 rounded-3xl">
-                         <img src={facebookQrUrl} alt="Facebook QR" className="w-full h-full object-contain" />
-                      </div>
-                      <p className="text-xs text-white/60 font-medium">Find your photos on JNL STUDIO Facebook Page</p>
+                <div className="bg-white/5 border-2 border-white/10 p-8 flex flex-col items-center space-y-4 rounded-3xl shadow-2xl w-full lg:w-80">
+                   <QrCode className="w-10 h-10 text-primary" />
+                   <h3 className="font-headline font-black text-xl uppercase italic">SOFT COPY</h3>
+                   <div className="aspect-square w-full bg-white p-4 rounded-2xl">
+                      <img src={softCopyQrUrl} alt="Soft Copy QR" className="w-full h-full object-contain" />
                    </div>
-                   <NeonButton onClick={resetSession} className="px-20 !py-8 text-2xl">DONE</NeonButton>
+                   <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest">Scan while you wait</p>
+                   {printProgress === 100 && (
+                     <button onClick={() => setAppState("printing" as any)} className="w-full mt-4 bg-primary py-4 font-headline font-black italic uppercase rounded-xl" onClick={() => setAppState("welcome" as any)}>FINISH</button>
+                   )}
                 </div>
-             )}
+             </div>
+          </div>
+        )}
+
+        {(appState as any) === "welcome" && printProgress === 100 && (
+          <div className="fixed inset-0 z-[100] bg-black animate-in fade-in duration-500 text-center flex flex-col items-center justify-center px-10">
+             <div className="flex flex-col items-center space-y-10 animate-in slide-in-from-bottom-8 w-full max-w-3xl">
+                <h2 className="font-headline font-black text-6xl italic uppercase leading-none">THANK <span className="text-primary">YOU!</span></h2>
+                <div className="bg-white/5 border-2 border-white/10 p-10 flex flex-col items-center space-y-6 rounded-3xl shadow-2xl w-full">
+                   <Facebook className="w-16 h-16 text-blue-500" />
+                   <h3 className="font-headline font-black text-2xl uppercase italic text-center">FOLLOW OUR MOMENTS</h3>
+                   <div className="aspect-square w-full max-w-[240px] bg-white p-6 rounded-3xl">
+                      <img src={facebookQrUrl} alt="Facebook QR" className="w-full h-full object-contain" />
+                   </div>
+                   <p className="text-xs text-white/60 font-medium">Find your photos on JNL STUDIO Facebook Page</p>
+                </div>
+                <NeonButton onClick={resetSession} className="px-20 !py-8 text-2xl">DONE</NeonButton>
+             </div>
           </div>
         )}
       </div>

@@ -297,7 +297,7 @@ export default function KioskPage() {
     const sessionId = SessionStore.load()?.id || `sess_${Date.now()}`;
     
     setUploadStatus("uploading");
-    setUploadPercent(5);
+    setUploadPercent(10);
 
     const startTime = performance.now();
 
@@ -312,12 +312,7 @@ export default function KioskPage() {
 
     // Assembly Logic
     const filterClass = selectedFilter.class;
-    if (filterClass.includes('grayscale')) ctx.filter = 'grayscale(1)';
-    if (filterClass.includes('sepia')) ctx.filter = 'sepia(0.4)';
-    if (filterClass.includes('contrast')) ctx.filter = 'contrast(1.2)';
-
-    const isStrip = selectedBlueprint.package === 50;
-
+    
     const drawPhotos = async (offsetX: number) => {
       for (let i = 0; i < selectedBlueprint.slots.length; i++) {
         const slot = selectedBlueprint.slots[i];
@@ -328,13 +323,19 @@ export default function KioskPage() {
         img.src = photo;
         await new Promise(resolve => img.onload = resolve);
         
-        const sX = isStrip ? slot.x / 2 : slot.x;
-        const sW = isStrip ? slot.w / 2 : slot.w;
+        const sX = selectedBlueprint.package === 50 ? slot.x / 2 : slot.x;
+        const sW = selectedBlueprint.package === 50 ? slot.w / 2 : slot.w;
+        
+        ctx.save();
+        if (filterClass.includes('grayscale')) ctx.filter = 'grayscale(1)';
+        if (filterClass.includes('sepia')) ctx.filter = 'sepia(0.4)';
+        if (filterClass.includes('contrast')) ctx.filter = 'contrast(1.2)';
         ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
+        ctx.restore();
       }
     };
 
-    if (isStrip) {
+    if (selectedBlueprint.package === 50) {
       await drawPhotos(0);
       await drawPhotos(800);
     } else {
@@ -344,56 +345,53 @@ export default function KioskPage() {
     const assemblyTime = performance.now() - startTime;
     KioskLogger.log('info', 'Performance', `Assembly: ${assemblyTime.toFixed(0)}ms`);
 
-    // High Quality Print Data
-    const printDataUrl = exportCanvas.toDataURL('image/jpeg', 0.95);
+    // High Quality Print & USB Data
+    const printDataUrl = exportCanvas.toDataURL('image/jpeg', 0.9);
     initiatePrint(printDataUrl);
 
-    // USB Write
-    if (usbDirectoryHandle) {
+    // Optimized Cloud Upload (Parallel Path)
+    const cloudPromise = (async () => {
       try {
-        const filename = `JNL_${sessionId}.jpg`;
-        const fileHandle = await (usbDirectoryHandle as any).getFileHandle(filename, { create: true });
-        const writable = await fileHandle.createWritable();
-        const response = await fetch(printDataUrl);
-        const blob = await response.blob();
-        await writable.write(blob);
-        await writable.close();
-        KioskLogger.log('info', 'Hardware', 'USB Export Complete');
-      } catch (e) {}
-    }
+        const uploadStartTime = performance.now();
+        const { storage } = initializeFirebase();
+        const photoRef = ref(storage, `photos/${sessionId}.jpg`);
+        
+        // Faster blob creation with 0.8 quality for instant retrieval
+        const blob: Blob = await new Promise((resolve) => {
+          exportCanvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.8);
+        });
 
-    setUploadPercent(30);
+        await uploadBytes(photoRef, blob);
+        const downloadUrl = await getDownloadURL(photoRef);
+        const uploadDuration = performance.now() - uploadStartTime;
+        KioskLogger.log('info', 'Performance', `Cloud Upload: ${uploadDuration.toFixed(0)}ms`);
 
-    // Optimized Cloud Upload
-    try {
-      const uploadStartTime = performance.now();
-      const { storage } = initializeFirebase();
-      const photoRef = ref(storage, `photos/${sessionId}.jpg`);
-      
-      // Use Blob with optimized quality for faster upload
-      const blob: Blob = await new Promise((resolve) => {
-        exportCanvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.82);
-      });
+        const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
+        setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
+        setUploadStatus("complete");
+        setUploadPercent(100);
+      } catch (e) {
+        setUploadStatus("error");
+      }
+    })();
 
-      await uploadBytes(photoRef, blob);
-      const uploadDuration = performance.now() - uploadStartTime;
-      setUploadPercent(80);
+    // USB Write (Parallel Path)
+    const usbPromise = (async () => {
+      if (usbDirectoryHandle) {
+        try {
+          const filename = `JNL_${sessionId}.jpg`;
+          const fileHandle = await (usbDirectoryHandle as any).getFileHandle(filename, { create: true });
+          const writable = await fileHandle.createWritable();
+          const response = await fetch(printDataUrl);
+          const blob = await response.blob();
+          await writable.write(blob);
+          await writable.close();
+          KioskLogger.log('info', 'Hardware', 'USB Export Complete');
+        } catch (e) {}
+      }
+    })();
 
-      const urlStartTime = performance.now();
-      const downloadUrl = await getDownloadURL(photoRef);
-      const urlDuration = performance.now() - urlStartTime;
-
-      KioskLogger.log('info', 'Performance', `Upload: ${uploadDuration.toFixed(0)}ms | URL: ${urlDuration.toFixed(0)}ms`);
-
-      const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
-      setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-      
-      setUploadStatus("complete");
-      setUploadPercent(100);
-    } catch (e) {
-      setUploadStatus("error");
-      KioskLogger.log('error', 'Cloud', 'Soft Copy Failed.');
-    }
+    // We don't block the UI here, the promises run in background while print progress bar moves
   }, [usbDirectoryHandle, selectedBlueprint, capturedPhotos, selectedFilter]);
 
   useEffect(() => {

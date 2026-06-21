@@ -27,7 +27,7 @@ export default function RetrievePage() {
         const { storage } = initializeFirebase();
         const photoRef = ref(storage, `photos/${id}.jpg`);
         
-        // Fast path: target Google Cloud CDN directly
+        // Instant direct fetch from Firebase Storage
         const url = await getDownloadURL(photoRef);
         const duration = performance.now() - startTime;
         
@@ -35,19 +35,8 @@ export default function RetrievePage() {
         setRetrievalStats(`Instant CDN Sync: ${duration.toFixed(0)}ms`);
         setLoading(false);
       } catch (err) {
-        // Silent background retry once for edge-case race conditions
-        setTimeout(async () => {
-          try {
-            const { storage } = initializeFirebase();
-            const photoRef = ref(storage, `photos/${id}.jpg`);
-            const url = await getDownloadURL(photoRef);
-            setImageUrl(url);
-            setLoading(false);
-          } catch (e) {
-            setError("Your HD portrait is being finalized. Refresh in 3 seconds.");
-            setLoading(false);
-          }
-        }, 500);
+        setError("Your HD portrait is being finalized. Refresh in 3 seconds.");
+        setLoading(false);
       }
     };
 

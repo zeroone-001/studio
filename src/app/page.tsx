@@ -12,7 +12,7 @@ import {
   Wallet, Sparkles, Frame, Quote, Trash2, Cat, Moon, Sun, 
   Coffee, Pizza, Flower2, Crown, Layers, CameraIcon, Flashlight, User, HeartIcon,
   QrCode, Facebook, Printer, Usb, AlertCircle, Star, Ghost, PartyPopper,
-  CheckCircle2, RotateCcw, Cookie
+  CheckCircle2, RotateCcw, Cookie as CookieIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -23,7 +23,7 @@ import * as Kawaii from "@/components/kiosk/kawaii-stickers";
 import { SessionStore, KioskSession } from "@/lib/kiosk/persistence";
 import { KioskLogger } from "@/lib/kiosk/logger";
 
-export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "test-camera";
+export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "thankyou" | "test-camera";
 
 export const FILTERS = [
   { id: "natural", label: "STYLE A", sub: "NATURAL", class: "contrast-110 brightness-105 saturate-110" },
@@ -47,7 +47,7 @@ export const STICKER_DEFS = [
   { id: "panda", icon: Kawaii.KawaiiPanda, color: "", category: "CUTE" },
   { id: "cat-face", icon: Cat, color: "text-orange-200", category: "CUTE" },
   { id: "pizza", icon: Pizza, color: "text-yellow-600", category: "CUTE" },
-  { id: "cookie", icon: Cookie, color: "text-amber-700", category: "CUTE" },
+  { id: "cookie", icon: CookieIcon, color: "text-amber-700", category: "CUTE" },
   { id: "coffee", icon: Coffee, color: "text-amber-900", category: "CUTE" },
   { id: "ice-cream", icon: Kawaii.IceCreamSticker, color: "", category: "CUTE" },
   { id: "sushi", icon: Kawaii.SushiSticker, color: "", category: "CUTE" },
@@ -216,7 +216,13 @@ export default function KioskPage() {
   useEffect(() => {
     if (appState === "printing" && printProgress < 100) {
       const timer = setInterval(() => {
-        setPrintProgress(prev => Math.min(prev + 1, 100));
+        setPrintProgress(prev => {
+          const next = Math.min(prev + 1, 100);
+          if (next === 100) {
+            clearInterval(timer);
+          }
+          return next;
+        });
       }, 150);
       return () => clearInterval(timer);
     }
@@ -238,17 +244,6 @@ export default function KioskPage() {
     setPrintProgress(0);
     setPromoConsent(null);
   }, []);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (appState === "printing" && printProgress === 100) {
-      const timeout = 15000; // Auto-transition to thank you page after 15s or completion
-      timer = setTimeout(() => {
-        // We'll let the user click "Finish" or auto-reset later
-      }, timeout); 
-    }
-    return () => clearInterval(timer);
-  }, [appState, printProgress, resetSession]);
 
   const startCamera = async (deviceId?: string) => {
     if (cameraStream && videoRef.current && videoRef.current.srcObject === cameraStream) {
@@ -319,6 +314,7 @@ export default function KioskPage() {
   const startShotSequence = async () => {
     const totalShots = packageSelected === 50 ? 3 : 6;
     const photos: string[] = [];
+    setAppState("capturing");
     setCapturedPhotos([]); 
     for (let i = 0; i < totalShots; i++) {
       for (let c = 3; c > 0; c--) {
@@ -367,7 +363,7 @@ export default function KioskPage() {
   const softCopyQrUrl = useMemo(() => {
     const sessionId = SessionStore.load()?.id || Date.now();
     return `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(`https://jnlstudio.gallery/retrieve/${sessionId}`)}`;
-  }, []);
+  }, [appState]);
 
   const facebookQrUrl = useMemo(() => {
     const fbLink = "https://www.facebook.com/share/18vTg5nLF3/";
@@ -476,7 +472,7 @@ export default function KioskPage() {
                       <button key={bp.id} onClick={() => setSelectedBlueprint(bp)} className={cn("aspect-[3/4] relative border-2 transition-all p-1", selectedBlueprint?.id === bp.id ? "bg-primary/20 border-primary shadow-[0_0_15px_#FF3399]" : "bg-white/5 border-white/10")}>
                         <div className="relative w-full h-full bg-zinc-800/50">
                           {bp.slots.map((slot, i) => (
-                            <div key={i} className="absolute bg-white/20 border border-white/5" style={{ left: `${(slot.x / (bp.package === 50 ? 1600 : 1600)) * 100}%`, top: `${(slot.y / 2400) * 100}%`, width: `${(slot.w / (bp.package === 50 ? 1600 : 1600)) * 100}%`, height: `${(slot.h / 2400) * 100}%` }} />
+                            <div key={i} className="absolute bg-white/20 border border-white/5" style={{ left: `${((bp.package === 50 ? slot.x / 2 : slot.x) / (bp.package === 50 ? 800 : 1600)) * 100}%`, top: `${(slot.y / 2400) * 100}%`, width: `${((bp.package === 50 ? slot.w / 2 : slot.w) / (bp.package === 50 ? 800 : 1600)) * 100}%`, height: `${(slot.h / 2400) * 100}%` }} />
                           ))}
                         </div>
                       </button>
@@ -631,9 +627,6 @@ export default function KioskPage() {
                    <div className="w-full">
                      <Progress value={printProgress} className="h-3 bg-white/5" />
                    </div>
-                   {printProgress === 100 && (
-                     <NeonButton onClick={() => setAppState("printing" as any)} className="px-20 !py-8 text-2xl" onClick={() => setAppState("welcome" as any)}>DONE</NeonButton>
-                   )}
                 </div>
                 <div className="bg-white/5 border-2 border-white/10 p-8 flex flex-col items-center space-y-4 rounded-3xl shadow-2xl w-full lg:w-80">
                    <QrCode className="w-10 h-10 text-primary" />
@@ -643,14 +636,14 @@ export default function KioskPage() {
                    </div>
                    <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest">Scan while you wait</p>
                    {printProgress === 100 && (
-                     <button onClick={() => setAppState("printing" as any)} className="w-full mt-4 bg-primary py-4 font-headline font-black italic uppercase rounded-xl" onClick={() => setAppState("welcome" as any)}>FINISH</button>
+                     <button onClick={() => setAppState("thankyou")} className="w-full mt-4 bg-primary py-4 font-headline font-black italic uppercase rounded-xl">FINISH</button>
                    )}
                 </div>
              </div>
           </div>
         )}
 
-        {(appState as any) === "welcome" && printProgress === 100 && (
+        {appState === "thankyou" && (
           <div className="fixed inset-0 z-[100] bg-black animate-in fade-in duration-500 text-center flex flex-col items-center justify-center px-10">
              <div className="flex flex-col items-center space-y-10 animate-in slide-in-from-bottom-8 w-full max-w-3xl">
                 <h2 className="font-headline font-black text-6xl italic uppercase leading-none">THANK <span className="text-primary">YOU!</span></h2>

@@ -73,7 +73,7 @@ export const BlueprintFrame = React.memo(({
         zIndex: 0
       }}
     >
-      {/* Background Photos - Always rendered behind everything */}
+      {/* Background Photos - Highest visibility */}
       <div className="absolute inset-0 z-0 bg-zinc-100">
         {blueprint.slots.map((slot, index) => (
           <div

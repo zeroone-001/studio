@@ -26,7 +26,7 @@ const CANVAS_H = 2400;
 const MAX_H = CANVAS_H - FOOTER_HEIGHT; // 2160 units for photos
 
 export const BLUEPRINTS: FrameBlueprint[] = [
-  // ₱50 PACKAGE (3 SHOTS) - 2x6 STRIP (Internal Width is 800 for the strip itself)
+  // ₱50 PACKAGE (3 SHOTS) - 2x6 STRIP
   {
     id: "p50-l1",
     label: "CLASSIC",

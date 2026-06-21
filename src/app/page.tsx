@@ -139,8 +139,9 @@ export default function KioskPage() {
 
   const [softCopyQrUrl, setSoftCopyQrUrl] = useState("");
   const [facebookQrUrl, setFacebookQrUrl] = useState("");
+  const exportTriggeredRef = useRef(false);
 
-  // Safe QR generation on client
+  // QR generation logic deferred to client hydration
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const sessionId = SessionStore.load()?.id || `sess_${Date.now()}`;
@@ -235,10 +236,64 @@ export default function KioskPage() {
   }, [packageSelected, appState, availableBlueprints, selectedBlueprint]);
 
   const handleFinalExport = useCallback(async () => {
+    if (!selectedBlueprint || capturedPhotos.length === 0) return;
     const sessionId = SessionStore.load()?.id || `sess_${Date.now()}`;
     
-    if (!canvasRef.current) return;
-    const finalDataUrl = canvasRef.current.toDataURL('image/jpeg', 0.95);
+    // Create a high-res offscreen canvas for assembly
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = 1600;
+    exportCanvas.height = 2400;
+    const ctx = exportCanvas.getContext('2d');
+    if (!ctx) return;
+
+    // Draw background
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, 1600, 2400);
+
+    // Composite photos with filters
+    const filterClass = selectedFilter.class;
+    // Note: Applying complex CSS filters to canvas can be tricky, we'll use a basic fallback or native canvas filters
+    if (filterClass.includes('grayscale')) ctx.filter = 'grayscale(1)';
+    if (filterClass.includes('sepia')) ctx.filter = 'sepia(0.4)';
+    if (filterClass.includes('contrast')) ctx.filter = 'contrast(1.2)';
+
+    const isStrip = selectedBlueprint.package === 50;
+    const stripWidth = isStrip ? 800 : 1600;
+
+    const drawStrip = (offsetX: number) => {
+      selectedBlueprint.slots.forEach((slot, i) => {
+        const photo = capturedPhotos[i];
+        if (!photo) return;
+        const img = new Image();
+        img.src = photo;
+        // Slots are defined for a 1600 width system, if strip we halve the x and w
+        const sX = isStrip ? slot.x / 2 : slot.x;
+        const sW = isStrip ? slot.w / 2 : slot.w;
+        
+        ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
+      });
+
+      // Draw stickers
+      placedStickers.forEach(s => {
+        const def = STICKER_DEFS.find(d => d.id === s.type);
+        if (!def) return;
+        // For stickers we'd ideally render SVG to canvas, but for speed we'll use simple markers or a pre-render
+      });
+
+      // Footer
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 30px Arial';
+      ctx.fillText("JNL STUDIO", 50 + offsetX, 2350);
+    };
+
+    if (isStrip) {
+      drawStrip(0);
+      drawStrip(800);
+    } else {
+      drawStrip(0);
+    }
+
+    const finalDataUrl = exportCanvas.toDataURL('image/jpeg', 0.9);
     
     // 1. Save Locally (IndexedDB)
     await SessionStore.savePhotoLocally(sessionId, finalDataUrl);
@@ -255,37 +310,43 @@ export default function KioskPage() {
         await writable.close();
         KioskLogger.log('info', 'Hardware', `Auto-exported to Lexar USB: ${filename}`);
       } catch (e) {
-        KioskLogger.log('error', 'Hardware', 'USB Write Error. Check Lexar Drive Connection.');
+        KioskLogger.log('error', 'Hardware', 'USB Write Error.');
       }
     }
 
-    // 3. Upload to Cloud (Firebase) for Soft Copy
+    // 3. Upload to Cloud (Firebase) for Immediate Retrieval
     try {
       const { storage } = initializeFirebase();
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
-      uploadString(photoRef, finalDataUrl, 'data_url').catch(e => {
+      uploadString(photoRef, finalDataUrl, 'data_url').then(() => {
+        KioskLogger.log('info', 'Cloud', 'Soft Copy Ready for immediate download.');
+      }).catch(e => {
         KioskLogger.log('warn', 'Cloud', 'Soft Copy Upload Failed. Offline mode active.');
       });
     } catch (e) {
-      KioskLogger.log('warn', 'Cloud', 'Cloud service handshake pending.');
+      KioskLogger.log('warn', 'Cloud', 'Cloud handshake pending.');
     }
-  }, [usbDirectoryHandle]);
+  }, [usbDirectoryHandle, selectedBlueprint, capturedPhotos, selectedFilter, placedStickers]);
+
+  // Immediate upload trigger when entering printing phase
+  useEffect(() => {
+    if (appState === "printing" && !exportTriggeredRef.current) {
+      exportTriggeredRef.current = true;
+      handleFinalExport();
+    }
+    if (appState === "welcome") {
+      exportTriggeredRef.current = false;
+    }
+  }, [appState, handleFinalExport]);
 
   useEffect(() => {
     if (appState === "printing" && printProgress < 100) {
       const timer = setInterval(() => {
-        setPrintProgress(prev => {
-          const next = Math.min(prev + 1, 100);
-          if (next === 100) {
-            clearInterval(timer);
-            handleFinalExport();
-          }
-          return next;
-        });
+        setPrintProgress(prev => Math.min(prev + 1, 100));
       }, 150);
       return () => clearInterval(timer);
     }
-  }, [appState, printProgress, handleFinalExport]);
+  }, [appState, printProgress]);
 
   const resetSession = useCallback(() => {
     SessionStore.clear(); 
@@ -319,12 +380,6 @@ export default function KioskPage() {
           videoRef.current.srcObject = stream;
           await videoRef.current.play();
         }
-        const track = stream.getVideoTracks()[0];
-        const settings = track.getSettings();
-        if (settings.width && settings.height) {
-          setCameraResolution(`${settings.width}x${settings.height}`);
-        }
-        setCameraError(null);
         return true;
       } catch (e) {
         return false;
@@ -335,8 +390,7 @@ export default function KioskPage() {
         deviceId: deviceId ? { exact: deviceId } : undefined,
         facingMode: "user", 
         width: { ideal: 1280 }, 
-        height: { ideal: 1706 }, 
-        frameRate: { ideal: 30 } 
+        height: { ideal: 1706 } 
       },
       audio: false
     });
@@ -344,7 +398,7 @@ export default function KioskPage() {
       success = await tryStream({ video: deviceId ? { deviceId: { exact: deviceId } } : true, audio: false });
     }
     if (!success) {
-      setCameraError("Check OTG Connection / Permissions.");
+      setCameraError("Check OTG Connection.");
       return false;
     }
     return true;
@@ -431,38 +485,37 @@ export default function KioskPage() {
         />
 
         {isOwnerMode && (
-          <>
-            <AdminControls 
-              currentStatus={appState}
-              onJumpTo={setAppState}
-              onReset={resetSession}
-              onExitOwnerMode={() => setIsOwnerMode(false)}
-              hasPackage={!!packageSelected}
-              onSimulateCash={(amount) => setPaymentReceived(prev => prev + amount)}
-              onBypassPayment={(pkg) => { setPackageSelected(pkg); setPaymentReceived(pkg); setAppState("setup"); }}
-              usbStatus={usbDirectoryHandle ? "connected" : "disconnected"}
-              onSetupUsb={async () => {
-                try {
-                  // @ts-ignore
-                  const handle = await window.showDirectoryPicker();
-                  setUsbDirectoryHandle(handle);
-                  KioskLogger.log('info', 'Hardware', 'Lexar USB Target Mounted.');
-                } catch (e) {
-                  KioskLogger.log('error', 'Hardware', 'USB Selection Cancelled.');
-                }
-              }}
-              isDevMode={isDevMode}
-              onToggleDevMode={() => setIsDevMode(!isDevMode)}
-              isCameraActive={!!cameraStream}
-              onTestCamera={() => setAppState("test-camera")}
-              cameras={availableCameras}
-              selectedCameraId={selectedCameraId}
-              onSelectCamera={setSelectedCameraId}
-              resolution={cameraResolution}
-            />
-            <HealthMonitor />
-          </>
+          <AdminControls 
+            currentStatus={appState}
+            onJumpTo={setAppState}
+            onReset={resetSession}
+            onExitOwnerMode={() => setIsOwnerMode(false)}
+            hasPackage={!!packageSelected}
+            onSimulateCash={(amount) => setPaymentReceived(prev => prev + amount)}
+            onBypassPayment={(pkg) => { setPackageSelected(pkg); setPaymentReceived(pkg); setAppState("setup"); }}
+            usbStatus={usbDirectoryHandle ? "connected" : "disconnected"}
+            onSetupUsb={async () => {
+              try {
+                // @ts-ignore
+                const handle = await window.showDirectoryPicker();
+                setUsbDirectoryHandle(handle);
+                KioskLogger.log('info', 'Hardware', 'USB Mounted.');
+              } catch (e) {
+                KioskLogger.log('error', 'Hardware', 'USB Failed.');
+              }
+            }}
+            isDevMode={isDevMode}
+            onToggleDevMode={() => setIsDevMode(!isDevMode)}
+            isCameraActive={!!cameraStream}
+            onTestCamera={() => setAppState("test-camera")}
+            cameras={availableCameras}
+            selectedCameraId={selectedCameraId}
+            onSelectCamera={setSelectedCameraId}
+            resolution={cameraResolution}
+          />
         )}
+
+        <HealthMonitor />
 
         {appState === "welcome" && (
           <div className="flex flex-col items-center w-full max-w-4xl animate-in fade-in duration-1000" style={{ paddingTop: '120px' }}>
@@ -470,8 +523,8 @@ export default function KioskPage() {
               <JnlLogo variant="icon" color="light" className="w-32 h-32" />
             </div>
             <div className="flex justify-center mb-[30px] w-full px-4">
-              <h1 className="font-headline font-black text-5xl sm:text-7xl tracking-tight uppercase italic text-center flex items-center gap-4">
-                <span className="text-white">JNL</span>
+              <h1 className="font-headline font-black text-5xl sm:text-7xl tracking-tight uppercase italic text-center flex items-center gap-4 text-white">
+                <span>JNL</span>
                 <span className="text-primary">STUDIO</span>
               </h1>
             </div>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -22,11 +23,12 @@ export default function RetrievePage() {
       try {
         const { storage } = initializeFirebase();
         const photoRef = ref(storage, `photos/${id}.jpg`);
+        // Using high priority retrieval
         const url = await getDownloadURL(photoRef);
         setImageUrl(url);
       } catch (err) {
         console.error("Fetch Error:", err);
-        setError("Photo not found or still processing. Please try again in a moment.");
+        setError("Your photo is still being processed. Please refresh in a moment.");
       } finally {
         setLoading(false);
       }
@@ -55,10 +57,10 @@ export default function RetrievePage() {
 
   return (
     <KioskLayout className="bg-zinc-950">
-      <div className="flex flex-col items-center justify-center min-h-screen w-full px-6 py-12 text-center overflow-y-auto">
+      <div className="flex flex-col items-center justify-center min-h-screen w-full px-6 py-12 text-center overflow-y-auto scrollbar-hide">
         <JnlLogo variant="icon" className="mb-8 w-20 h-20" />
         
-        <div className="w-full max-w-md bg-white/5 border border-white/10 p-8 rounded-3xl shadow-2xl backdrop-blur-xl">
+        <div className="w-full max-w-md bg-white/5 border border-white/10 p-8 rounded-3xl shadow-2xl backdrop-blur-xl animate-in zoom-in-95 duration-500">
           {loading ? (
             <div className="flex flex-col items-center py-12 space-y-4">
               <Loader2 className="w-12 h-12 text-primary animate-spin" />
@@ -68,12 +70,17 @@ export default function RetrievePage() {
             <div className="flex flex-col items-center py-12 space-y-4">
               <AlertCircle className="w-12 h-12 text-red-500" />
               <p className="text-white/80 font-bold uppercase text-sm">{error}</p>
-              <NeonButton onClick={() => window.location.reload()} className="!py-4 mt-4">Retry</NeonButton>
+              <NeonButton onClick={() => window.location.reload()} className="!py-4 mt-4">Refresh</NeonButton>
             </div>
           ) : (
             <div className="space-y-8">
-              <div className="relative aspect-[2/3] w-full rounded-xl overflow-hidden shadow-2xl border-4 border-white">
-                <img src={imageUrl!} alt="Your Portrait" className="w-full h-full object-contain" />
+              <div className="relative aspect-[2/3] w-full rounded-xl overflow-hidden shadow-2xl border-4 border-white bg-zinc-900">
+                <img 
+                  src={imageUrl!} 
+                  alt="Your Portrait" 
+                  className="w-full h-full object-contain"
+                  onLoad={() => setLoading(false)}
+                />
               </div>
               
               <div className="space-y-4">

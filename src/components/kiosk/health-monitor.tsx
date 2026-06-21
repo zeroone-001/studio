@@ -16,7 +16,7 @@ export function HealthMonitor() {
     storage: "0MB",
     storagePercent: "0",
     syncPending: 0,
-    printer: "USB READY",
+    printer: "USB HUB ACTIVE",
     camera: false,
     usbHub: false
   });
@@ -30,13 +30,15 @@ export function HealthMonitor() {
         try {
           const devices = await navigator.mediaDevices.enumerateDevices();
           const hasCam = devices.some(d => d.kind === 'videoinput');
-          // Simple WebUSB check for OTG status if supported
+          
+          // WebUSB Detection for OTG Hubs/Printers
           let hasUsb = false;
           if ('usb' in navigator) {
             // @ts-ignore
             const usbDevices = await navigator.usb.getDevices();
             hasUsb = usbDevices.length > 0;
           }
+          
           return { hasCam, hasUsb };
         } catch {
           return { hasCam: false, hasUsb: false };
@@ -49,7 +51,7 @@ export function HealthMonitor() {
           storage: `${stats.usedMB}MB`,
           storagePercent: stats.percent,
           syncPending: queue.length,
-          printer: hw.hasUsb ? "USB HUB ACTIVE" : "OTG PENDING",
+          printer: hw.hasUsb ? "PRINTER READY (OTG)" : "HUB PENDING",
           camera: hw.hasCam,
           usbHub: hw.hasUsb
         });
@@ -60,6 +62,14 @@ export function HealthMonitor() {
     if (typeof window !== 'undefined') {
       window.addEventListener('online', checkHealth);
       window.addEventListener('offline', checkHealth);
+      
+      // Hardware connection listeners
+      if ('usb' in navigator) {
+        // @ts-ignore
+        navigator.usb.addEventListener('connect', checkHealth);
+        // @ts-ignore
+        navigator.usb.addEventListener('disconnect', checkHealth);
+      }
     }
 
     return () => {
@@ -67,6 +77,12 @@ export function HealthMonitor() {
       if (typeof window !== 'undefined') {
         window.removeEventListener('online', checkHealth);
         window.removeEventListener('offline', checkHealth);
+        if ('usb' in navigator) {
+          // @ts-ignore
+          navigator.usb.removeEventListener('connect', checkHealth);
+          // @ts-ignore
+          navigator.usb.removeEventListener('disconnect', checkHealth);
+        }
       }
     };
   }, []);

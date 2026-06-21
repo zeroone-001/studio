@@ -296,13 +296,13 @@ export default function KioskPage() {
       }
     };
 
-    // Honor Pad X10 optimized Portrait Framing (1280x1706 ideal)
+    // Honor Pad X10 optimized Portrait Framing
     let success = await tryStream({
       video: { 
         deviceId: deviceId ? { exact: deviceId } : undefined,
         facingMode: "user", 
-        width: { ideal: 1280 }, 
-        height: { ideal: 1706 }, 
+        width: { ideal: 1080 }, 
+        height: { ideal: 1440 }, 
         frameRate: { ideal: 30 } 
       },
       audio: false
@@ -338,7 +338,7 @@ export default function KioskPage() {
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
       context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-      return canvas.toDataURL('image/jpeg', 0.85);
+      return canvas.toDataURL('image/jpeg', 0.9);
     }
     return null;
   };
@@ -569,13 +569,15 @@ export default function KioskPage() {
 
         {appState === "capturing" && (
           <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black animate-in fade-in duration-500">
-             <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover z-0", selectedFilter.class)} />
-             {isProcessing && <div className="absolute inset-0 bg-white z-30 animate-in fade-in out-fade-out duration-300" />}
-             {countdown !== null && (
-               <div className="absolute inset-0 flex items-center justify-center bg-transparent z-40 pointer-events-none">
-                  <span className="text-[25rem] font-headline font-black italic text-white animate-bounce drop-shadow-[0_0_60px_rgba(255,51,153,0.9)]">{countdown}</span>
-               </div>
-             )}
+             <div className="relative w-full h-full max-w-4xl aspect-[3/4] mx-auto overflow-hidden">
+               <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover z-0", selectedFilter.class)} />
+               {isProcessing && <div className="absolute inset-0 bg-white z-30 animate-in fade-in out-fade-out duration-300" />}
+               {countdown !== null && (
+                 <div className="absolute inset-0 flex items-center justify-center bg-transparent z-40 pointer-events-none">
+                    <span className="text-[25rem] font-headline font-black italic text-white animate-bounce drop-shadow-[0_0_60px_rgba(255,51,153,0.9)]">{countdown}</span>
+                 </div>
+               )}
+             </div>
           </div>
         )}
 

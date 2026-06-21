@@ -137,7 +137,7 @@ export default function KioskPage() {
   const [logoTapCount, setLogoTapCount] = useState(0);
   const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Landscape Lock Handshake
+  // Screen Fit Logic for Honor Pad X10
   useEffect(() => {
     const lockLandscape = async () => {
       try {
@@ -146,7 +146,7 @@ export default function KioskPage() {
           await screen.orientation.lock('landscape');
         }
       } catch (e) {
-        KioskLogger.log('info', 'Hardware', 'Orientation lock pending user interaction.');
+        KioskLogger.log('info', 'Hardware', 'Orientation lock pending.');
       }
     };
     lockLandscape();
@@ -184,7 +184,7 @@ export default function KioskPage() {
       setInterruptedSession(saved);
     }
     
-    const detectCameras = async () => {
+    const detectHardware = async () => {
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const videoDevices = devices.filter(device => device.kind === 'videoinput');
@@ -193,10 +193,10 @@ export default function KioskPage() {
           setSelectedCameraId(videoDevices[0].deviceId);
         }
       } catch (err) {
-        KioskLogger.log('warn', 'Camera', 'Device handshake pending.');
+        KioskLogger.log('warn', 'Hardware', 'Hardware enumeration pending.');
       }
     };
-    detectCameras();
+    detectHardware();
   }, [selectedCameraId]);
 
   const resumeSession = () => {
@@ -213,13 +213,11 @@ export default function KioskPage() {
   const availableBlueprints = useMemo(() => {
     if (appState === "test-camera") return BLUEPRINTS;
     if (!packageSelected) return [];
-    // Exact 5 layouts for P50, Exact 10 for P100
     return BLUEPRINTS.filter(bp => bp.package === packageSelected);
   }, [packageSelected, appState]);
 
   const availableFilters = useMemo(() => {
     if (appState === "test-camera") return FILTERS;
-    // Exact 5 filters for P50, Exact 10 for P100
     return FILTERS.slice(0, packageSelected === 100 ? 10 : 5);
   }, [packageSelected, appState]);
 
@@ -298,6 +296,7 @@ export default function KioskPage() {
       }
     };
 
+    // Honor Pad X10 optimized Portrait Framing (1280x1706 ideal)
     let success = await tryStream({
       video: { 
         deviceId: deviceId ? { exact: deviceId } : undefined,
@@ -317,7 +316,7 @@ export default function KioskPage() {
     }
 
     if (!success) {
-      setCameraError("Camera device failed to initialize.");
+      setCameraError("Check OTG Connection / Permissions.");
       return false;
     }
 
@@ -420,14 +419,14 @@ export default function KioskPage() {
     <KioskLayout>
       <canvas ref={canvasRef} className="hidden" />
       
-      <div className="flex-1 w-full h-full flex flex-col items-center overflow-hidden kiosk-container safe-area-spacing">
+      <div className="flex-1 w-full h-full flex flex-col items-center overflow-hidden kiosk-container safe-area-spacing landscape-container">
         
         {interruptedSession && appState === "welcome" && (
           <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
              <div className="bg-zinc-950 border-2 border-primary/40 p-10 max-w-md w-full text-center space-y-6">
                 <div className="space-y-2">
                   <h3 className="font-headline font-black text-2xl italic uppercase text-white">RECOVER SESSION</h3>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">Engine detected a restart during active session.</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">Power cycle detected during active session.</p>
                 </div>
                 <div className="grid grid-cols-1 gap-3">
                   <NeonButton onClick={resumeSession} className="w-full !py-6">RESUME SESSION</NeonButton>
@@ -513,12 +512,12 @@ export default function KioskPage() {
 
         {(appState === "setup" || appState === "test-camera") && (
           <div className="w-full h-full max-w-7xl flex flex-col lg:flex-row gap-8 items-center lg:items-start animate-in fade-in duration-500 py-10 px-8">
-             <div className="relative w-full lg:flex-1 aspect-[3/4] max-h-[70vh] bg-zinc-900 border-4 border-white shadow-[0_0_30px_rgba(255,51,153,0.3)] overflow-hidden">
+             <div className="relative w-full lg:flex-1 aspect-[3/4] max-h-[70vh] bg-zinc-900 border-4 border-white shadow-[0_0_30px_rgba(255,51,153,0.3)] overflow-hidden flex items-center justify-center">
                 {cameraError ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-black/60">
                      <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
                      <p className="text-[10px] text-white/60 uppercase">{cameraError}</p>
-                     <button onClick={() => startCamera(selectedCameraId)} className="mt-6 px-4 py-2 border border-white/20 text-[10px] font-black uppercase">Retry Handshake</button>
+                     <button onClick={() => startCamera(selectedCameraId)} className="mt-6 px-4 py-2 border border-white/20 text-[10px] font-black uppercase">Reconnect Hardware</button>
                   </div>
                 ) : (
                   <video 
@@ -542,7 +541,7 @@ export default function KioskPage() {
                       <button key={bp.id} onClick={() => setSelectedBlueprint(bp)} className={cn("aspect-[3/4] relative border-2 transition-all p-1", selectedBlueprint?.id === bp.id ? "bg-primary/20 border-primary shadow-[0_0_15px_#FF3399]" : "bg-white/5 border-white/10")}>
                         <div className="relative w-full h-full bg-zinc-800/50">
                           {bp.slots.map((slot, i) => (
-                            <div key={i} className="absolute bg-white/20 border border-white/5" style={{ left: `${(slot.x / 1600) * 100}%`, top: `${(slot.y / (bp.package === 50 ? 4800 : 2400)) * 100}%`, width: `${(slot.w / 1600) * 100}%`, height: `${(slot.h / (bp.package === 50 ? 4800 : 2400)) * 100}%` }} />
+                            <div key={i} className="absolute bg-white/20 border border-white/5" style={{ left: `${(slot.x / 1600) * 100}%`, top: `${(slot.y / 2400) * 100}%`, width: `${(slot.w / 1600) * 100}%`, height: `${(slot.h / 2400) * 100}%` }} />
                           ))}
                         </div>
                       </button>
@@ -595,7 +594,7 @@ export default function KioskPage() {
             </div>
             <div className="w-full lg:w-96 space-y-6 flex flex-col items-center lg:items-start">
                <h2 className="font-headline font-black text-5xl italic uppercase text-primary leading-none">PREVIEW</h2>
-               <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-4">CHECK YOUR POSE BEFORE STYLING</p>
+               <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-4">CHECK YOUR POSE BEFORE DECORATING</p>
                <div className="grid grid-cols-1 gap-4 w-full">
                   <NeonButton onClick={() => setAppState("decorating")} className="w-full !py-10 text-2xl flex items-center justify-center gap-3">
                     <CheckCircle2 className="w-8 h-8" /> USE PHOTO
@@ -691,7 +690,7 @@ export default function KioskPage() {
                       </div>
                    </div>
                    <div className="space-y-2">
-                     <h2 className="font-headline font-black text-4xl italic uppercase">{isSavingToUsb ? "Syncing Hybrid Storage..." : "Printing Portrait..."}</h2>
+                     <h2 className="font-headline font-black text-4xl italic uppercase">{isSavingToUsb ? "Syncing Dual Output..." : "Printing Portait..."}</h2>
                      <p className="text-[10px] uppercase font-black tracking-[0.5em] text-white/40">PLEASE WAIT A MOMENT</p>
                    </div>
                    <div className="max-w-xl mx-auto">

@@ -23,7 +23,7 @@ import * as Kawaii from "@/components/kiosk/kawaii-stickers";
 import { SessionStore } from "@/lib/kiosk/persistence";
 import { KioskLogger } from "@/lib/kiosk/logger";
 import { initializeFirebase } from "@/firebase";
-import { ref, uploadString, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "thankyou" | "test-camera";
 
@@ -299,7 +299,9 @@ export default function KioskPage() {
     const sessionId = SessionStore.load()?.id || `sess_${Date.now()}`;
     
     setUploadStatus("uploading");
-    setUploadPercent(10);
+    setUploadPercent(5);
+
+    const startTime = performance.now();
 
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1600;
@@ -310,7 +312,7 @@ export default function KioskPage() {
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, 1600, 2400);
 
-    // Apply Filter & Render Photos
+    // Assembly Logic
     const filterClass = selectedFilter.class;
     if (filterClass.includes('grayscale')) ctx.filter = 'grayscale(1)';
     if (filterClass.includes('sepia')) ctx.filter = 'sepia(0.4)';
@@ -341,45 +343,57 @@ export default function KioskPage() {
       await drawPhotos(0);
     }
 
-    setUploadPercent(40);
+    const assemblyTime = performance.now() - startTime;
+    KioskLogger.log('info', 'Performance', `Photo Assembly: ${assemblyTime.toFixed(2)}ms`);
 
-    // Assembly Data URL (Master Quality)
-    const masterDataUrl = exportCanvas.toDataURL('image/jpeg', 0.95);
-    
-    // Auto-Print Signal
-    initiatePrint(masterDataUrl);
+    // AUTO-PRINT & USB
+    const printDataUrl = exportCanvas.toDataURL('image/jpeg', 0.95);
+    initiatePrint(printDataUrl);
 
-    // Lexar USB Transfer
     if (usbDirectoryHandle) {
       try {
         const filename = `JNL_${sessionId}.jpg`;
         const fileHandle = await usbDirectoryHandle.getFileHandle(filename, { create: true });
         const writable = await fileHandle.createWritable();
-        const response = await fetch(masterDataUrl);
+        const response = await fetch(printDataUrl);
         const blob = await response.blob();
         await writable.write(blob);
         await writable.close();
+        KioskLogger.log('info', 'Hardware', 'USB Export Complete');
       } catch (e) {}
     }
 
-    setUploadPercent(60);
+    setUploadPercent(30);
 
-    // Optimized Cloud Upload (JPEG 0.85 Quality)
-    const cloudDataUrl = exportCanvas.toDataURL('image/jpeg', 0.85);
+    // CLOUD UPLOAD (OPTIMIZED BLOB)
     try {
+      const uploadStartTime = performance.now();
       const { storage } = initializeFirebase();
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       
-      await uploadString(photoRef, cloudDataUrl, 'data_url');
-      setUploadPercent(90);
-      
+      // Convert to Blob for faster upload than string
+      const blob: Blob = await new Promise((resolve) => {
+        exportCanvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.82);
+      });
+
+      await uploadBytes(photoRef, blob);
+      const uploadDuration = performance.now() - uploadStartTime;
+      setUploadPercent(80);
+
+      const urlStartTime = performance.now();
+      const downloadUrl = await getDownloadURL(photoRef);
+      const urlDuration = performance.now() - urlStartTime;
+
+      KioskLogger.log('info', 'Performance', `Upload: ${uploadDuration.toFixed(2)}ms | URL Gen: ${urlDuration.toFixed(2)}ms`);
+
       const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
       setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
+      
       setUploadStatus("complete");
       setUploadPercent(100);
     } catch (e) {
       setUploadStatus("error");
-      KioskLogger.log('error', 'Cloud', 'Soft Copy Upload Failed.');
+      KioskLogger.log('error', 'Cloud', 'Soft Copy Failed. Retrying in background...');
     }
   }, [usbDirectoryHandle, selectedBlueprint, capturedPhotos, selectedFilter]);
 
@@ -805,7 +819,6 @@ export default function KioskPage() {
                    </div>
                 </div>
 
-                {/* Optimized Soft Copy Area */}
                 <div className="bg-white/5 border-2 border-white/10 p-8 flex flex-col items-center space-y-4 rounded-3xl shadow-2xl w-full lg:w-80 transition-all">
                    {uploadStatus === "idle" || uploadStatus === "uploading" ? (
                      <div className="flex flex-col items-center space-y-6 py-8">

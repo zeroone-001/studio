@@ -8,7 +8,7 @@ import { ref, getDownloadURL } from "firebase/storage";
 import { KioskLayout } from "@/components/kiosk/kiosk-layout";
 import { NeonButton } from "@/components/kiosk/neon-button";
 import { JnlLogo } from "@/components/kiosk/jnl-logo";
-import { Download, Loader2, AlertCircle, Share2 } from "lucide-react";
+import { Download, Loader2, AlertCircle, Share2, Activity } from "lucide-react";
 
 export default function RetrievePage() {
   const params = useParams();
@@ -16,36 +16,42 @@ export default function RetrievePage() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retrievalStats, setRetrievalStats] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchPhoto = async () => {
       if (!id) return;
+      const startTime = performance.now();
+      
       try {
         const { storage } = initializeFirebase();
         const photoRef = ref(storage, `photos/${id}.jpg`);
+        // Instant direct URL fetch
         const url = await getDownloadURL(photoRef);
+        const duration = performance.now() - startTime;
+        
         setImageUrl(url);
+        setRetrievalStats(`CDN Retrieval: ${duration.toFixed(0)}ms`);
+        setLoading(false);
       } catch (err) {
-        // Retry logic for potential race conditions
+        // Only retry once after 500ms if initial load fails (likely a race condition with slow internet)
         setTimeout(async () => {
           try {
             const { storage } = initializeFirebase();
             const photoRef = ref(storage, `photos/${id}.jpg`);
             const url = await getDownloadURL(photoRef);
             setImageUrl(url);
+            setLoading(false);
           } catch (e) {
             setError("Your photo is being finalized. Please refresh in a moment.");
-          } finally {
             setLoading(false);
           }
-        }, 2000);
-      } finally {
-        if (imageUrl) setLoading(false);
+        }, 500);
       }
     };
 
     fetchPhoto();
-  }, [id, imageUrl]);
+  }, [id]);
 
   const handleDownload = async () => {
     if (!imageUrl) return;
@@ -85,7 +91,7 @@ export default function RetrievePage() {
           {loading ? (
             <div className="flex flex-col items-center py-20 space-y-6">
               <Loader2 className="w-16 h-16 text-primary animate-spin" />
-              <p className="text-white/60 font-black uppercase tracking-[0.3em] text-[10px]">Assembling HD Quality...</p>
+              <p className="text-white/60 font-black uppercase tracking-[0.3em] text-[10px]">Connecting to Studio CDN...</p>
             </div>
           ) : error ? (
             <div className="flex flex-col items-center py-20 space-y-6">
@@ -106,7 +112,11 @@ export default function RetrievePage() {
               <div className="space-y-6">
                 <div className="space-y-2">
                   <h2 className="text-3xl font-headline font-black italic uppercase text-primary tracking-tight">HD SOFT COPY</h2>
-                  <p className="text-[10px] text-white/40 font-black uppercase tracking-[0.5em]">CERTIFIED PREMIUM STUDIO</p>
+                  {retrievalStats && (
+                    <div className="flex items-center justify-center gap-2 text-[8px] font-black uppercase text-white/30 tracking-[0.4em]">
+                      <Activity className="w-3 h-3" /> {retrievalStats}
+                    </div>
+                  )}
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

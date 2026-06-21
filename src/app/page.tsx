@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -212,11 +213,13 @@ export default function KioskPage() {
   const availableBlueprints = useMemo(() => {
     if (appState === "test-camera") return BLUEPRINTS;
     if (!packageSelected) return [];
+    // Exact 5 layouts for P50, Exact 10 for P100
     return BLUEPRINTS.filter(bp => bp.package === packageSelected);
   }, [packageSelected, appState]);
 
   const availableFilters = useMemo(() => {
     if (appState === "test-camera") return FILTERS;
+    // Exact 5 filters for P50, Exact 10 for P100
     return FILTERS.slice(0, packageSelected === 100 ? 10 : 5);
   }, [packageSelected, appState]);
 
@@ -226,7 +229,7 @@ export default function KioskPage() {
       const first = filterSet[0];
       if (first && !selectedBlueprint) setSelectedBlueprint(first);
     }
-  }, [packageSelected, appState, availableBlueprints]);
+  }, [packageSelected, appState, availableBlueprints, selectedBlueprint]);
 
   useEffect(() => {
     if (appState === "printing" && printProgress < 100) {
@@ -539,7 +542,7 @@ export default function KioskPage() {
                       <button key={bp.id} onClick={() => setSelectedBlueprint(bp)} className={cn("aspect-[3/4] relative border-2 transition-all p-1", selectedBlueprint?.id === bp.id ? "bg-primary/20 border-primary shadow-[0_0_15px_#FF3399]" : "bg-white/5 border-white/10")}>
                         <div className="relative w-full h-full bg-zinc-800/50">
                           {bp.slots.map((slot, i) => (
-                            <div key={i} className="absolute bg-white/20 border border-white/5" style={{ left: `${(slot.x / 1600) * 100}%`, top: `${(slot.y / 2560) * 100}%`, width: `${(slot.w / 1600) * 100}%`, height: `${(slot.h / 2560) * 100}%` }} />
+                            <div key={i} className="absolute bg-white/20 border border-white/5" style={{ left: `${(slot.x / 1600) * 100}%`, top: `${(slot.y / (bp.package === 50 ? 4800 : 2400)) * 100}%`, width: `${(slot.w / 1600) * 100}%`, height: `${(slot.h / (bp.package === 50 ? 4800 : 2400)) * 100}%` }} />
                           ))}
                         </div>
                       </button>

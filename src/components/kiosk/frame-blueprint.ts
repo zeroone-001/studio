@@ -17,158 +17,179 @@ export type FrameBlueprint = {
 };
 
 export const BLUEPRINTS: FrameBlueprint[] = [
-  // ₱50 PACKAGE (3 SHOTS) - MAXIMIZED FOR LESS SPACE
+  // ₱50 PACKAGE (3 SHOTS) - 2x6 STRIP ASPECT RATIO (1:3)
+  // Internal Canvas: 1600x4800
   {
     id: "p50-l1",
-    label: "LAYOUT 1",
+    label: "CLASSIC STRIP",
     package: 50,
     slots: [
-      { x: 100, y: 100, w: 1400, h: 740 },
-      { x: 100, y: 860, w: 1400, h: 740 },
-      { x: 100, y: 1620, w: 1400, h: 740 },
+      { x: 150, y: 150, w: 1300, h: 1100 },
+      { x: 150, y: 1400, w: 1300, h: 1100 },
+      { x: 150, y: 2650, w: 1300, h: 1100 },
     ],
   },
   {
     id: "p50-l2",
-    label: "LAYOUT 2",
+    label: "MODERN STRIP",
     package: 50,
     slots: [
-      { x: 80, y: 100, w: 1100, h: 700 },
-      { x: 420, y: 840, w: 1100, h: 700 },
-      { x: 80, y: 1580, w: 1100, h: 700 },
+      { x: 100, y: 200, w: 1400, h: 900 },
+      { x: 100, y: 1250, w: 1400, h: 900 },
+      { x: 100, y: 2300, w: 1400, h: 900 },
     ],
   },
   {
     id: "p50-l3",
-    label: "LAYOUT 3",
+    label: "ZIGZAG STRIP",
     package: 50,
     slots: [
-      { x: 100, y: 100, w: 1000, h: 730 },
-      { x: 100, y: 860, w: 1000, h: 730 },
-      { x: 100, y: 1620, w: 1000, h: 730 },
+      { x: 100, y: 150, w: 1100, h: 1100 },
+      { x: 400, y: 1350, w: 1100, h: 1100 },
+      { x: 100, y: 2550, w: 1100, h: 1100 },
     ],
   },
   {
     id: "p50-l4",
-    label: "LAYOUT 4",
+    label: "HERO STRIP",
     package: 50,
     slots: [
-      { x: 100, y: 100, w: 680, h: 680 },
-      { x: 820, y: 100, w: 680, h: 680 },
-      { x: 100, y: 840, w: 1400, h: 1520 },
+      { x: 100, y: 100, w: 1400, h: 1800 },
+      { x: 100, y: 2050, w: 650, h: 800 },
+      { x: 850, y: 2050, w: 650, h: 800 },
     ],
   },
   {
     id: "p50-l5",
-    label: "LAYOUT 5",
+    label: "MINIMAL STRIP",
     package: 50,
     slots: [
-      { x: 300, y: 100, w: 1000, h: 740 },
-      { x: 100, y: 880, w: 680, h: 1480 },
-      { x: 820, y: 880, w: 680, h: 1480 },
+      { x: 200, y: 300, w: 1200, h: 1000 },
+      { x: 200, y: 1450, w: 1200, h: 1000 },
+      { x: 200, y: 2600, w: 1200, h: 1000 },
     ],
   },
 
-  // ₱100 PACKAGE (6 SHOTS) - MAXIMIZED GRID
+  // ₱100 PACKAGE (6 SHOTS) - 4x6 PHOTO ASPECT RATIO (2:3)
+  // Internal Canvas: 1600x2400
   {
     id: "p100-l1",
-    label: "STRIP",
-    package: 100,
-    slots: Array.from({ length: 6 }).map((_, i) => ({ x: 150, y: 80 + i * 380, w: 1300, h: 350 })),
-  },
-  {
-    id: "p100-l2",
-    label: "GRID 2X3",
+    label: "GRID 2x3",
     package: 100,
     slots: [
-      { x: 60, y: 80, w: 710, h: 740 },
-      { x: 830, y: 80, w: 710, h: 740 },
-      { x: 60, y: 860, w: 710, h: 740 },
-      { x: 830, y: 860, w: 710, h: 740 },
-      { x: 60, y: 1640, w: 710, h: 740 },
-      { x: 830, y: 1640, w: 710, h: 740 },
+      { x: 75, y: 100, w: 700, h: 600 },
+      { x: 825, y: 100, w: 700, h: 600 },
+      { x: 75, y: 750, w: 700, h: 600 },
+      { x: 825, y: 750, w: 700, h: 600 },
+      { x: 75, y: 1400, w: 700, h: 600 },
+      { x: 825, y: 1400, w: 700, h: 600 },
     ],
   },
   {
+    id: "p100-l2",
+    label: "STORYBOARD",
+    package: 100,
+    slots: Array.from({ length: 6 }).map((_, i) => ({
+      x: 100,
+      y: 80 + i * 360,
+      w: 1400,
+      h: 330
+    })),
+  },
+  {
     id: "p100-l3",
-    label: "HERO",
+    label: "CENTER HERO",
     package: 100,
     slots: [
-      { x: 100, y: 100, w: 1400, h: 800 },
+      { x: 100, y: 100, w: 1400, h: 900 },
       ...Array.from({ length: 5 }).map((_, i) => ({
         x: 60 + (i % 3) * 510,
-        y: 950 + Math.floor(i / 3) * 700,
-        w: 480,
-        h: 650
+        y: 1050 + Math.floor(i / 3) * 550,
+        w: 460,
+        h: 500
       }))
     ],
   },
   {
     id: "p100-l4",
-    label: "FILM",
+    label: "FILM ROLL",
     package: 100,
-    slots: Array.from({ length: 6 }).map((_, i) => ({ x: 200, y: 80 + i * 385, w: 1200, h: 360 })),
+    slots: Array.from({ length: 6 }).map((_, i) => ({
+      x: i % 2 === 0 ? 100 : 850,
+      y: 100 + Math.floor(i / 2) * 700,
+      w: 650,
+      h: 650
+    })),
   },
   {
     id: "p100-l5",
-    label: "COMPACT",
+    label: "SCATTER",
     package: 100,
-    slots: Array.from({ length: 6 }).map((_, i) => ({
-      x: 100 + (i % 2) * 720,
-      y: 100 + Math.floor(i / 2) * 750,
-      w: 680,
-      h: 700
-    })),
+    slots: [
+      { x: 100, y: 100, w: 700, h: 700 },
+      { x: 850, y: 200, w: 650, h: 600 },
+      { x: 50, y: 850, w: 600, h: 650 },
+      { x: 700, y: 850, w: 850, h: 650 },
+      { x: 100, y: 1550, w: 600, h: 650 },
+      { x: 750, y: 1550, w: 750, h: 650 },
+    ],
   },
   {
     id: "p100-l6",
-    label: "ZIGZAG",
+    label: "VERTICAL SPLIT",
     package: 100,
-    slots: Array.from({ length: 6 }).map((_, i) => ({
-      x: i % 2 === 0 ? 80 : 820,
-      y: 80 + i * 380,
-      w: 700,
-      h: 350
-    })),
+    slots: [
+      ...Array.from({ length: 3 }).map((_, i) => ({ x: 100, y: 100 + i * 720, w: 650, h: 680 })),
+      ...Array.from({ length: 3 }).map((_, i) => ({ x: 850, y: 100 + i * 720, w: 650, h: 680 })),
+    ],
   },
   {
     id: "p100-l7",
-    label: "COLUMNS",
+    label: "MOSAIC",
     package: 100,
     slots: [
-      ...Array.from({ length: 3 }).map((_, i) => ({ x: 80, y: 100 + i * 760, w: 800, h: 720 })),
-      ...Array.from({ length: 3 }).map((_, i) => ({ x: 920, y: 100 + i * 760, w: 600, h: 720 }))
+      { x: 50, y: 50, w: 1000, h: 1000 },
+      { x: 1100, y: 50, w: 450, h: 450 },
+      { x: 1100, y: 550, w: 450, h: 500 },
+      { x: 50, y: 1100, w: 450, h: 1100 },
+      { x: 550, y: 1100, w: 1000, h: 520 },
+      { x: 550, y: 1680, w: 1000, h: 520 },
     ],
   },
   {
     id: "p100-l8",
-    label: "SPINE",
+    label: "STRIP DOUBLE",
     package: 100,
     slots: Array.from({ length: 6 }).map((_, i) => ({
-      x: i % 2 === 0 ? 80 : 720,
-      y: 80 + i * 380,
-      w: 800,
-      h: 350
+      x: i < 3 ? 100 : 850,
+      y: 100 + (i % 3) * 720,
+      w: 650,
+      h: 680
     })),
   },
   {
     id: "p100-l9",
-    label: "STREAK",
+    label: "DIAGONAL",
     package: 100,
-    slots: [
-      ...Array.from({ length: 5 }).map((_, i) => ({ x: 80, y: 80 + i * 460, w: 700, h: 430 })),
-      { x: 820, y: 80, w: 700, h: 2280 }
-    ],
+    slots: Array.from({ length: 6 }).map((_, i) => ({
+      x: 50 + i * 200,
+      y: 50 + i * 350,
+      w: 500,
+      h: 500
+    })),
   },
   {
     id: "p100-l10",
-    label: "EMPHASIS",
+    label: "ULTIMATE",
     package: 100,
-    slots: Array.from({ length: 6 }).map((_, i) => ({
-      x: 80 + (i % 2) * 740,
-      y: 100 + Math.floor(i / 2) * 750,
-      w: 700,
-      h: 720
-    })),
+    slots: [
+      { x: 50, y: 50, w: 1500, h: 1000 },
+      ...Array.from({ length: 5 }).map((_, i) => ({
+        x: 50 + i * 300,
+        y: 1100,
+        w: 280,
+        h: 1200
+      }))
+    ],
   }
 ];

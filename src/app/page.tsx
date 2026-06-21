@@ -220,12 +220,9 @@ export default function KioskPage() {
     return FILTERS.slice(0, packageSelected === 100 ? 10 : 5);
   }, [packageSelected, appState]);
 
-  // Handle blueprint auto-selection and reset when package changes
   useEffect(() => {
     if (packageSelected || appState === "test-camera") {
       const filterSet = appState === "test-camera" ? BLUEPRINTS : availableBlueprints;
-      
-      // If no blueprint selected, or current one is for wrong package, reset
       if (!selectedBlueprint || selectedBlueprint.package !== packageSelected) {
         const first = filterSet[0];
         if (first) setSelectedBlueprint(first);
@@ -275,11 +272,9 @@ export default function KioskPage() {
     if (cameraStream && videoRef.current && videoRef.current.srcObject === cameraStream) {
       return true;
     }
-
     if (cameraStream) {
       cameraStream.getTracks().forEach(track => track.stop());
     }
-    
     const tryStream = async (constraints: MediaStreamConstraints) => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -299,7 +294,6 @@ export default function KioskPage() {
         return false;
       }
     };
-
     let success = await tryStream({
       video: { 
         deviceId: deviceId ? { exact: deviceId } : undefined,
@@ -310,19 +304,13 @@ export default function KioskPage() {
       },
       audio: false
     });
-
     if (!success) {
-      success = await tryStream({ 
-        video: deviceId ? { deviceId: { exact: deviceId } } : true, 
-        audio: false 
-      });
+      success = await tryStream({ video: deviceId ? { deviceId: { exact: deviceId } } : true, audio: false });
     }
-
     if (!success) {
       setCameraError("Check OTG Connection / Permissions.");
       return false;
     }
-
     return true;
   };
 
@@ -350,7 +338,6 @@ export default function KioskPage() {
     const totalShots = packageSelected === 50 ? 3 : 6;
     const photos: string[] = [];
     setCapturedPhotos([]); 
-    
     for (let i = 0; i < totalShots; i++) {
       for (let c = 3; c > 0; c--) {
         setCountdown(c);
@@ -366,7 +353,6 @@ export default function KioskPage() {
       await new Promise(r => setTimeout(r, 600)); 
       setIsProcessing(false);
     }
-    
     setAppState("review");
   };
 
@@ -374,9 +360,7 @@ export default function KioskPage() {
     if (appState === "setup" || appState === "capturing" || appState === "test-camera") {
       startCamera(selectedCameraId);
     } else {
-      if (!isOwnerMode) {
-        stopCamera();
-      }
+      if (!isOwnerMode) stopCamera();
     }
   }, [appState, isOwnerMode, selectedCameraId]);
 
@@ -390,9 +374,7 @@ export default function KioskPage() {
   }, [cameraStream, appState]);
 
   useEffect(() => {
-    if (appState === "capturing") {
-      startShotSequence();
-    }
+    if (appState === "capturing") startShotSequence();
   }, [appState]);
 
   const addSticker = useCallback((type: string) => {
@@ -421,7 +403,6 @@ export default function KioskPage() {
   return (
     <KioskLayout>
       <canvas ref={canvasRef} className="hidden" />
-      
       <div className="flex-1 w-full h-full flex flex-col items-center overflow-hidden kiosk-container safe-area-spacing landscape-container">
         
         {interruptedSession && appState === "welcome" && (
@@ -599,7 +580,6 @@ export default function KioskPage() {
             </div>
             <div className="w-full lg:w-96 space-y-6 flex flex-col items-center lg:items-start shrink-0">
                <h2 className="font-headline font-black text-5xl italic uppercase text-primary leading-none">PREVIEW</h2>
-               <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-4">CHECK YOUR POSE BEFORE DECORATING</p>
                <div className="grid grid-cols-1 gap-4 w-full">
                   <NeonButton onClick={() => setAppState("decorating")} className="w-full !py-10 text-2xl flex items-center justify-center gap-3">
                     <CheckCircle2 className="w-8 h-8" /> USE PHOTO
@@ -674,7 +654,6 @@ export default function KioskPage() {
              <h2 className="font-headline font-black text-5xl mb-6 italic uppercase leading-tight">Help Us Share <br /><span className="text-primary">Happy Memories ✨</span></h2>
              <div className="space-y-6 mb-12">
                <p className="text-xl font-bold text-white/90">May we use your moments from this photo booth for promotional posts on JNL STUDIO Facebook page?</p>
-               <p className="text-sm text-white/40 italic">Maaari ba naming gamitin ang inyong moments mula sa photo booth na ito para sa promotional posts sa JNL STUDIO Facebook page?</p>
              </div>
              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
                <NeonButton onClick={() => { setPromoConsent(true); setAppState("printing"); }} className="w-full !py-10 text-xl">YES, WE ALLOW IT</NeonButton>
@@ -703,7 +682,6 @@ export default function KioskPage() {
                         <Progress value={printProgress} className="h-3 bg-white/5" />
                       </div>
                    </div>
-                   
                    <div className="bg-white/5 border-2 border-white/10 p-8 flex flex-col items-center space-y-4 rounded-3xl shadow-2xl w-full lg:w-80">
                       <QrCode className="w-10 h-10 text-primary" />
                       <h3 className="font-headline font-black text-xl uppercase italic">SOFT COPY</h3>

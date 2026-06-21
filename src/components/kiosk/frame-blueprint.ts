@@ -18,7 +18,8 @@ export type FrameBlueprint = {
 
 export const BLUEPRINTS: FrameBlueprint[] = [
   // ₱50 PACKAGE (3 SHOTS) - 2x6 STRIP (Internal units scaled to 1600x2400 sheet)
-  // Each strip is 800 units wide. Coordinates below are relative to a 1600 wide sheet.
+  // Each strip is 800 units wide. Coordinates are relative to a 1600 wide sheet.
+  // Y + H must not exceed 2400.
   {
     id: "p50-l1",
     label: "CLASSIC STRIP",

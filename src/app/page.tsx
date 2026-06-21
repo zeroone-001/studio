@@ -111,8 +111,6 @@ export default function KioskPage() {
   const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
   const [printProgress, setPrintProgress] = useState(0);
   const [promoConsent, setPromoConsent] = useState<boolean | null>(null);
-  const [isSavingToUsb, setIsSavingToUsb] = useState(false);
-  const [interruptedSession, setInterruptedSession] = useState<KioskSession | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -180,7 +178,7 @@ export default function KioskPage() {
   useEffect(() => {
     const saved = SessionStore.load();
     if (saved && saved.state !== "welcome") {
-      setInterruptedSession(saved);
+      // Logic for recovering session if needed
     }
     
     const detectHardware = async () => {
@@ -197,17 +195,6 @@ export default function KioskPage() {
     };
     detectHardware();
   }, [selectedCameraId]);
-
-  const resumeSession = () => {
-    if (interruptedSession) {
-      setAppState(interruptedSession.state as SessionState);
-      setPackageSelected(interruptedSession.packageSelected);
-      setPaymentReceived(interruptedSession.paymentReceived);
-      setCapturedPhotos(interruptedSession.capturedPhotos);
-      setPromoConsent(interruptedSession.promoConsent);
-      setInterruptedSession(null);
-    }
-  };
 
   const availableBlueprints = useMemo(() => {
     if (appState === "test-camera") return BLUEPRINTS;
@@ -254,19 +241,18 @@ export default function KioskPage() {
     setSelectedStickerId(null);
     setPrintProgress(0);
     setPromoConsent(null);
-    setIsSavingToUsb(false);
   }, []);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (appState === "printing" && printProgress === 100) {
-      const timeout = promoConsent === false ? 25000 : 45000;
+      const timeout = 45000;
       timer = setTimeout(() => {
         resetSession();
       }, timeout); 
     }
     return () => clearInterval(timer);
-  }, [appState, printProgress, resetSession, promoConsent]);
+  }, [appState, printProgress, resetSession]);
 
   const startCamera = async (deviceId?: string) => {
     if (cameraStream && videoRef.current && videoRef.current.srcObject === cameraStream) {
@@ -298,8 +284,8 @@ export default function KioskPage() {
       video: { 
         deviceId: deviceId ? { exact: deviceId } : undefined,
         facingMode: "user", 
-        width: { ideal: 1080 }, 
-        height: { ideal: 1440 }, 
+        width: { ideal: 1280 }, 
+        height: { ideal: 1706 }, 
         frameRate: { ideal: 30 } 
       },
       audio: false
@@ -364,19 +350,6 @@ export default function KioskPage() {
     }
   }, [appState, isOwnerMode, selectedCameraId]);
 
-  useEffect(() => {
-    if (cameraStream && videoRef.current) {
-      if (videoRef.current.srcObject !== cameraStream) {
-        videoRef.current.srcObject = cameraStream;
-        videoRef.current.play().catch(() => {});
-      }
-    }
-  }, [cameraStream, appState]);
-
-  useEffect(() => {
-    if (appState === "capturing") startShotSequence();
-  }, [appState]);
-
   const addSticker = useCallback((type: string) => {
     const newSticker: PlacedSticker = { id: `sticker-${Date.now()}`, type, x: 50, y: 40, size: 15, rotation: 0 };
     setPlacedStickers(prev => [...prev, newSticker]);
@@ -405,21 +378,6 @@ export default function KioskPage() {
       <canvas ref={canvasRef} className="hidden" />
       <div className="flex-1 w-full h-full flex flex-col items-center overflow-hidden kiosk-container safe-area-spacing landscape-container">
         
-        {interruptedSession && appState === "welcome" && (
-          <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/80 backdrop-blur-md">
-             <div className="bg-zinc-950 border-2 border-primary/40 p-10 max-w-md w-full text-center space-y-6">
-                <div className="space-y-2">
-                  <h3 className="font-headline font-black text-2xl italic uppercase text-white">RECOVER SESSION</h3>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">Power cycle detected during active session.</p>
-                </div>
-                <div className="grid grid-cols-1 gap-3">
-                  <NeonButton onClick={resumeSession} className="w-full !py-6">RESUME SESSION</NeonButton>
-                  <button onClick={() => { setInterruptedSession(null); SessionStore.clear(); }} className="text-[10px] font-black uppercase text-white/40">START FRESH</button>
-                </div>
-             </div>
-          </div>
-        )}
-
         <AdminAuthDialog 
           isOpen={isAdminDialogOpen} 
           onClose={() => setIsAdminDialogOpen(false)}
@@ -497,21 +455,13 @@ export default function KioskPage() {
         {(appState === "setup" || appState === "test-camera") && (
           <div className="w-full h-full max-w-7xl flex flex-col lg:flex-row gap-8 items-center lg:items-start animate-in fade-in duration-500 py-10 px-8">
              <div className="relative w-full lg:flex-1 aspect-[3/4] max-h-[70vh] bg-zinc-900 border-4 border-white shadow-[0_0_30px_rgba(255,51,153,0.3)] overflow-hidden flex items-center justify-center">
-                {cameraError ? (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-black/60">
-                     <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
-                     <p className="text-[10px] text-white/60 uppercase">{cameraError}</p>
-                     <button onClick={() => startCamera(selectedCameraId)} className="mt-6 px-4 py-2 border border-white/20 text-[10px] font-black uppercase">Reconnect Hardware</button>
-                  </div>
-                ) : (
-                  <video 
-                    ref={videoRef} 
-                    autoPlay 
-                    playsInline 
-                    muted 
-                    className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} 
-                  />
-                )}
+                <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  playsInline 
+                  muted 
+                  className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} 
+                />
              </div>
              <div className="w-full lg:w-[450px] space-y-8 max-h-[75vh] overflow-y-auto scrollbar-hide">
               <h2 className="font-headline font-black text-4xl italic uppercase text-primary">Styling</h2>
@@ -671,11 +621,11 @@ export default function KioskPage() {
                         <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
                         <div className="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin" />
                         <div className="absolute inset-0 flex items-center justify-center">
-                           {isSavingToUsb ? <Usb className="w-12 h-12 text-primary animate-bounce" /> : <Printer className="w-12 h-12 text-primary animate-pulse" />}
+                           <Printer className="w-12 h-12 text-primary animate-pulse" />
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <h2 className="font-headline font-black text-3xl italic uppercase">{isSavingToUsb ? "Syncing..." : "Printing Portrait..."}</h2>
+                        <h2 className="font-headline font-black text-3xl italic uppercase">Printing Portrait...</h2>
                         <p className="text-[10px] uppercase font-black tracking-[0.5em] text-white/40">PLEASE WAIT A MOMENT</p>
                       </div>
                       <div className="w-full">

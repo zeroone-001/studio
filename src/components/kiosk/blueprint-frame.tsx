@@ -46,7 +46,7 @@ export const BlueprintFrame = React.memo(({
     if (containerRef.current) {
       setCanvasRect(containerRef.current.getBoundingClientRect());
     }
-  }, [isPreview]);
+  }, [isPreview, blueprint]);
 
   if (!blueprint || !blueprint.slots) return null;
 

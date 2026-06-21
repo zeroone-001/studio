@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -212,18 +213,14 @@ export default function KioskPage() {
     }
   }, [packageSelected, appState, availableBlueprints, selectedBlueprint]);
 
-  // Automated USB Export & Local Persistence Logic
   const handleFinalExport = useCallback(async () => {
     const sessionId = SessionStore.load()?.id || `sess_${Date.now()}`;
     
-    // 1. Assemble High-Res Image (Simulated assembly here)
     if (!canvasRef.current) return;
     const finalDataUrl = canvasRef.current.toDataURL('image/jpeg', 0.95);
     
-    // 2. Persistent Local Save (IndexedDB)
     await SessionStore.savePhotoLocally(sessionId, finalDataUrl);
     
-    // 3. Automated USB Sync (if handle available)
     if (usbDirectoryHandle) {
       try {
         const filename = `JNL_${sessionId}.jpg`;

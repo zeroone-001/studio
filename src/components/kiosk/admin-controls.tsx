@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -9,7 +10,7 @@ import {
   CreditCard, 
   Camera, 
   Image as ImageIcon, 
-  Printer,
+  Printer as PrinterIcon,
   Palette,
   Usb,
   Code2,
@@ -28,7 +29,8 @@ import {
   Video,
   MonitorSmartphone,
   FolderOpen,
-  CheckCircle2
+  CheckCircle2,
+  Printer
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
@@ -90,6 +92,18 @@ export function AdminControls({
     return () => clearInterval(interval);
   }, []);
 
+  const handleRequestUsb = async () => {
+    try {
+      if ('usb' in navigator) {
+        // @ts-ignore
+        await navigator.usb.requestDevice({ filters: [] });
+        KioskLogger.log('info', 'Hardware', 'USB Printer Access Granted.');
+      }
+    } catch (e) {
+      KioskLogger.log('error', 'Hardware', 'USB Permission Denied or Cancelled.');
+    }
+  };
+
   const states: { id: SessionState; label: string; icon: any }[] = [
     { id: "welcome", label: "Intro", icon: PlayCircle },
     { id: "payment", label: "Cash", icon: CreditCard },
@@ -98,7 +112,7 @@ export function AdminControls({
     { id: "review", label: "Review", icon: ImageIcon },
     { id: "decorating", label: "Decor", icon: ImageIcon },
     { id: "consent", label: "Privacy", icon: ShieldAlert },
-    { id: "printing", label: "Print/QR", icon: Printer },
+    { id: "printing", label: "Print/QR", icon: PrinterIcon },
   ];
 
   return (
@@ -209,16 +223,25 @@ export function AdminControls({
               </div>
             </div>
 
-            <button 
-              onClick={onSetupUsb} 
-              className={cn(
-                "w-full py-4 text-[10px] font-black uppercase flex items-center justify-center gap-2 border-2 transition-all",
-                usbStatus === 'connected' ? "bg-blue-500 border-blue-400 text-white" : "bg-white/5 border-white/10 text-white/60"
-              )}
-            >
-              {usbStatus === 'connected' ? <CheckCircle2 className="w-4 h-4" /> : <FolderOpen className="w-4 h-4" />}
-              {usbStatus === 'connected' ? "LEXAR USB MOUNTED" : "SELECT LEXAR DRIVE"}
-            </button>
+            <div className="space-y-2">
+              <button 
+                onClick={onSetupUsb} 
+                className={cn(
+                  "w-full py-4 text-[10px] font-black uppercase flex items-center justify-center gap-2 border-2 transition-all",
+                  usbStatus === 'connected' ? "bg-blue-500 border-blue-400 text-white" : "bg-white/5 border-white/10 text-white/60"
+                )}
+              >
+                {usbStatus === 'connected' ? <CheckCircle2 className="w-4 h-4" /> : <FolderOpen className="w-4 h-4" />}
+                {usbStatus === 'connected' ? "LEXAR USB MOUNTED" : "SELECT LEXAR DRIVE"}
+              </button>
+
+              <button 
+                onClick={handleRequestUsb} 
+                className="w-full py-3 bg-zinc-800 text-[9px] font-black uppercase text-white/60 border border-white/10 hover:border-white/30 transition-all flex items-center justify-center gap-2"
+              >
+                <Printer className="w-3 h-3" /> Grant Printer Access
+              </button>
+            </div>
           </div>
         )}
 
@@ -245,15 +268,15 @@ export function AdminControls({
         {view === 'diag' && (
           <div className="space-y-4">
              <div className="bg-white/5 p-3 space-y-2">
-                <div className="flex justify-between text-[8px] font-bold uppercase">
+                <div className="justify-between flex text-[8px] font-bold uppercase">
                    <span className="text-white/40">Storage Cache</span>
                    <span>{stats.used} ({stats.percent}%)</span>
                 </div>
-                <div className="flex justify-between text-[8px] font-bold uppercase">
+                <div className="justify-between flex text-[8px] font-bold uppercase">
                    <span className="text-white/40">Pending Sync</span>
                    <span className={cn(stats.queue > 0 ? "text-primary" : "text-white/40")}>{stats.queue} Items</span>
                 </div>
-                <div className="flex justify-between text-[8px] font-bold uppercase">
+                <div className="justify-between flex text-[8px] font-bold uppercase">
                    <span className="text-white/40">USB Storage</span>
                    <span className={usbStatus === 'connected' ? "text-blue-400" : "text-white/20"}>{usbStatus.toUpperCase()}</span>
                 </div>

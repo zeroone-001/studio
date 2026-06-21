@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -129,7 +128,7 @@ export default function KioskPage() {
 
   const [isOwnerMode, setIsOwnerMode] = useState(false);
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
-  const [usbHandle, setUsbHandle] = useState<any>(null);
+  const [usbDirectoryHandle, setUsbDirectoryHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [isDevMode, setIsDevMode] = useState<boolean>(true);
 
   const [logoTapCount, setLogoTapCount] = useState(0);
@@ -213,6 +212,34 @@ export default function KioskPage() {
     }
   }, [packageSelected, appState, availableBlueprints, selectedBlueprint]);
 
+  // Automated USB Export & Local Persistence Logic
+  const handleFinalExport = useCallback(async () => {
+    const sessionId = SessionStore.load()?.id || `sess_${Date.now()}`;
+    
+    // 1. Assemble High-Res Image (Simulated assembly here)
+    if (!canvasRef.current) return;
+    const finalDataUrl = canvasRef.current.toDataURL('image/jpeg', 0.95);
+    
+    // 2. Persistent Local Save (IndexedDB)
+    await SessionStore.savePhotoLocally(sessionId, finalDataUrl);
+    
+    // 3. Automated USB Sync (if handle available)
+    if (usbDirectoryHandle) {
+      try {
+        const filename = `JNL_${sessionId}.jpg`;
+        const fileHandle = await usbDirectoryHandle.getFileHandle(filename, { create: true });
+        const writable = await fileHandle.createWritable();
+        const response = await fetch(finalDataUrl);
+        const blob = await response.blob();
+        await writable.write(blob);
+        await writable.close();
+        KioskLogger.log('info', 'Hardware', `Auto-exported to Lexar USB: ${filename}`);
+      } catch (e) {
+        KioskLogger.log('error', 'Hardware', 'USB Write Error. Check Lexar Drive Connection.');
+      }
+    }
+  }, [usbDirectoryHandle]);
+
   useEffect(() => {
     if (appState === "printing" && printProgress < 100) {
       const timer = setInterval(() => {
@@ -220,13 +247,14 @@ export default function KioskPage() {
           const next = Math.min(prev + 1, 100);
           if (next === 100) {
             clearInterval(timer);
+            handleFinalExport();
           }
           return next;
         });
       }, 150);
       return () => clearInterval(timer);
     }
-  }, [appState, printProgress]);
+  }, [appState, printProgress, handleFinalExport]);
 
   const resetSession = useCallback(() => {
     SessionStore.clear(); 
@@ -391,8 +419,17 @@ export default function KioskPage() {
               hasPackage={!!packageSelected}
               onSimulateCash={(amount) => setPaymentReceived(prev => prev + amount)}
               onBypassPayment={(pkg) => { setPackageSelected(pkg); setPaymentReceived(pkg); setAppState("setup"); }}
-              usbStatus={usbHandle ? "connected" : "disconnected"}
-              onSetupUsb={() => setUsbHandle({})}
+              usbStatus={usbDirectoryHandle ? "connected" : "disconnected"}
+              onSetupUsb={async () => {
+                try {
+                  // @ts-ignore
+                  const handle = await window.showDirectoryPicker();
+                  setUsbDirectoryHandle(handle);
+                  KioskLogger.log('info', 'Hardware', 'Lexar USB Target Mounted.');
+                } catch (e) {
+                  KioskLogger.log('error', 'Hardware', 'USB Selection Cancelled.');
+                }
+              }}
               isDevMode={isDevMode}
               onToggleDevMode={() => setIsDevMode(!isDevMode)}
               isCameraActive={!!cameraStream}

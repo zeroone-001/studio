@@ -1,6 +1,6 @@
 /**
  * @fileOverview Session persistence and Hybrid Sync Queue for JNL Studio Kiosk.
- * Ensures data integrity across restarts and network outages with local-first logic.
+ * Upgraded to use IndexedDB for high-resolution photo storage and USB sync management.
  */
 
 export interface KioskSession {
@@ -25,9 +25,42 @@ export interface SyncItem {
 
 const STORAGE_KEY = 'jnl_kiosk_current_session';
 const SYNC_QUEUE_KEY = 'jnl_kiosk_sync_queue';
+const DB_NAME = 'JNL_Studio_Kiosk_DB';
+const STORE_NAME = 'photos';
 
 export const SessionStore = {
-  // Save locally first to the device's persistent storage
+  // Initialize IndexedDB for large photo storage
+  initDB: (): Promise<IDBDatabase> => {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME);
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  },
+
+  // Save photo to IndexedDB for local persistence
+  savePhotoLocally: async (id: string, dataUrl: string) => {
+    try {
+      const db = await SessionStore.initDB();
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      store.put(dataUrl, id);
+      return new Promise((resolve, reject) => {
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch (e) {
+      console.error('Local Save Failed', e);
+    }
+  },
+
+  // Save session locally
   save: (session: Partial<KioskSession>) => {
     try {
       const existing = SessionStore.load();
@@ -41,7 +74,6 @@ export const SessionStore = {
       
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       
-      // Also track for sync queue if it contains actual captured photos
       if (session.capturedPhotos && session.capturedPhotos.length > 0) {
         SessionStore.addToSyncQueue({
           id: `${updated.id}_update`,
@@ -53,7 +85,6 @@ export const SessionStore = {
         });
       }
     } catch (e) {
-      // If QuotaExceeded, try clearing the queue but keep the current session
       if (e instanceof DOMException && e.name === 'QuotaExceededError') {
         localStorage.removeItem(SYNC_QUEUE_KEY);
       }
@@ -65,8 +96,6 @@ export const SessionStore = {
       const data = localStorage.getItem(STORAGE_KEY);
       if (!data) return null;
       const session = JSON.parse(data) as KioskSession;
-      
-      // Expire old sessions from previous business days (12 hours)
       if (Date.now() - session.timestamp > 12 * 60 * 60 * 1000) {
         SessionStore.clear();
         return null;
@@ -81,21 +110,18 @@ export const SessionStore = {
     localStorage.removeItem(STORAGE_KEY);
   },
 
-  // --- HYBRID SYNC QUEUE ---
   addToSyncQueue: (item: SyncItem) => {
     try {
       const queue = SessionStore.getSyncQueue();
-      // Idempotent check: update existing if same ID
       const index = queue.findIndex(i => i.id === item.id);
       if (index > -1) {
         queue[index] = { ...queue[index], ...item };
       } else {
         queue.push(item);
       }
-      // Cap at 25 items to prevent browser storage crash while holding high-res base64 photos
       localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue.slice(-25))); 
     } catch (e) {
-      console.error('Sync Queue: Add failed', e);
+      console.error('Sync Queue Failed', e);
     }
   },
 
@@ -115,7 +141,6 @@ export const SessionStore = {
     localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
   },
 
-  // --- STORAGE MONITORING ---
   getStorageStats: () => {
     let total = 0;
     if (typeof localStorage !== 'undefined') {
@@ -128,7 +153,7 @@ export const SessionStore = {
     const sizeInMB = (total / 1024 / 1024).toFixed(2);
     return {
       usedMB: sizeInMB,
-      percent: Math.min(100, (total / (5 * 1024 * 1024)) * 100).toFixed(0) // Assuming 5MB limit
+      percent: Math.min(100, (total / (5 * 1024 * 1024)) * 100).toFixed(0)
     };
   }
 };

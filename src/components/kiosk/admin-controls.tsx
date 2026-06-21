@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -27,7 +26,9 @@ import {
   Wifi,
   ShieldCheck,
   Video,
-  MonitorSmartphone
+  MonitorSmartphone,
+  FolderOpen,
+  CheckCircle2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
@@ -207,6 +208,17 @@ export function AdminControls({
                 <span className="text-[8px] font-black uppercase text-white">Auto-Portrait</span>
               </div>
             </div>
+
+            <button 
+              onClick={onSetupUsb} 
+              className={cn(
+                "w-full py-4 text-[10px] font-black uppercase flex items-center justify-center gap-2 border-2 transition-all",
+                usbStatus === 'connected' ? "bg-blue-500 border-blue-400 text-white" : "bg-white/5 border-white/10 text-white/60"
+              )}
+            >
+              {usbStatus === 'connected' ? <CheckCircle2 className="w-4 h-4" /> : <FolderOpen className="w-4 h-4" />}
+              {usbStatus === 'connected' ? "LEXAR USB MOUNTED" : "SELECT LEXAR DRIVE"}
+            </button>
           </div>
         )}
 
@@ -246,9 +258,6 @@ export function AdminControls({
                    <span className={usbStatus === 'connected' ? "text-blue-400" : "text-white/20"}>{usbStatus.toUpperCase()}</span>
                 </div>
              </div>
-             <button onClick={onSetupUsb} className="w-full bg-white/5 border border-white/10 py-2 text-[9px] font-black uppercase flex items-center justify-center gap-2">
-                <Usb className="w-3 h-3" /> Mount External Gallery
-             </button>
              <button onClick={() => window.location.reload()} className="w-full bg-zinc-800 py-2 text-[9px] font-black uppercase">Reload Engine</button>
           </div>
         )}

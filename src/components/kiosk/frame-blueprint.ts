@@ -19,180 +19,180 @@ export type FrameBlueprint = {
 /**
  * Professional Studio Blueprints (Optimized for 4x6 / 2x6)
  * Internal Coordinate System: 1600 (W) x 2400 (H)
- * Footer branding reserved at the bottom (approx 10-12%)
+ * Footer branding reserved at bottom (10% height = 240 units)
  */
+const FOOTER_HEIGHT = 240;
+const CANVAS_H = 2400;
+const MAX_H = CANVAS_H - FOOTER_HEIGHT; // 2160 units for photos
+
 export const BLUEPRINTS: FrameBlueprint[] = [
-  // ₱50 PACKAGE (3 SHOTS) - 2x6 STRIP (Scaled for 1600x2400 sheet, but logic handles 800w strips)
+  // ₱50 PACKAGE (3 SHOTS) - 2x6 STRIP
   {
     id: "p50-l1",
-    label: "CLASSIC STRIP",
+    label: "CLASSIC",
     package: 50,
     slots: [
-      { x: 20, y: 20, w: 1560, h: 680 },
-      { x: 20, y: 720, w: 1560, h: 680 },
-      { x: 20, y: 1420, w: 1560, h: 680 },
+      { x: 20, y: 20, w: 1560, h: 690 },
+      { x: 20, y: 730, w: 1560, h: 690 },
+      { x: 20, y: 1440, w: 1560, h: 690 },
     ],
   },
   {
     id: "p50-l2",
-    label: "HERO STRIP",
+    label: "HERO",
     package: 50,
     slots: [
       { x: 20, y: 20, w: 1560, h: 1040 },
-      { x: 20, y: 1080, w: 770, h: 1020 },
-      { x: 810, y: 1080, w: 770, h: 1020 },
+      { x: 20, y: 1080, w: 770, h: 1050 },
+      { x: 810, y: 1080, w: 770, h: 1050 },
     ],
   },
   {
     id: "p50-l3",
-    label: "MODERN STRIP",
+    label: "MODERN",
     package: 50,
     slots: [
-      { x: 10, y: 10, w: 1580, h: 690 },
-      { x: 10, y: 710, w: 1580, h: 690 },
-      { x: 10, y: 1410, w: 1580, h: 690 },
+      { x: 0, y: 0, w: 1600, h: 710 },
+      { x: 0, y: 720, w: 1600, h: 710 },
+      { x: 0, y: 1440, w: 1600, h: 710 },
     ],
   },
   {
     id: "p50-l4",
-    label: "SQUARE STRIP",
+    label: "SQUARE",
     package: 50,
     slots: [
-      { x: 40, y: 40, w: 1520, h: 660 },
-      { x: 40, y: 730, w: 1520, h: 660 },
-      { x: 40, y: 1420, w: 1520, h: 660 },
+      { x: 60, y: 40, w: 1480, h: 680 },
+      { x: 60, y: 740, w: 1480, h: 680 },
+      { x: 60, y: 1440, w: 1480, h: 680 },
     ],
   },
   {
     id: "p50-l5",
-    label: "EDGELESS STRIP",
+    label: "DYNAMIC",
     package: 50,
     slots: [
-      { x: 0, y: 0, w: 1600, h: 700 },
-      { x: 0, y: 710, w: 1600, h: 700 },
-      { x: 0, y: 1420, w: 1600, h: 700 },
+      { x: 20, y: 20, w: 770, h: 1050 },
+      { x: 810, y: 20, w: 770, h: 1050 },
+      { x: 20, y: 1090, w: 1560, h: 1040 },
     ],
   },
 
   // ₱100 PACKAGE (6 SHOTS) - 4x6 PHOTO (1600x2400)
+  // Layout 1: Standard Balanced Grid
   {
     id: "p100-l1",
-    label: "GRID 2x3",
+    label: "GRID",
     package: 100,
     slots: [
-      { x: 20, y: 20, w: 770, h: 690 },
-      { x: 810, y: 20, w: 770, h: 690 },
-      { x: 20, y: 730, w: 770, h: 690 },
-      { x: 810, y: 730, w: 770, h: 690 },
-      { x: 20, y: 1440, w: 770, h: 690 },
-      { x: 810, y: 1440, w: 770, h: 690 },
+      { x: 20, y: 20, w: 770, h: 690 }, { x: 810, y: 20, w: 770, h: 690 },
+      { x: 20, y: 730, w: 770, h: 690 }, { x: 810, y: 730, w: 770, h: 690 },
+      { x: 20, y: 1440, w: 770, h: 690 }, { x: 810, y: 1440, w: 770, h: 690 },
     ],
   },
+  // Layout 2: Top Hero
   {
     id: "p100-l2",
-    label: "CENTER HERO",
+    label: "THE HERO",
     package: 100,
     slots: [
       { x: 20, y: 20, w: 1560, h: 1100 },
-      ...Array.from({ length: 5 }).map((_, i) => ({
-        x: 20 + (i % 3) * 525,
-        y: 1140 + Math.floor(i / 3) * 500,
-        w: 510,
-        h: 480
-      }))
+      { x: 20, y: 1140, w: 505, h: 495 }, { x: 545, y: 1140, w: 505, h: 495 }, { x: 1070, y: 1140, w: 510, h: 495 },
+      { x: 20, y: 1655, w: 770, h: 485 }, { x: 810, y: 1655, w: 770, h: 485 },
     ],
   },
+  // Layout 3: Storyboard Strips
   {
     id: "p100-l3",
-    label: "STORYBOARD",
+    label: "STORY",
     package: 100,
     slots: Array.from({ length: 6 }).map((_, i) => ({
       x: 20,
-      y: 20 + i * 350,
+      y: 20 + i * 355,
       w: 1560,
-      h: 330
+      h: 335
     })),
   },
+  // Layout 4: Filmstrip Style
   {
     id: "p100-l4",
-    label: "FILM ROLL",
+    label: "FILMSTRIP",
     package: 100,
     slots: Array.from({ length: 6 }).map((_, i) => ({
-      x: i % 2 === 0 ? 20 : 810,
-      y: 20 + Math.floor(i / 2) * 710,
-      w: 770,
-      h: 690
+      x: i % 2 === 0 ? 0 : 805,
+      y: Math.floor(i / 2) * 720,
+      w: 795,
+      h: 710
     })),
   },
+  // Layout 5: Mosaic Mix
   {
     id: "p100-l5",
-    label: "SCATTER",
-    package: 100,
-    slots: [
-      { x: 20, y: 20, w: 780, h: 780 },
-      { x: 810, y: 50, w: 770, h: 770 },
-      { x: 20, y: 820, w: 720, h: 720 },
-      { x: 760, y: 820, w: 820, h: 720 },
-      { x: 20, y: 1560, w: 770, h: 600 },
-      { x: 810, y: 1560, w: 770, h: 600 },
-    ],
-  },
-  {
-    id: "p100-l6",
     label: "MOSAIC",
     package: 100,
     slots: [
-      { x: 20, y: 20, w: 1080, h: 1080 },
-      { x: 1120, y: 20, w: 460, h: 460 },
-      { x: 1120, y: 500, w: 460, h: 600 },
-      { x: 20, y: 1120, w: 520, h: 1040 },
-      { x: 560, y: 1120, w: 1020, h: 500 },
-      { x: 560, y: 1640, w: 1020, h: 520 },
+      { x: 20, y: 20, w: 1000, h: 1000 },
+      { x: 1040, y: 20, w: 540, h: 480 },
+      { x: 1040, y: 520, w: 540, h: 500 },
+      { x: 20, y: 1040, w: 500, h: 1080 },
+      { x: 540, y: 1040, w: 1040, h: 520 },
+      { x: 540, y: 1580, w: 1040, h: 540 },
     ],
   },
+  // Layout 6: The V-Shape rhythm
+  {
+    id: "p100-l6",
+    label: "RHYTHM",
+    package: 100,
+    slots: [
+      { x: 20, y: 20, w: 770, h: 500 }, { x: 810, y: 20, w: 770, h: 500 },
+      { x: 20, y: 540, w: 1560, h: 1040 },
+      { x: 20, y: 1600, w: 505, h: 540 }, { x: 545, y: 1600, w: 505, h: 540 }, { x: 1070, y: 1600, w: 510, h: 540 },
+    ],
+  },
+  // Layout 7: Cinematic Wide
   {
     id: "p100-l7",
-    label: "ULTIMATE HERO",
+    label: "CINEMA",
     package: 100,
-    slots: [
-      { x: 20, y: 20, w: 1560, h: 1000 },
-      ...Array.from({ length: 5 }).map((_, i) => ({
-        x: 20 + i * 315,
-        y: 1040,
-        w: 300,
-        h: 1120
-      }))
-    ],
+    slots: Array.from({ length: 6 }).map((_, i) => ({
+      x: 0,
+      y: i * 360,
+      w: 1600,
+      h: 355
+    })),
   },
+  // Layout 8: Bottom Focus
   {
     id: "p100-l8",
-    label: "VERTICAL SPLIT",
+    label: "FOCUS",
     package: 100,
     slots: [
-      ...Array.from({ length: 3 }).map((_, i) => ({ x: 20, y: 20 + i * 710, w: 775, h: 690 })),
-      ...Array.from({ length: 3 }).map((_, i) => ({ x: 805, y: 20 + i * 710, w: 775, h: 690 })),
+      { x: 20, y: 20, w: 505, h: 500 }, { x: 545, y: 20, w: 505, h: 500 }, { x: 1070, y: 20, w: 510, h: 500 },
+      { x: 20, y: 540, w: 770, h: 500 }, { x: 810, y: 540, w: 770, h: 500 },
+      { x: 20, y: 1060, w: 1560, h: 1080 },
     ],
   },
+  // Layout 9: Split Screen
   {
     id: "p100-l9",
-    label: "SQUARE GRID",
+    label: "SPLIT",
     package: 100,
-    slots: Array.from({ length: 6 }).map((_, i) => ({
-      x: i % 2 === 0 ? 40 : 820,
-      y: 40 + Math.floor(i / 2) * 700,
-      w: 740,
-      h: 680
-    })),
+    slots: [
+      { x: 20, y: 20, w: 770, h: 1050 }, { x: 810, y: 20, w: 770, h: 1050 },
+      { x: 20, y: 1090, w: 770, h: 525 }, { x: 810, y: 1090, w: 770, h: 525 },
+      { x: 20, y: 1635, w: 770, h: 510 }, { x: 810, y: 1635, w: 770, h: 510 },
+    ],
   },
+  // Layout 10: Clean (No-Gutter)
   {
     id: "p100-l10",
-    label: "CLEAN 6",
+    label: "CLEAN",
     package: 100,
-    slots: Array.from({ length: 6 }).map((_, i) => ({
-      x: i % 2 === 0 ? 0 : 800,
-      y: Math.floor(i / 2) * 720,
-      w: 800,
-      h: 720
-    })),
+    slots: [
+      { x: 0, y: 0, w: 800, h: 720 }, { x: 800, y: 0, w: 800, h: 720 },
+      { x: 0, y: 720, w: 800, h: 720 }, { x: 800, y: 720, w: 800, h: 720 },
+      { x: 0, y: 1440, w: 800, h: 720 }, { x: 800, y: 1440, w: 800, h: 720 },
+    ],
   }
 ];

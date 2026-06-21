@@ -46,7 +46,7 @@ export const BlueprintFrame = React.memo(({
     if (containerRef.current) {
       setCanvasRect(containerRef.current.getBoundingClientRect());
     }
-  }, [isPreview, blueprint, photos]); // Recalculate on photo change too
+  }, [isPreview, blueprint, photos]);
 
   if (!blueprint || !blueprint.slots) return null;
 
@@ -73,12 +73,12 @@ export const BlueprintFrame = React.memo(({
         zIndex: 0
       }}
     >
-      {/* Background Photos - Z-0 ensures they stay behind everything */}
-      <div className="absolute inset-0 z-0">
+      {/* Background Photos - Always rendered behind everything */}
+      <div className="absolute inset-0 z-0 bg-zinc-100">
         {blueprint.slots.map((slot, index) => (
           <div
             key={index}
-            className="absolute bg-zinc-100 overflow-hidden"
+            className="absolute bg-zinc-200 overflow-hidden"
             style={{
               left: `${((isStrip ? slot.x / 2 : slot.x) / STRIP_W) * 100}%`,
               top: `${(slot.y / 2400) * 100}%`, 
@@ -91,13 +91,13 @@ export const BlueprintFrame = React.memo(({
                 src={photos[index]}
                 alt="Portrait"
                 fill
-                className={cn("object-cover", filterClass)}
+                className={cn("object-cover opacity-100", filterClass)}
                 sizes="1000px"
                 unoptimized
                 priority
               />
             ) : (
-              <div className="w-full h-full bg-zinc-200 flex items-center justify-center">
+              <div className="w-full h-full flex items-center justify-center">
                 <span className="text-[10px] text-black/20 font-black uppercase">POSE {index + 1}</span>
               </div>
             )}
@@ -105,7 +105,7 @@ export const BlueprintFrame = React.memo(({
         ))}
       </div>
 
-      {/* Decorative Layer (Stickers) - Z-40 ensures they stay above photos but below branding */}
+      {/* Decorative Layer (Stickers) */}
       <div className="absolute inset-0 z-40 pointer-events-none">
         {stickers.map((s) => {
           const def = STICKER_DEFS.find(d => d.id === s.type);
@@ -145,26 +145,26 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* Footer Branding Layer - Z-50. Height reduced to 10% to minimize free space. */}
+      {/* Footer Branding Layer - Height locked at 10% */}
       <div 
-        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-end pb-[2%]"
+        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-end pb-[1.5%]"
         style={{ height: '10%' }}
       >
         {quoteText && (
           <div className="mb-auto pt-1 flex items-center justify-center">
-            <span className="font-headline font-black italic uppercase text-black/40 text-center px-4 leading-none" style={{ fontSize: isStrip ? '10px' : '14px', letterSpacing: '0.1em' }}>{quoteText}</span>
+            <span className="font-headline font-black italic uppercase text-black/40 text-center px-4 leading-none" style={{ fontSize: isStrip ? '10px' : '13px', letterSpacing: '0.05em' }}>{quoteText}</span>
           </div>
         )}
 
-        <div className="w-[90%] mx-auto flex justify-between items-end">
+        <div className="w-[92%] mx-auto flex justify-between items-end">
           <div className="flex flex-col items-start leading-none">
-             <span className="font-headline font-black italic uppercase text-black flex items-center gap-1" style={{ fontSize: isStrip ? '16px' : '22px' }}>
+             <span className="font-headline font-black italic uppercase text-black flex items-center gap-1" style={{ fontSize: isStrip ? '15px' : '20px' }}>
                <span>JNL</span>
                <span className="text-[#FF3399]">STUDIO</span>
              </span>
-             <span className="font-bold uppercase tracking-[0.4em] text-black/30" style={{ fontSize: isStrip ? '5px' : '7px' }}>PHOTOBOOTH</span>
+             <span className="font-bold uppercase tracking-[0.4em] text-black/30" style={{ fontSize: isStrip ? '5px' : '6px' }}>PHOTOBOOTH</span>
           </div>
-          <span className="font-bold uppercase tracking-[0.3em] text-black/30 leading-none" style={{ fontSize: isStrip ? '8px' : '12px' }}>{displayDate}</span>
+          <span className="font-bold uppercase tracking-[0.2em] text-black/30 leading-none" style={{ fontSize: isStrip ? '7px' : '10px' }}>{displayDate}</span>
         </div>
       </div>
     </div>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -598,9 +599,9 @@ export default function KioskPage() {
 
         {appState === "decorating" && (
           <div className="w-full max-w-7xl flex flex-col lg:flex-row gap-12 items-center lg:items-start animate-in fade-in duration-500 py-10 px-8">
-             <div className="relative flex-1 w-full max-h-[80vh] flex items-center justify-center">
+             <div className="relative flex-1 w-full h-[70vh] flex items-center justify-center">
                 <div className="relative h-full w-auto max-w-[450px] shadow-[0_0_40px_rgba(255,51,153,0.2)]">
-                  {selectedBlueprint && (
+                  {selectedBlueprint && capturedPhotos.length > 0 && (
                     <BlueprintFrame 
                       blueprint={selectedBlueprint} 
                       photos={capturedPhotos} 

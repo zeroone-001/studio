@@ -1,15 +1,15 @@
 
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { initializeFirebase } from "@/firebase";
 import { ref, getDownloadURL } from "firebase/storage";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { KioskLayout } from "@/components/kiosk/kiosk-layout";
 import { NeonButton } from "@/components/kiosk/neon-button";
 import { JnlLogo } from "@/components/kiosk/jnl-logo";
-import { Download, Loader2, AlertCircle, Share2, Activity } from "lucide-react";
+import { Download, Loader2, AlertCircle, Share2, Activity, Clock } from "lucide-react";
 
 export default function RetrievePage() {
   const params = useParams();
@@ -17,41 +17,45 @@ export default function RetrievePage() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [retrievalStats, setRetrievalStats] = useState<string | null>(null);
+  const [retries, setRetries] = useState(0);
+  const [startTime] = useState(Date.now());
 
-  useEffect(() => {
-    const fetchPhoto = async () => {
-      if (!id) return;
-      const startTime = performance.now();
+  const fetchPhoto = useCallback(async () => {
+    if (!id) return;
+    
+    try {
+      const { storage } = initializeFirebase();
+      const photoRef = ref(storage, `photos/${id}.jpg`);
       
-      try {
-        const { storage } = initializeFirebase();
-        const photoRef = ref(storage, `photos/${id}.jpg`);
-        
-        // Instant direct fetch from Firebase Storage CDN
-        const url = await getDownloadURL(photoRef);
-        const duration = performance.now() - startTime;
-        
-        setImageUrl(url);
-        setRetrievalStats(`CDN Response: ${duration.toFixed(0)}ms`);
-        setLoading(false);
-      } catch (err) {
-        setError("Finalizing HD portrait... refresh in 3s.");
+      // TARGET: Direct CDN fetch
+      const url = await getDownloadURL(photoRef);
+      setImageUrl(url);
+      setLoading(false);
+    } catch (err) {
+      // If scanned immediately after generation, it might still be uploading
+      if (retries < 15) {
+        setTimeout(() => setRetries(prev => prev + 1), 1000);
+      } else {
+        setError("Finalizing HD portrait... please try again in a few seconds.");
         setLoading(false);
       }
-    };
+    }
+  }, [id, retries]);
 
+  useEffect(() => {
     fetchPhoto();
-  }, [id]);
+  }, [fetchPhoto]);
 
   const handleDownload = async () => {
     if (!imageUrl || !id) return;
     try {
       const { db } = initializeFirebase();
-      // Track successful download interaction
-      await updateDoc(doc(db, "photos", id), {
-        isDownloaded: true
-      });
+      const docRef = doc(db, "photos", id);
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        await updateDoc(docRef, { isDownloaded: true });
+      }
 
       const response = await fetch(imageUrl);
       const blob = await response.blob();
@@ -87,8 +91,16 @@ export default function RetrievePage() {
         <div className="w-full max-w-lg bg-zinc-900 border border-white/10 p-6 rounded-[2.5rem] shadow-2xl backdrop-blur-3xl animate-in slide-in-from-bottom-8 duration-500">
           {loading ? (
             <div className="flex flex-col items-center py-24 space-y-6">
-              <Loader2 className="w-16 h-16 text-primary animate-spin" />
-              <p className="text-white/40 font-black uppercase tracking-[0.3em] text-[10px]">Fetching HD Soft Copy...</p>
+              <div className="relative">
+                <Loader2 className="w-16 h-16 text-primary animate-spin" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                   <Clock className="w-6 h-6 text-primary/40 animate-pulse" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-white/80 font-black uppercase tracking-[0.3em] text-[10px]">Processing HD Buffer...</p>
+                <p className="text-white/20 font-bold uppercase text-[8px]">Session sync in progress</p>
+              </div>
             </div>
           ) : error ? (
             <div className="flex flex-col items-center py-24 space-y-6">
@@ -97,7 +109,7 @@ export default function RetrievePage() {
               <NeonButton onClick={() => window.location.reload()} className="!py-4 mt-4 w-full text-sm">TRY AGAIN</NeonButton>
             </div>
           ) : (
-            <div className="space-y-8">
+            <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
               <div className="relative aspect-[2/3] w-full rounded-[1.5rem] overflow-hidden shadow-inner border-4 border-white bg-zinc-950">
                 <img 
                   src={imageUrl!} 
@@ -109,11 +121,9 @@ export default function RetrievePage() {
               <div className="space-y-6">
                 <div className="space-y-1">
                   <h2 className="text-2xl font-headline font-black italic uppercase text-primary tracking-tight">HD SOFT COPY</h2>
-                  {retrievalStats && (
-                    <div className="flex items-center justify-center gap-2 text-[7px] font-black uppercase text-white/20 tracking-[0.4em]">
-                      <Activity className="w-2.5 h-2.5" /> {retrievalStats}
-                    </div>
-                  )}
+                  <div className="flex items-center justify-center gap-2 text-[7px] font-black uppercase text-white/20 tracking-[0.4em]">
+                    <Activity className="w-2.5 h-2.5" /> CDN LINK VERIFIED
+                  </div>
                 </div>
                 
                 <div className="grid grid-cols-1 gap-4">

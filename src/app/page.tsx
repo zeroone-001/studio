@@ -29,16 +29,16 @@ import { doc, setDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "thankyou" | "test-camera";
 
 export const FILTERS = [
-  { id: "glowup", label: "GLOW UP", sub: "TIKTOK SKIN", class: "brightness-110 contrast-105 saturate-110 sepia-[0.1] drop-shadow-xl" },
-  { id: "retro", label: "RETRO", sub: "WARM VIBE", class: "sepia-[0.3] contrast-110 brightness-105 saturate-125 hue-rotate-[-5deg]" },
-  { id: "icey", label: "ICEY", sub: "COOL TONES", class: "hue-rotate-[10deg] saturate-75 brightness-110 contrast-110" },
-  { id: "indie", label: "INDIE", sub: "VIBRANT", class: "saturate-150 contrast-115 brightness-105" },
-  { id: "bwpro", label: "B&W PRO", sub: "CINEMATIC", class: "grayscale contrast-150 brightness-105" },
-  { id: "aesthetic", label: "AESTHETIC", sub: "SOFT CLEAN", class: "saturate-[0.7] brightness-110 contrast-95 sepia-[0.15]" },
-  { id: "sunset", label: "SUNSET", sub: "GOLDEN HOUR", class: "sepia-[0.25] hue-rotate-[-10deg] saturate-135 brightness-105 contrast-105" },
-  { id: "vibe", label: "VIBE", sub: "MOODY", class: "hue-rotate-[340deg] saturate-110 brightness-105 contrast-115" },
-  { id: "naturalplus", label: "NATURAL+", sub: "HD CLEAN", class: "brightness-105 contrast-110 saturate-115" },
-  { id: "silver", label: "SILVER", sub: "TIMELESS", class: "grayscale contrast-125 brightness-115 sepia-[0.05]" },
+  { id: "glowup", label: "GLOW UP", sub: "TIKTOK SKIN", class: "brightness-110 contrast-[1.05] saturate-[1.15] sepia-[0.05] drop-shadow-md" },
+  { id: "retro", label: "RETRO", sub: "WARM VIBE", class: "sepia-[0.35] contrast-[1.1] brightness-[1.05] saturate-[1.3] hue-rotate-[-5deg]" },
+  { id: "icey", label: "ICEY", sub: "COOL TONES", class: "hue-rotate-[10deg] saturate-[0.8] brightness-[1.1] contrast-[1.1] opacity-[0.95]" },
+  { id: "indie", label: "INDIE", sub: "VIBRANT", class: "saturate-[1.6] contrast-[1.2] brightness-[1.05] sepia-[0.05]" },
+  { id: "bwpro", label: "B&W PRO", sub: "CINEMATIC", class: "grayscale contrast-[1.6] brightness-[1.1]" },
+  { id: "aesthetic", label: "AESTHETIC", sub: "SOFT CLEAN", class: "saturate-[0.6] brightness-[1.15] contrast-[0.95] sepia-[0.1]" },
+  { id: "sunset", label: "SUNSET", sub: "GOLDEN HOUR", class: "sepia-[0.3] hue-rotate-[-12deg] saturate-[1.45] brightness-[1.08] contrast-[1.05]" },
+  { id: "vibe", label: "VIBE", sub: "MOODY", class: "hue-rotate-[345deg] saturate-[1.2] brightness-[1.05] contrast-[1.15]" },
+  { id: "naturalplus", label: "NATURAL+", sub: "HD CLEAN", class: "brightness-[1.08] contrast-[1.12] saturate-[1.2] contrast-[1.05]" },
+  { id: "silver", label: "SILVER", sub: "TIMELESS", class: "grayscale contrast-[1.3] brightness-[1.2] sepia-[0.08]" },
 ];
 
 export const STICKER_DEFS = [
@@ -290,7 +290,6 @@ export default function KioskPage() {
       </html>
     `);
     doc.close();
-    // Auto-cleanup object URL
     setTimeout(() => URL.revokeObjectURL(dataUrl), 5000);
   };
 
@@ -314,7 +313,6 @@ export default function KioskPage() {
     const isStrip = selectedBlueprint.package === 50;
     
     const drawContent = async (offsetX: number) => {
-      // 1. Draw Photos
       for (let i = 0; i < selectedBlueprint.slots.length; i++) {
         const slot = selectedBlueprint.slots[i];
         const photo = capturedPhotos[i];
@@ -328,7 +326,6 @@ export default function KioskPage() {
         const sW = isStrip ? slot.w / 2 : slot.w;
         
         ctx.save();
-        // Simplified filter mapping for TikTok aesthetic on canvas
         if (filterClass.includes('brightness')) ctx.filter += ' brightness(1.1)';
         if (filterClass.includes('contrast')) ctx.filter += ' contrast(1.1)';
         if (filterClass.includes('sepia')) ctx.filter += ' sepia(0.2)';
@@ -338,7 +335,6 @@ export default function KioskPage() {
         ctx.restore();
       }
 
-      // 2. Draw Stickers
       for (const s of placedStickers) {
         const def = STICKER_DEFS.find(d => d.id === s.type);
         if (!def) continue;
@@ -349,8 +345,6 @@ export default function KioskPage() {
         ctx.save();
         ctx.translate(sX + offsetX, sY);
         ctx.rotate((s.rotation * Math.PI) / 180);
-        
-        // Render simple placeholder for SVG icons on canvas
         ctx.fillStyle = def.color.includes('pink') ? '#FFB7CE' : '#FF3399';
         ctx.fillRect(-sSize/2, -sSize/2, sSize, sSize);
         ctx.restore();
@@ -364,12 +358,10 @@ export default function KioskPage() {
       await drawContent(0);
     }
 
-    // 1. INSTANT LOCAL BUFFER (IndexedDB)
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
       await SessionStore.savePhotoLocally(sessionId, blob);
       
-      // 2. PARALLEL: CLOUD UPLOAD (Optimized HD JPEG 0.82)
       const cloudTask = (async () => {
         try {
           const { storage, db } = initializeFirebase();
@@ -377,11 +369,9 @@ export default function KioskPage() {
           await uploadBytes(photoRef, blob);
           const downloadUrl = await getDownloadURL(photoRef);
           
-          // Pre-generate unique retrieval path
           const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
           setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
           
-          // Isolated metadata
           await setDoc(doc(db, "photos", sessionId), {
             id: sessionId,
             storagePath: photoRef.fullPath,
@@ -397,7 +387,6 @@ export default function KioskPage() {
         }
       })();
 
-      // 3. PARALLEL: USB BACKUP (Lexar Drive)
       const usbTask = (async () => {
         if (usbDirectoryHandle) {
           try {
@@ -411,7 +400,6 @@ export default function KioskPage() {
         }
       })();
 
-      // 4. PARALLEL: PRINT SIGNAL
       initiatePrint(blob);
 
     }, 'image/jpeg', 0.82);
@@ -433,7 +421,6 @@ export default function KioskPage() {
 
   useEffect(() => {
     if (appState === "printing" && printProgress < 100) {
-      // Streamlined to exactly 10 seconds (100ms * 100 steps)
       const timer = setInterval(() => {
         setPrintProgress(prev => Math.min(prev + 1, 100));
       }, 100);
@@ -444,7 +431,6 @@ export default function KioskPage() {
   const resetSession = useCallback(() => {
     const session = SessionStore.load();
     if (session) {
-      // Auto-cleanup logic before reset
       SessionStore.cleanupSession(session.id, !promoConsent);
     }
     setAppState("welcome");

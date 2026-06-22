@@ -28,16 +28,16 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "thankyou" | "test-camera";
 
 export const FILTERS = [
-  { id: "natural", label: "STYLE A", sub: "NATURAL", class: "contrast-110 brightness-105 saturate-110" },
-  { id: "silver", label: "STYLE B", sub: "SILVER", class: "grayscale contrast-125 brightness-110" },
-  { id: "vintage", label: "STYLE C", sub: "VINTAGE", class: "sepia-[0.4] saturate-150 contrast-110 brightness-105" },
-  { id: "dreamy", label: "STYLE D", sub: "DREAMY", class: "brightness-115 contrast-90 saturate-125 blur-[0.3px]" },
-  { id: "nordic", label: "STYLE E", sub: "NORDIC", class: "hue-rotate-[15deg] saturate-75 brightness-110 contrast-105" },
-  { id: "noir", label: "STYLE F", sub: "NOIR", class: "grayscale contrast-150 brightness-90" },
-  { id: "radiant", label: "STYLE G", sub: "RADIANT", class: "brightness-125 contrast-110 saturate-150" },
-  { id: "autumn", label: "STYLE H", sub: "AUTUMN", class: "sepia-[0.2] hue-rotate-[-10deg] saturate-150 contrast-110" },
-  { id: "pacific", label: "STYLE I", sub: "PACIFIC", class: "hue-rotate-[180deg] saturate-50 brightness-110 contrast-110" },
-  { id: "aesthetic", label: "STYLE J", sub: "AESTHETIC", class: "saturate-[0.6] brightness-115 contrast-105" },
+  { id: "glowup", label: "STYLE A", sub: "GLOW UP", class: "brightness-110 contrast-105 saturate-110 sepia-[0.1]" },
+  { id: "retro", label: "STYLE B", sub: "RETRO", class: "sepia-[0.3] contrast-110 brightness-105 saturate-125" },
+  { id: "icey", label: "STYLE C", sub: "ICEY", class: "hue-rotate-[10deg] saturate-75 brightness-110 contrast-110" },
+  { id: "indie", label: "STYLE D", sub: "INDIE", class: "saturate-150 contrast-110 brightness-105" },
+  { id: "bwpro", label: "STYLE E", sub: "B&W PRO", class: "grayscale contrast-150 brightness-105" },
+  { id: "aesthetic", label: "STYLE F", sub: "AESTHETIC", class: "saturate-[0.7] brightness-110 contrast-95 sepia-[0.1]" },
+  { id: "sunset", label: "STYLE G", sub: "SUNSET", class: "sepia-[0.2] hue-rotate-[-10deg] saturate-130 brightness-105 contrast-105" },
+  { id: "vibe", label: "STYLE H", sub: "VIBE", class: "hue-rotate-[340deg] saturate-110 brightness-105 contrast-105" },
+  { id: "naturalplus", label: "STYLE I", sub: "NATURAL+", class: "brightness-105 contrast-105 saturate-110" },
+  { id: "silver", label: "STYLE J", sub: "SILVER", class: "grayscale contrast-120 brightness-115" },
 ];
 
 export const STICKER_DEFS = [
@@ -299,8 +299,6 @@ export default function KioskPage() {
     setUploadStatus("uploading");
     setUploadPercent(10);
 
-    const startTime = performance.now();
-
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1600;
     exportCanvas.height = 2400;
@@ -343,9 +341,6 @@ export default function KioskPage() {
       await drawPhotos(0);
     }
 
-    const assemblyTime = performance.now() - startTime;
-    KioskLogger.log('info', 'Performance', `Assembly: ${assemblyTime.toFixed(0)}ms`);
-
     // High Quality Print & USB Data
     const printDataUrl = exportCanvas.toDataURL('image/jpeg', 0.82);
     initiatePrint(printDataUrl);
@@ -360,25 +355,21 @@ export default function KioskPage() {
         const blob = await response.blob();
         await writable.write(blob);
         await writable.close();
-        KioskLogger.log('info', 'Hardware', 'USB Export Complete');
       } catch (e) {}
     }
 
     // Optimized Cloud Upload (Parallel)
     try {
-      const uploadStartTime = performance.now();
       const { storage } = initializeFirebase();
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       
       const blob: Blob = await new Promise((resolve) => {
-        exportCanvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.82);
+        exportCanvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.80);
       });
 
       await uploadBytes(photoRef, blob);
       const downloadUrl = await getDownloadURL(photoRef);
-      const uploadDuration = performance.now() - uploadStartTime;
-      KioskLogger.log('info', 'Performance', `Cloud Upload: ${uploadDuration.toFixed(0)}ms`);
-
+      
       const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
       setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
       setUploadStatus("complete");

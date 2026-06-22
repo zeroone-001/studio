@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { initializeFirebase } from "@/firebase";
 import { ref, getDownloadURL } from "firebase/storage";
+import { doc, updateDoc } from "firebase/firestore";
 import { KioskLayout } from "@/components/kiosk/kiosk-layout";
 import { NeonButton } from "@/components/kiosk/neon-button";
 import { JnlLogo } from "@/components/kiosk/jnl-logo";
@@ -27,15 +28,15 @@ export default function RetrievePage() {
         const { storage } = initializeFirebase();
         const photoRef = ref(storage, `photos/${id}.jpg`);
         
-        // Instant direct fetch from Firebase Storage
+        // Instant direct fetch from Firebase Storage CDN
         const url = await getDownloadURL(photoRef);
         const duration = performance.now() - startTime;
         
         setImageUrl(url);
-        setRetrievalStats(`Instant CDN Sync: ${duration.toFixed(0)}ms`);
+        setRetrievalStats(`CDN Response: ${duration.toFixed(0)}ms`);
         setLoading(false);
       } catch (err) {
-        setError("Your HD portrait is being finalized. Refresh in 3 seconds.");
+        setError("Finalizing HD portrait... refresh in 3s.");
         setLoading(false);
       }
     };
@@ -44,8 +45,14 @@ export default function RetrievePage() {
   }, [id]);
 
   const handleDownload = async () => {
-    if (!imageUrl) return;
+    if (!imageUrl || !id) return;
     try {
+      const { db } = initializeFirebase();
+      // Track successful download interaction
+      await updateDoc(doc(db, "photos", id), {
+        isDownloaded: true
+      });
+
       const response = await fetch(imageUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -81,7 +88,7 @@ export default function RetrievePage() {
           {loading ? (
             <div className="flex flex-col items-center py-24 space-y-6">
               <Loader2 className="w-16 h-16 text-primary animate-spin" />
-              <p className="text-white/40 font-black uppercase tracking-[0.3em] text-[10px]">Retrieving from CDN...</p>
+              <p className="text-white/40 font-black uppercase tracking-[0.3em] text-[10px]">Fetching HD Soft Copy...</p>
             </div>
           ) : error ? (
             <div className="flex flex-col items-center py-24 space-y-6">

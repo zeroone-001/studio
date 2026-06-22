@@ -1,7 +1,7 @@
 
 /**
  * @fileOverview Session persistence and Hybrid Sync Queue for JNL Studio Kiosk.
- * Upgraded to use IndexedDB for high-resolution photo storage and USB sync management.
+ * Optimized for Honor Pad X10 local storage and lifecycle management.
  */
 
 export interface KioskSession {
@@ -13,6 +13,8 @@ export interface KioskSession {
   timestamp: number;
   promoConsent: boolean | null;
   isSynced: boolean;
+  isUsbBackedUp: boolean;
+  isDownloaded: boolean;
 }
 
 export interface SyncItem {
@@ -30,12 +32,12 @@ const DB_NAME = 'JNL_Studio_Kiosk_DB';
 const STORE_NAME = 'photos';
 
 export const SessionStore = {
-  // Initialize IndexedDB for large photo storage
+  // Initialize IndexedDB for high-performance large photo storage
   initDB: (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
-      if (typeof window === 'undefined') return reject('IndexedDB not available on server');
-      const request = indexedDB.open(DB_NAME, 1);
-      request.onupgradeneeded = () => {
+      if (typeof window === 'undefined') return reject('IndexedDB not available');
+      const request = indexedDB.open(DB_NAME, 2);
+      request.onupgradeneeded = (e: any) => {
         const db = request.result;
         if (!db.objectStoreNames.contains(STORE_NAME)) {
           db.createObjectStore(STORE_NAME);
@@ -46,24 +48,43 @@ export const SessionStore = {
     });
   },
 
-  // Save photo to IndexedDB for local persistence
-  savePhotoLocally: async (id: string, dataUrl: string) => {
+  // Save photo to IndexedDB for instant local persistence (Temporary Working Location)
+  savePhotoLocally: async (id: string, blob: Blob) => {
     try {
       if (typeof window === 'undefined') return;
       const db = await SessionStore.initDB();
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
-      store.put(dataUrl, id);
+      store.put(blob, id);
       return new Promise((resolve, reject) => {
         tx.oncomplete = () => resolve(true);
         tx.onerror = () => reject(tx.error);
       });
     } catch (e) {
-      console.error('Local Save Failed', e);
+      console.error('Local Temp Save Failed', e);
     }
   },
 
-  // Save session locally
+  // Cleanup logic: Verify backups before deleting local temporary copy
+  cleanupSession: async (id: string, skipFacebook: boolean) => {
+    try {
+      if (typeof window === 'undefined') return;
+      const session = SessionStore.load();
+      if (!session || session.id !== id) return;
+
+      // Only delete if verified backups exist and customer didn't want Facebook post
+      if (skipFacebook && session.isUsbBackedUp && (session.isSynced || session.isDownloaded)) {
+        const db = await SessionStore.initDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        store.delete(id);
+        SessionStore.clear();
+      }
+    } catch (e) {
+      console.error('Cleanup Error', e);
+    }
+  },
+
   save: (session: Partial<KioskSession>) => {
     try {
       if (typeof window === 'undefined') return;
@@ -73,25 +94,14 @@ export const SessionStore = {
         ...session,
         timestamp: Date.now(),
         id: existing?.id || `sess_${Date.now()}`,
-        isSynced: false
+        isSynced: existing?.isSynced || false,
+        isUsbBackedUp: existing?.isUsbBackedUp || false,
+        isDownloaded: existing?.isDownloaded || false
       } as KioskSession;
       
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      
-      if (session.capturedPhotos && session.capturedPhotos.length > 0) {
-        SessionStore.addToSyncQueue({
-          id: `${updated.id}_update`,
-          type: 'session',
-          data: { ...updated, capturedPhotos: session.capturedPhotos },
-          timestamp: Date.now(),
-          retryCount: 0,
-          status: 'pending'
-        });
-      }
     } catch (e) {
-      if (typeof window !== 'undefined' && e instanceof DOMException && e.name === 'QuotaExceededError') {
-        localStorage.removeItem(SYNC_QUEUE_KEY);
-      }
+      console.error('Session Save Error', e);
     }
   },
 
@@ -101,6 +111,7 @@ export const SessionStore = {
       const data = localStorage.getItem(STORAGE_KEY);
       if (!data) return null;
       const session = JSON.parse(data) as KioskSession;
+      // Stale sessions (12h) are cleared
       if (Date.now() - session.timestamp > 12 * 60 * 60 * 1000) {
         SessionStore.clear();
         return null;
@@ -116,22 +127,6 @@ export const SessionStore = {
     localStorage.removeItem(STORAGE_KEY);
   },
 
-  addToSyncQueue: (item: SyncItem) => {
-    try {
-      if (typeof window === 'undefined') return;
-      const queue = SessionStore.getSyncQueue();
-      const index = queue.findIndex(i => i.id === item.id);
-      if (index > -1) {
-        queue[index] = { ...queue[index], ...item };
-      } else {
-        queue.push(item);
-      }
-      localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue.slice(-25))); 
-    } catch (e) {
-      console.error('Sync Queue Failed', e);
-    }
-  },
-
   getSyncQueue: (): SyncItem[] => {
     try {
       if (typeof window === 'undefined') return [];
@@ -140,14 +135,6 @@ export const SessionStore = {
     } catch (e) {
       return [];
     }
-  },
-
-  updateSyncStatus: (id: string, status: SyncItem['status']) => {
-    if (typeof window === 'undefined') return;
-    const queue = SessionStore.getSyncQueue().map(i => 
-      i.id === id ? { ...i, status, retryCount: status === 'failed' ? i.retryCount + 1 : i.retryCount } : i
-    );
-    localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
   },
 
   getStorageStats: () => {

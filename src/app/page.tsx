@@ -24,20 +24,21 @@ import { SessionStore } from "@/lib/kiosk/persistence";
 import { KioskLogger } from "@/lib/kiosk/logger";
 import { initializeFirebase } from "@/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { doc, setDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
 
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "thankyou" | "test-camera";
 
 export const FILTERS = [
-  { id: "glowup", label: "STYLE A", sub: "GLOW UP", class: "brightness-110 contrast-105 saturate-110 sepia-[0.1]" },
-  { id: "retro", label: "STYLE B", sub: "RETRO", class: "sepia-[0.3] contrast-110 brightness-105 saturate-125" },
-  { id: "icey", label: "STYLE C", sub: "ICEY", class: "hue-rotate-[10deg] saturate-75 brightness-110 contrast-110" },
-  { id: "indie", label: "STYLE D", sub: "INDIE", class: "saturate-150 contrast-110 brightness-105" },
-  { id: "bwpro", label: "STYLE E", sub: "B&W PRO", class: "grayscale contrast-150 brightness-105" },
-  { id: "aesthetic", label: "STYLE F", sub: "AESTHETIC", class: "saturate-[0.7] brightness-110 contrast-95 sepia-[0.1]" },
-  { id: "sunset", label: "STYLE G", sub: "SUNSET", class: "sepia-[0.2] hue-rotate-[-10deg] saturate-130 brightness-105 contrast-105" },
-  { id: "vibe", label: "STYLE H", sub: "VIBE", class: "hue-rotate-[340deg] saturate-110 brightness-105 contrast-105" },
-  { id: "naturalplus", label: "STYLE I", sub: "NATURAL+", class: "brightness-105 contrast-105 saturate-110" },
-  { id: "silver", label: "STYLE J", sub: "SILVER", class: "grayscale contrast-120 brightness-115" },
+  { id: "glowup", label: "GLOW UP", sub: "TIKTOK SKIN", class: "brightness-110 contrast-105 saturate-110 sepia-[0.1] drop-shadow-xl" },
+  { id: "retro", label: "RETRO", sub: "WARM VIBE", class: "sepia-[0.3] contrast-110 brightness-105 saturate-125 hue-rotate-[-5deg]" },
+  { id: "icey", label: "ICEY", sub: "COOL TONES", class: "hue-rotate-[10deg] saturate-75 brightness-110 contrast-110" },
+  { id: "indie", label: "INDIE", sub: "VIBRANT", class: "saturate-150 contrast-115 brightness-105" },
+  { id: "bwpro", label: "B&W PRO", sub: "CINEMATIC", class: "grayscale contrast-150 brightness-105" },
+  { id: "aesthetic", label: "AESTHETIC", sub: "SOFT CLEAN", class: "saturate-[0.7] brightness-110 contrast-95 sepia-[0.15]" },
+  { id: "sunset", label: "SUNSET", sub: "GOLDEN HOUR", class: "sepia-[0.25] hue-rotate-[-10deg] saturate-135 brightness-105 contrast-105" },
+  { id: "vibe", label: "VIBE", sub: "MOODY", class: "hue-rotate-[340deg] saturate-110 brightness-105 contrast-115" },
+  { id: "naturalplus", label: "NATURAL+", sub: "HD CLEAN", class: "brightness-105 contrast-110 saturate-115" },
+  { id: "silver", label: "SILVER", sub: "TIMELESS", class: "grayscale contrast-125 brightness-115 sepia-[0.05]" },
 ];
 
 export const STICKER_DEFS = [
@@ -253,10 +254,8 @@ export default function KioskPage() {
   }, [packageSelected, appState]);
 
   const availableFilters = useMemo(() => {
-    if (appState === "test-camera") return FILTERS;
-    if (packageSelected === 50) return FILTERS.slice(0, 5);
-    return FILTERS.slice(0, 10);
-  }, [packageSelected, appState]);
+    return FILTERS;
+  }, []);
 
   useEffect(() => {
     if (packageSelected || appState === "test-camera") {
@@ -268,12 +267,13 @@ export default function KioskPage() {
     }
   }, [packageSelected, appState, availableBlueprints, selectedBlueprint]);
 
-  const initiatePrint = (dataUrl: string) => {
+  const initiatePrint = (blob: Blob) => {
     if (!printIframeRef.current) return;
     const iframe = printIframeRef.current;
     const doc = iframe.contentDocument || iframe.contentWindow?.document;
     if (!doc) return;
 
+    const dataUrl = URL.createObjectURL(blob);
     doc.open();
     doc.write(`
       <html>
@@ -290,6 +290,8 @@ export default function KioskPage() {
       </html>
     `);
     doc.close();
+    // Auto-cleanup object URL
+    setTimeout(() => URL.revokeObjectURL(dataUrl), 5000);
   };
 
   const handleFinalExport = useCallback(async () => {
@@ -297,7 +299,7 @@ export default function KioskPage() {
     const sessionId = SessionStore.load()?.id || `sess_${Date.now()}`;
     
     setUploadStatus("uploading");
-    setUploadPercent(10);
+    setUploadPercent(5);
 
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1600;
@@ -308,10 +310,11 @@ export default function KioskPage() {
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, 1600, 2400);
 
-    // Assembly Logic
     const filterClass = selectedFilter.class;
+    const isStrip = selectedBlueprint.package === 50;
     
-    const drawPhotos = async (offsetX: number) => {
+    const drawContent = async (offsetX: number) => {
+      // 1. Draw Photos
       for (let i = 0; i < selectedBlueprint.slots.length; i++) {
         const slot = selectedBlueprint.slots[i];
         const photo = capturedPhotos[i];
@@ -321,63 +324,99 @@ export default function KioskPage() {
         img.src = photo;
         await new Promise(resolve => img.onload = resolve);
         
-        const sX = selectedBlueprint.package === 50 ? slot.x / 2 : slot.x;
-        const sW = selectedBlueprint.package === 50 ? slot.w / 2 : slot.w;
+        const sX = isStrip ? slot.x / 2 : slot.x;
+        const sW = isStrip ? slot.w / 2 : slot.w;
         
         ctx.save();
-        // Simplified filter mapping for canvas export
-        if (filterClass.includes('grayscale')) ctx.filter = 'grayscale(1)';
-        if (filterClass.includes('sepia')) ctx.filter = 'sepia(0.4)';
-        if (filterClass.includes('contrast')) ctx.filter = 'contrast(1.2)';
+        // Simplified filter mapping for TikTok aesthetic on canvas
+        if (filterClass.includes('brightness')) ctx.filter += ' brightness(1.1)';
+        if (filterClass.includes('contrast')) ctx.filter += ' contrast(1.1)';
+        if (filterClass.includes('sepia')) ctx.filter += ' sepia(0.2)';
+        if (filterClass.includes('grayscale')) ctx.filter += ' grayscale(1)';
+        
         ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
+        ctx.restore();
+      }
+
+      // 2. Draw Stickers
+      for (const s of placedStickers) {
+        const def = STICKER_DEFS.find(d => d.id === s.type);
+        if (!def) continue;
+        const sX = (s.x / 100) * (isStrip ? 800 : 1600);
+        const sY = (s.y / 100) * 2400;
+        const sSize = (s.size / 100) * 1600;
+
+        ctx.save();
+        ctx.translate(sX + offsetX, sY);
+        ctx.rotate((s.rotation * Math.PI) / 180);
+        
+        // Render simple placeholder for SVG icons on canvas
+        ctx.fillStyle = def.color.includes('pink') ? '#FFB7CE' : '#FF3399';
+        ctx.fillRect(-sSize/2, -sSize/2, sSize, sSize);
         ctx.restore();
       }
     };
 
-    if (selectedBlueprint.package === 50) {
-      await drawPhotos(0);
-      await drawPhotos(800);
+    if (isStrip) {
+      await drawContent(0);
+      await drawContent(800);
     } else {
-      await drawPhotos(0);
+      await drawContent(0);
     }
 
-    // High Quality Print & USB Data
-    const printDataUrl = exportCanvas.toDataURL('image/jpeg', 0.82);
-    initiatePrint(printDataUrl);
-
-    // USB Write (Parallel)
-    if (usbDirectoryHandle) {
-      try {
-        const filename = `JNL_${sessionId}.jpg`;
-        const fileHandle = await (usbDirectoryHandle as any).getFileHandle(filename, { create: true });
-        const writable = await fileHandle.createWritable();
-        const response = await fetch(printDataUrl);
-        const blob = await response.blob();
-        await writable.write(blob);
-        await writable.close();
-      } catch (e) {}
-    }
-
-    // Optimized Cloud Upload (Parallel)
-    try {
-      const { storage } = initializeFirebase();
-      const photoRef = ref(storage, `photos/${sessionId}.jpg`);
+    // 1. INSTANT LOCAL BUFFER (IndexedDB)
+    exportCanvas.toBlob(async (blob) => {
+      if (!blob) return;
+      await SessionStore.savePhotoLocally(sessionId, blob);
       
-      const blob: Blob = await new Promise((resolve) => {
-        exportCanvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.80);
-      });
+      // 2. PARALLEL: CLOUD UPLOAD (Optimized HD JPEG 0.82)
+      const cloudTask = (async () => {
+        try {
+          const { storage, db } = initializeFirebase();
+          const photoRef = ref(storage, `photos/${sessionId}.jpg`);
+          await uploadBytes(photoRef, blob);
+          const downloadUrl = await getDownloadURL(photoRef);
+          
+          // Pre-generate unique retrieval path
+          const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
+          setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
+          
+          // Isolated metadata
+          await setDoc(doc(db, "photos", sessionId), {
+            id: sessionId,
+            storagePath: photoRef.fullPath,
+            timestamp: serverTimestamp(),
+            isDownloaded: false
+          });
 
-      await uploadBytes(photoRef, blob);
-      const downloadUrl = await getDownloadURL(photoRef);
-      
-      const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
-      setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-      setUploadStatus("complete");
-      setUploadPercent(100);
-    } catch (e) {
-      setUploadStatus("error");
-    }
-  }, [usbDirectoryHandle, selectedBlueprint, capturedPhotos, selectedFilter]);
+          setUploadStatus("complete");
+          setUploadPercent(100);
+          SessionStore.save({ isSynced: true });
+        } catch (e) {
+          setUploadStatus("error");
+        }
+      })();
+
+      // 3. PARALLEL: USB BACKUP (Lexar Drive)
+      const usbTask = (async () => {
+        if (usbDirectoryHandle) {
+          try {
+            const filename = `JNL_STUDIO_${sessionId}.jpg`;
+            const fileHandle = await (usbDirectoryHandle as any).getFileHandle(filename, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            SessionStore.save({ isUsbBackedUp: true });
+          } catch (e) {}
+        }
+      })();
+
+      // 4. PARALLEL: PRINT SIGNAL
+      initiatePrint(blob);
+
+    }, 'image/jpeg', 0.82);
+
+  }, [usbDirectoryHandle, selectedBlueprint, capturedPhotos, selectedFilter, placedStickers]);
 
   useEffect(() => {
     if (appState === "printing" && !exportTriggeredRef.current) {
@@ -394,7 +433,7 @@ export default function KioskPage() {
 
   useEffect(() => {
     if (appState === "printing" && printProgress < 100) {
-      // 100ms * 100 steps = 10,000ms = 10 seconds
+      // Streamlined to exactly 10 seconds (100ms * 100 steps)
       const timer = setInterval(() => {
         setPrintProgress(prev => Math.min(prev + 1, 100));
       }, 100);
@@ -403,7 +442,11 @@ export default function KioskPage() {
   }, [appState, printProgress]);
 
   const resetSession = useCallback(() => {
-    SessionStore.clear(); 
+    const session = SessionStore.load();
+    if (session) {
+      // Auto-cleanup logic before reset
+      SessionStore.cleanupSession(session.id, !promoConsent);
+    }
     setAppState("welcome");
     setPaymentReceived(0);
     setPackageSelected(null);
@@ -417,7 +460,7 @@ export default function KioskPage() {
     setSelectedStickerId(null);
     setPrintProgress(0);
     setPromoConsent(null);
-  }, []);
+  }, [promoConsent]);
 
   const startCamera = async (deviceId?: string) => {
     if (cameraStream && videoRef.current && videoRef.current.srcObject === cameraStream) {
@@ -652,13 +695,13 @@ export default function KioskPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
-                    <Sparkles className="w-4 h-4 text-primary" /> Filters
+                    <Sparkles className="w-4 h-4 text-primary" /> TikTok Filters
                   </div>
                   <div className="grid grid-cols-5 gap-3">
                     {availableFilters.map((f) => (
                       <button key={f.id} onClick={() => setSelectedFilter(f)} className={cn("aspect-square relative transition-all border-2 overflow-hidden", selectedFilter.id === f.id ? "border-primary shadow-[0_0_10px_#FF3399]" : "border-white/10")}>
                         <div className={cn("absolute inset-0 bg-gradient-to-br from-zinc-700 to-zinc-900", f.class)} />
-                        <span className={cn("relative z-10 text-[8px] font-black italic", selectedFilter.id === f.id ? "text-white" : "text-white/60")}>{f.label}</span>
+                        <span className={cn("relative z-10 text-[8px] font-black italic p-1", selectedFilter.id === f.id ? "text-white" : "text-white/60")}>{f.label}</span>
                       </button>
                     ))}
                   </div>
@@ -806,7 +849,7 @@ export default function KioskPage() {
                        <Loader2 className="w-12 h-12 text-primary animate-spin" />
                        <div className="space-y-2 text-center">
                          <h3 className="font-headline font-black text-xl uppercase italic">SOFT COPY</h3>
-                         <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Uploading to CDN...</p>
+                         <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Uploading HD...</p>
                        </div>
                        <Progress value={uploadPercent} className="w-48 h-2 bg-white/5" />
                      </div>
@@ -824,7 +867,7 @@ export default function KioskPage() {
                    ) : (
                      <div className="flex flex-col items-center space-y-6 py-12 text-red-500">
                        <AlertCircle className="w-12 h-12" />
-                       <p className="text-[10px] font-black uppercase text-center leading-relaxed">Soft Copy Sync Failed.<br />Please use Lexar USB.</p>
+                       <p className="text-[10px] font-black uppercase text-center leading-relaxed">Soft Copy Failed.<br />Please check USB.</p>
                        <button onClick={() => handleFinalExport()} className="text-[10px] underline font-bold">RETRY SYNC</button>
                      </div>
                    )}

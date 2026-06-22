@@ -327,6 +327,7 @@ export default function KioskPage() {
         const sW = selectedBlueprint.package === 50 ? slot.w / 2 : slot.w;
         
         ctx.save();
+        // Simplified filter mapping for canvas export
         if (filterClass.includes('grayscale')) ctx.filter = 'grayscale(1)';
         if (filterClass.includes('sepia')) ctx.filter = 'sepia(0.4)';
         if (filterClass.includes('contrast')) ctx.filter = 'contrast(1.2)';
@@ -346,52 +347,45 @@ export default function KioskPage() {
     KioskLogger.log('info', 'Performance', `Assembly: ${assemblyTime.toFixed(0)}ms`);
 
     // High Quality Print & USB Data
-    const printDataUrl = exportCanvas.toDataURL('image/jpeg', 0.9);
+    const printDataUrl = exportCanvas.toDataURL('image/jpeg', 0.82);
     initiatePrint(printDataUrl);
 
-    // Optimized Cloud Upload (Parallel Path)
-    const cloudPromise = (async () => {
+    // USB Write (Parallel)
+    if (usbDirectoryHandle) {
       try {
-        const uploadStartTime = performance.now();
-        const { storage } = initializeFirebase();
-        const photoRef = ref(storage, `photos/${sessionId}.jpg`);
-        
-        // Faster blob creation with 0.8 quality for instant retrieval
-        const blob: Blob = await new Promise((resolve) => {
-          exportCanvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.8);
-        });
+        const filename = `JNL_${sessionId}.jpg`;
+        const fileHandle = await (usbDirectoryHandle as any).getFileHandle(filename, { create: true });
+        const writable = await fileHandle.createWritable();
+        const response = await fetch(printDataUrl);
+        const blob = await response.blob();
+        await writable.write(blob);
+        await writable.close();
+        KioskLogger.log('info', 'Hardware', 'USB Export Complete');
+      } catch (e) {}
+    }
 
-        await uploadBytes(photoRef, blob);
-        const downloadUrl = await getDownloadURL(photoRef);
-        const uploadDuration = performance.now() - uploadStartTime;
-        KioskLogger.log('info', 'Performance', `Cloud Upload: ${uploadDuration.toFixed(0)}ms`);
+    // Optimized Cloud Upload (Parallel)
+    try {
+      const uploadStartTime = performance.now();
+      const { storage } = initializeFirebase();
+      const photoRef = ref(storage, `photos/${sessionId}.jpg`);
+      
+      const blob: Blob = await new Promise((resolve) => {
+        exportCanvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.82);
+      });
 
-        const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
-        setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-        setUploadStatus("complete");
-        setUploadPercent(100);
-      } catch (e) {
-        setUploadStatus("error");
-      }
-    })();
+      await uploadBytes(photoRef, blob);
+      const downloadUrl = await getDownloadURL(photoRef);
+      const uploadDuration = performance.now() - uploadStartTime;
+      KioskLogger.log('info', 'Performance', `Cloud Upload: ${uploadDuration.toFixed(0)}ms`);
 
-    // USB Write (Parallel Path)
-    const usbPromise = (async () => {
-      if (usbDirectoryHandle) {
-        try {
-          const filename = `JNL_${sessionId}.jpg`;
-          const fileHandle = await (usbDirectoryHandle as any).getFileHandle(filename, { create: true });
-          const writable = await fileHandle.createWritable();
-          const response = await fetch(printDataUrl);
-          const blob = await response.blob();
-          await writable.write(blob);
-          await writable.close();
-          KioskLogger.log('info', 'Hardware', 'USB Export Complete');
-        } catch (e) {}
-      }
-    })();
-
-    // We don't block the UI here, the promises run in background while print progress bar moves
+      const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
+      setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
+      setUploadStatus("complete");
+      setUploadPercent(100);
+    } catch (e) {
+      setUploadStatus("error");
+    }
   }, [usbDirectoryHandle, selectedBlueprint, capturedPhotos, selectedFilter]);
 
   useEffect(() => {
@@ -409,9 +403,10 @@ export default function KioskPage() {
 
   useEffect(() => {
     if (appState === "printing" && printProgress < 100) {
+      // 100ms * 100 steps = 10,000ms = 10 seconds
       const timer = setInterval(() => {
         setPrintProgress(prev => Math.min(prev + 1, 100));
-      }, 150);
+      }, 100);
       return () => clearInterval(timer);
     }
   }, [appState, printProgress]);
@@ -857,7 +852,7 @@ export default function KioskPage() {
                 <h2 className="font-headline font-black text-6xl italic uppercase leading-none">THANK <span className="text-primary">YOU!</span></h2>
                 <div className="bg-white/5 border-2 border-white/10 p-10 flex flex-col items-center space-y-6 rounded-3xl shadow-2xl w-full">
                    <Facebook className="w-16 h-16 text-blue-500" />
-                   <h3 className="font-headline font-black text-2xl uppercase italic text-center">JOIN OUR COMMUNITY</h3>
+                   <h3 className="font-headline font-black text-2xl uppercase italic text-center">FOLLOW US 👇</h3>
                    <div className="aspect-square w-full max-w-[240px] bg-white p-6 rounded-3xl">
                       {facebookQrUrl && <img src={facebookQrUrl} alt="Facebook QR" className="w-full h-full object-contain" />}
                    </div>

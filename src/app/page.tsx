@@ -248,7 +248,6 @@ export default function KioskPage() {
   const availableBlueprints = useMemo(() => {
     if (appState === "test-camera") return BLUEPRINTS;
     if (!packageSelected) return [];
-    // Strict PHP 50 Limit (5 Layouts) vs PHP 100 (10 Layouts)
     const filtered = BLUEPRINTS.filter(bp => bp.package === packageSelected);
     if (packageSelected === 50) return filtered.slice(0, 5);
     return filtered.slice(0, 10);
@@ -297,12 +296,10 @@ export default function KioskPage() {
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
-    // 1. INSTANT QR GENERATION (SYNCHRONOUS)
     const sessionId = `sess_${Date.now()}`;
     const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
     
-    // 2. TRIGGER ASYNC BACKGROUND TASKS
     (async () => {
       const exportCanvas = document.createElement('canvas');
       exportCanvas.width = 1600;
@@ -351,10 +348,8 @@ export default function KioskPage() {
       exportCanvas.toBlob(async (blob) => {
         if (!blob) return;
 
-        // Local Buffer - INSTANT
         await SessionStore.savePhotoLocally(sessionId, blob);
         
-        // Cloud Sync (Background)
         setUploadStatus("uploading");
         (async () => {
           try {
@@ -374,7 +369,6 @@ export default function KioskPage() {
           }
         })();
 
-        // USB Backup (Background)
         if (usbDirectoryHandle) {
           (async () => {
             try {
@@ -388,7 +382,6 @@ export default function KioskPage() {
           })();
         }
 
-        // Parallel Physical Print
         initiatePrint(blob);
 
       }, 'image/jpeg', 0.85);
@@ -405,7 +398,6 @@ export default function KioskPage() {
       exportTriggeredRef.current = false;
       setUploadStatus("idle");
       setSoftCopyQrUrl("");
-      // Force exit owner mode visual diagnostics if they were active
       setIsOwnerMode(false);
     }
   }, [appState, handleFinalExport]);
@@ -437,7 +429,6 @@ export default function KioskPage() {
     setSelectedStickerId(null);
     setPrintProgress(0);
     setPromoConsent(null);
-    // CRITICAL: Force Owner Mode to false to hide N/Status Bar for customers
     setIsOwnerMode(false);
   }, [promoConsent]);
 
@@ -486,7 +477,6 @@ export default function KioskPage() {
     setAppState("capturing");
     setCapturedPhotos([]); 
     
-    // CAMERA READINESS: 2-second preview before countdown starts
     await new Promise(r => setTimeout(r, 2000)); 
 
     for (let i = 0; i < totalShots; i++) {

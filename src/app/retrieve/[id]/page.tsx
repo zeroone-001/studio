@@ -25,7 +25,7 @@ export default function RetrievePage() {
       const { storage } = initializeFirebase();
       const photoRef = ref(storage, `photos/${id}.jpg`);
       
-      // HIGH-FREQUENCY POLLING: Every 200ms to detect background upload completion instantly
+      // ULTRA-HIGH-FREQUENCY POLLING: Every 200ms for instant mobile experience
       const url = await getDownloadURL(photoRef);
       setImageUrl(url);
       setLoading(false);

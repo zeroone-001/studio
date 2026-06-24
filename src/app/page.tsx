@@ -160,6 +160,13 @@ export default function KioskPage() {
     }
   }, [isOwnerMode]);
 
+  // RESET OWNER MODE ON WELCOME SCREEN TO PREVENT LEAKAGE
+  useEffect(() => {
+    if (appState === "welcome") {
+      setIsOwnerMode(false);
+    }
+  }, [appState]);
+
   const initBillAcceptor = useCallback(async () => {
     if (typeof navigator === 'undefined' || !('serial' in navigator)) return;
     try {

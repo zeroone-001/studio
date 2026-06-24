@@ -144,18 +144,18 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* Footer Branding Layer - Ultra-tightened spacing to maximize photo area */}
+      {/* Footer Branding Layer - Optimized for tighter spacing and maximum photo area */}
       <div 
-        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-end pb-[0.8%]"
-        style={{ height: '7.2%' }}
+        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-start pt-[0.8%]"
+        style={{ height: '9.2%' }}
       >
         {quoteText && (
-          <div className="mb-auto pt-0.5 flex items-center justify-center">
+          <div className="flex items-center justify-center mb-1">
             <span className="font-headline font-black italic uppercase text-black/30 text-center px-4 leading-none" style={{ fontSize: isStrip ? '8.5px' : '10.5px', letterSpacing: '0.04em' }}>{quoteText}</span>
           </div>
         )}
 
-        <div className="w-[94%] mx-auto flex justify-between items-end gap-1">
+        <div className="w-[94%] mx-auto flex justify-between items-center">
           <div className="flex flex-col items-start leading-none gap-0.5">
              <span className="font-headline font-black italic uppercase text-black flex items-center gap-0.5" style={{ fontSize: isStrip ? '12px' : '16px' }}>
                <span>JNL</span>
@@ -163,7 +163,7 @@ export const BlueprintFrame = React.memo(({
              </span>
              <span className="font-bold uppercase tracking-[0.2em] text-black/20" style={{ fontSize: isStrip ? '3.5px' : '4.5px' }}>PHOTOBOOTH</span>
           </div>
-          <span className="font-bold uppercase tracking-[0.1em] text-black/20 leading-none mb-[0.2%]" style={{ fontSize: isStrip ? '5.5px' : '7.5px' }}>{displayDate}</span>
+          <span className="font-bold uppercase tracking-[0.1em] text-black/20 leading-none" style={{ fontSize: isStrip ? '5.5px' : '7.5px' }}>{displayDate}</span>
         </div>
       </div>
     </div>

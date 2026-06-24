@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -583,10 +584,6 @@ export default function KioskPage() {
             <div className="flex-1 flex flex-col items-center justify-center">
               <div className="flex flex-col items-center cursor-pointer" onClick={handleHiddenTrigger}>
                 <JnlLogo variant="hero" color="light" className="mb-10" />
-                <h1 className="font-headline font-black text-6xl gap-4 italic uppercase leading-none text-white text-center">
-                  <span>JNL</span>
-                  <span className="text-primary ml-4">STUDIO</span>
-                </h1>
               </div>
             </div>
 

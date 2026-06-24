@@ -27,7 +27,6 @@ import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "thankyou" | "test-camera";
 
-// PHP 50 gets first 5, PHP 100 gets all 10
 export const FILTERS = [
   { id: "glowup", label: "GLOW UP", sub: "TIKTOK SKIN", class: "brightness-110 contrast-[1.05] saturate-[1.15] sepia-[0.05] drop-shadow-md" },
   { id: "retro", label: "RETRO", sub: "WARM VIBE", class: "sepia-[0.35] contrast-[1.1] brightness-[1.05] saturate-[1.3] hue-rotate-[-5deg]" },
@@ -122,7 +121,6 @@ export default function KioskPage() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>("");
-  const [cameraResolution, setCameraResolution] = useState<string>("");
 
   const [selectedFilter, setSelectedFilter] = useState(FILTERS[0]);
   const [selectedBlueprint, setSelectedBlueprint] = useState<FrameBlueprint | null>(null);
@@ -249,12 +247,10 @@ export default function KioskPage() {
   const availableBlueprints = useMemo(() => {
     if (appState === "test-camera") return BLUEPRINTS;
     if (!packageSelected) return [];
-    // PHP 50 = first 5, PHP 100 = all 10
-    return BLUEPRINTS.filter(bp => bp.package === packageSelected).slice(0, packageSelected === 50 ? 5 : 10);
+    return BLUEPRINTS.filter(bp => bp.package === packageSelected);
   }, [packageSelected, appState]);
 
   const availableFilters = useMemo(() => {
-    // 5 filters for PHP 50, 10 filters for PHP 100
     if (packageSelected === 50) return FILTERS.slice(0, 5);
     return FILTERS;
   }, [packageSelected]);
@@ -297,101 +293,102 @@ export default function KioskPage() {
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
-    // IMMEDIATE QR: Unique ID calculated instantly for sub-second QR display
+    // 1. INSTANT QR GENERATION (SYNCHRONOUS)
     const sessionId = `sess_${Date.now()}`;
     const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
     
-    // START PARALLEL BACKGROUND PROCESSING
-    const exportCanvas = document.createElement('canvas');
-    exportCanvas.width = 1600;
-    exportCanvas.height = 2400;
-    const ctx = exportCanvas.getContext('2d');
-    if (!ctx) return;
+    // 2. TRIGGER ASYNC BACKGROUND TASKS
+    (async () => {
+      const exportCanvas = document.createElement('canvas');
+      exportCanvas.width = 1600;
+      exportCanvas.height = 2400;
+      const ctx = exportCanvas.getContext('2d');
+      if (!ctx) return;
 
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, 1600, 2400);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, 1600, 2400);
 
-    const filterClass = selectedFilter.class;
-    const isStrip = selectedBlueprint.package === 50;
-    
-    const drawContent = async (offsetX: number) => {
-      for (let i = 0; i < selectedBlueprint.slots.length; i++) {
-        const slot = selectedBlueprint.slots[i];
-        const photo = capturedPhotos[i];
-        if (!photo) continue;
-        
-        const img = new Image();
-        img.src = photo;
-        await new Promise(resolve => img.onload = resolve);
-        
-        const sX = isStrip ? slot.x / 2 : slot.x;
-        const sW = isStrip ? slot.w / 2 : slot.w;
-        
-        ctx.save();
-        // High-Speed Filter Matrix
-        if (filterClass.includes('brightness')) ctx.filter += ' brightness(1.1)';
-        if (filterClass.includes('contrast')) ctx.filter += ' contrast(1.1)';
-        if (filterClass.includes('sepia')) ctx.filter += ' sepia(0.2)';
-        if (filterClass.includes('grayscale')) ctx.filter += ' grayscale(1)';
-        if (filterClass.includes('saturate')) ctx.filter += ' saturate(1.3)';
-        
-        ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
-        ctx.restore();
-      }
-    };
-
-    if (isStrip) {
-      await drawContent(0);
-      await drawContent(800);
-    } else {
-      await drawContent(0);
-    }
-
-    exportCanvas.toBlob(async (blob) => {
-      if (!blob) return;
-
-      // 1. INSTANT LOCAL BUFFER (Honor Pad Internal)
-      await SessionStore.savePhotoLocally(sessionId, blob);
+      const filterClass = selectedFilter.class;
+      const isStrip = selectedBlueprint.package === 50;
       
-      // 2. BACKGROUND: CLOUD SYNC (Non-blocking)
-      setUploadStatus("uploading");
-      (async () => {
-        try {
-          const { storage, db } = initializeFirebase();
-          const photoRef = ref(storage, `photos/${sessionId}.jpg`);
-          await uploadBytes(photoRef, blob);
-          await setDoc(doc(db, "photos", sessionId), {
-            id: sessionId,
-            storagePath: photoRef.fullPath,
-            timestamp: serverTimestamp(),
-            isDownloaded: false
-          });
-          setUploadStatus("complete");
-          KioskLogger.log('info', 'Cloud', `Session ${sessionId} HD Ready.`);
-        } catch (e) {
-          setUploadStatus("error");
+      const drawContent = async (offsetX: number) => {
+        for (let i = 0; i < selectedBlueprint.slots.length; i++) {
+          const slot = selectedBlueprint.slots[i];
+          const photo = capturedPhotos[i];
+          if (!photo) continue;
+          
+          const img = new Image();
+          img.src = photo;
+          await new Promise(resolve => img.onload = resolve);
+          
+          const sX = isStrip ? slot.x / 2 : slot.x;
+          const sW = isStrip ? slot.w / 2 : slot.w;
+          
+          ctx.save();
+          if (filterClass.includes('brightness')) ctx.filter += ' brightness(1.1)';
+          if (filterClass.includes('contrast')) ctx.filter += ' contrast(1.1)';
+          if (filterClass.includes('sepia')) ctx.filter += ' sepia(0.2)';
+          if (filterClass.includes('grayscale')) ctx.filter += ' grayscale(1)';
+          if (filterClass.includes('saturate')) ctx.filter += ' saturate(1.3)';
+          
+          ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
+          ctx.restore();
         }
-      })();
+      };
 
-      // 3. BACKGROUND: USB BACKUP (Lexar)
-      if (usbDirectoryHandle) {
+      if (isStrip) {
+        await drawContent(0);
+        await drawContent(800);
+      } else {
+        await drawContent(0);
+      }
+
+      exportCanvas.toBlob(async (blob) => {
+        if (!blob) return;
+
+        // Local Buffer
+        await SessionStore.savePhotoLocally(sessionId, blob);
+        
+        // Cloud Sync (Background)
+        setUploadStatus("uploading");
         (async () => {
           try {
-            const filename = `JNL_STUDIO_${sessionId}.jpg`;
-            const fileHandle = await (usbDirectoryHandle as any).getFileHandle(filename, { create: true });
-            const writable = await fileHandle.createWritable();
-            await writable.write(blob);
-            await writable.close();
-            SessionStore.save({ isUsbBackedUp: true });
-          } catch (e) {}
+            const { storage, db } = initializeFirebase();
+            const photoRef = ref(storage, `photos/${sessionId}.jpg`);
+            await uploadBytes(photoRef, blob);
+            await setDoc(doc(db, "photos", sessionId), {
+              id: sessionId,
+              storagePath: photoRef.fullPath,
+              timestamp: serverTimestamp(),
+              isDownloaded: false
+            });
+            setUploadStatus("complete");
+            KioskLogger.log('info', 'Cloud', `Session ${sessionId} HD Ready.`);
+          } catch (e) {
+            setUploadStatus("error");
+          }
         })();
-      }
 
-      // 4. PARALLEL: PHYSICAL PRINT SIGNAL
-      initiatePrint(blob);
+        // USB Backup (Background)
+        if (usbDirectoryHandle) {
+          (async () => {
+            try {
+              const filename = `JNL_STUDIO_${sessionId}.jpg`;
+              const fileHandle = await (usbDirectoryHandle as any).getFileHandle(filename, { create: true });
+              const writable = await fileHandle.createWritable();
+              await writable.write(blob);
+              await writable.close();
+              SessionStore.save({ isUsbBackedUp: true });
+            } catch (e) {}
+          })();
+        }
 
-    }, 'image/jpeg', 0.85);
+        // Parallel Physical Print
+        initiatePrint(blob);
+
+      }, 'image/jpeg', 0.85);
+    })();
 
   }, [usbDirectoryHandle, selectedBlueprint, capturedPhotos, selectedFilter]);
 
@@ -411,7 +408,7 @@ export default function KioskPage() {
     if (appState === "printing" && printProgress < 100) {
       const timer = setInterval(() => {
         setPrintProgress(prev => Math.min(prev + 1, 100));
-      }, 100); // 10-second transition (100 * 100ms)
+      }, 100); 
       return () => clearInterval(timer);
     }
   }, [appState, printProgress]);
@@ -481,7 +478,6 @@ export default function KioskPage() {
     setAppState("capturing");
     setCapturedPhotos([]); 
     
-    // 2-second "Ready" Period before numeric countdown
     await new Promise(r => setTimeout(r, 2000)); 
 
     for (let i = 0; i < totalShots; i++) {
@@ -561,19 +557,19 @@ export default function KioskPage() {
         {isOwnerMode && <HealthMonitor />}
 
         {appState === "welcome" && (
-          <div className="flex flex-col items-center w-full max-w-4xl animate-in fade-in duration-1000" style={{ paddingTop: '100px' }}>
-            <div className="flex justify-center mb-8" onClick={handleHiddenTrigger}>
-              <JnlLogo variant="icon" color="light" className="w-32 h-32" />
+          <div className="flex flex-col items-center w-full h-full animate-in fade-in duration-1000 safe-area-spacing">
+            <div className="flex-1 flex flex-col items-center justify-center">
+              <div className="flex justify-center mb-10" onClick={handleHiddenTrigger}>
+                <JnlLogo variant="hero" color="light" />
+              </div>
             </div>
-            <div className="flex flex-col items-center mb-16 w-full px-4 text-center">
-              <h1 className="font-headline font-black text-5xl sm:text-7xl tracking-tight uppercase italic flex items-center justify-center gap-4 text-white mb-4">
-                <span>JNL</span>
-                <span className="text-primary">STUDIO</span>
-              </h1>
-              <h2 className="font-headline font-black text-2xl sm:text-3xl tracking-[0.2em] uppercase italic text-white/90">TOUCH TO START</h2>
-            </div>
-            <div className="flex justify-center w-full mt-12">
-              <NeonButton onClick={() => setAppState("payment")} className="w-[75%] sm:w-[60%] lg:w-[40%] text-2xl py-10">READY?</NeonButton>
+
+            <div className="w-full flex flex-col items-center pb-20 space-y-12">
+              <div className="space-y-2 text-center">
+                <h2 className="font-headline font-black text-2xl sm:text-3xl tracking-[0.2em] uppercase italic text-white/90">TOUCH TO START</h2>
+                <p className="text-[10px] text-white/40 font-bold uppercase tracking-[0.5em]">JNL STUDIO PORTRAITS</p>
+              </div>
+              <NeonButton onClick={() => setAppState("payment")} className="w-[75%] sm:w-[60%] lg:w-[40%] text-3xl py-12">READY?</NeonButton>
             </div>
           </div>
         )}

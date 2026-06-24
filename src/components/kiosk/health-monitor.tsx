@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -39,16 +38,23 @@ export function HealthMonitor() {
 
       if (typeof navigator !== 'undefined') {
         if ('usb' in navigator) {
-          const usbDevices = await navigator.usb.getDevices();
-          hasUsb = usbDevices.length > 0;
-          // Look for common photo printer classes or known PIDs/VIDs if needed
-          // For now, we identify the first paired USB device as a potential printer
-          detectedPrinter = usbDevices[0] || null;
+          try {
+            const usbDevices = await navigator.usb.getDevices();
+            hasUsb = usbDevices.length > 0;
+            detectedPrinter = usbDevices[0] || null;
+          } catch (usbErr) {
+            // Permission Policy restricted
+            hasUsb = false;
+          }
         }
         if ('serial' in navigator) {
-          // @ts-ignore
-          const serialPorts = await navigator.serial.getPorts();
-          hasSerial = serialPorts.length > 0;
+          try {
+            // @ts-ignore
+            const serialPorts = await navigator.serial.getPorts();
+            hasSerial = serialPorts.length > 0;
+          } catch (serialErr) {
+            hasSerial = false;
+          }
         }
       }
       
@@ -88,14 +94,18 @@ export function HealthMonitor() {
           checkHealth();
         };
 
-        navigator.usb.addEventListener('connect', handleConnect);
-        navigator.usb.addEventListener('disconnect', handleDisconnect);
+        try {
+          navigator.usb.addEventListener('connect', handleConnect);
+          navigator.usb.addEventListener('disconnect', handleDisconnect);
 
-        return () => {
-          navigator.usb.removeEventListener('connect', handleConnect);
-          navigator.usb.removeEventListener('disconnect', handleDisconnect);
-          clearInterval(interval);
-        };
+          return () => {
+            navigator.usb.removeEventListener('connect', handleConnect);
+            navigator.usb.removeEventListener('disconnect', handleDisconnect);
+            clearInterval(interval);
+          };
+        } catch (e) {
+          // Event listener policy restricted
+        }
       }
     }
 

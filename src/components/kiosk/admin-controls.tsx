@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -100,20 +99,25 @@ export function AdminControls({
   // Update USB Printer info
   useEffect(() => {
     const fetchUsbInfo = async () => {
-      if ('usb' in navigator) {
-        const devices = await navigator.usb.getDevices();
-        if (devices.length > 0) {
-          const device = devices[0];
-          setUsbPrinterInfo({
-            name: device.productName || "Generic USB Device",
-            manufacturer: device.manufacturerName || "Unknown",
-            vid: device.vendorId.toString(16).padStart(4, '0').toUpperCase(),
-            pid: device.productId.toString(16).padStart(4, '0').toUpperCase(),
-            status: "Connected"
-          });
-        } else {
-          setUsbPrinterInfo(null);
+      try {
+        if (typeof navigator !== 'undefined' && 'usb' in navigator) {
+          const devices = await navigator.usb.getDevices();
+          if (devices.length > 0) {
+            const device = devices[0];
+            setUsbPrinterInfo({
+              name: device.productName || "Generic USB Device",
+              manufacturer: device.manufacturerName || "Unknown",
+              vid: device.vendorId.toString(16).padStart(4, '0').toUpperCase(),
+              pid: device.productId.toString(16).padStart(4, '0').toUpperCase(),
+              status: "Connected"
+            });
+          } else {
+            setUsbPrinterInfo(null);
+          }
         }
+      } catch (e) {
+        // Silently handle Permissions Policy errors
+        setUsbPrinterInfo(null);
       }
     };
     fetchUsbInfo();
@@ -123,12 +127,12 @@ export function AdminControls({
 
   const handleRequestUsb = async () => {
     try {
-      if ('usb' in navigator) {
+      if (typeof navigator !== 'undefined' && 'usb' in navigator) {
         const device = await navigator.usb.requestDevice({ filters: [] });
         KioskLogger.log('info', 'Hardware', `USB Device Paired: ${device.productName}`);
       }
     } catch (e) {
-      KioskLogger.log('error', 'Hardware', 'USB Permission Denied or Cancelled.');
+      KioskLogger.log('error', 'Hardware', 'USB Permission Denied or Policy Restricted.');
     }
   };
 

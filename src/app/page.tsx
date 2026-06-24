@@ -437,7 +437,7 @@ export default function KioskPage() {
     setSelectedStickerId(null);
     setPrintProgress(0);
     setPromoConsent(null);
-    // CRITICAL: Reset owner mode state so N monogram/diagnostics are hidden for customers
+    // CRITICAL: Force Owner Mode to false to hide N/Status Bar for customers
     setIsOwnerMode(false);
   }, [promoConsent]);
 

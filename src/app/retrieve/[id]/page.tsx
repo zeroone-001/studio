@@ -25,15 +25,14 @@ export default function RetrievePage() {
       const { storage } = initializeFirebase();
       const photoRef = ref(storage, `photos/${id}.jpg`);
       
-      // TARGET: Direct CDN fetch - high frequency polling for instant result
-      // Polling frequency at 400ms for ultra-fast customer experience
+      // HIGH-FREQUENCY POLLING: Every 200ms to detect background upload completion instantly
       const url = await getDownloadURL(photoRef);
       setImageUrl(url);
       setLoading(false);
     } catch (err) {
-      // High-speed polling (every 400ms) to detect background upload completion immediately
-      if (retries < 60) { // Approx 24 seconds total
-        setTimeout(() => setRetries(prev => prev + 1), 400);
+      // Extended retry window: 150 retries * 200ms = 30 seconds total
+      if (retries < 150) { 
+        setTimeout(() => setRetries(prev => prev + 1), 200);
       } else {
         setError("Finalizing HD portrait... please try again in a few seconds.");
         setLoading(false);

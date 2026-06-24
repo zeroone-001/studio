@@ -41,6 +41,24 @@
   }
 }
 
+/* 
+  STRICT OWNER-ONLY VISIBILITY 
+  Hides Next.js Framework Dev Overlay (The "N" Button) and debug tools for customers.
+*/
+nextjs-portal, 
+[data-nextjs-toast-wrapper], 
+#nextjs__container_build_error_label,
+#nextjs__container_errors_label,
+#id-nextjs-dev-tools {
+  display: none !important;
+}
+
+/* Revealed only when Admin Mode is active */
+body.admin-mode nextjs-portal,
+body.admin-mode [data-nextjs-toast-wrapper] {
+  display: block !important;
+}
+
 @layer utilities {
   .neon-glow {
     text-shadow: 0 0 10px rgba(255, 51, 153, 0.8), 0 0 20px rgba(255, 51, 153, 0.4);

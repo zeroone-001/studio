@@ -129,20 +129,36 @@ export default function KioskPage() {
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [activeStickerCategory, setActiveStickerCategory] = useState("HEARTS");
 
+  // Owner/Admin state
   const [isOwnerMode, setIsOwnerMode] = useState(false);
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
   const [usbDirectoryHandle, setUsbDirectoryHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [isDevMode, setIsDevMode] = useState<boolean>(true);
 
+  // Hidden Trigger State
   const [logoTapCount, setLogoTapCount] = useState(0);
   const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // QR & Printing State
   const [softCopyQrUrl, setSoftCopyQrUrl] = useState("");
   const [facebookQrUrl, setFacebookQrUrl] = useState("");
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "complete" | "error">("idle");
   const exportTriggeredRef = useRef(false);
 
+  // Bill Acceptor State
   const serialPortRef = useRef<any>(null);
+
+  // SYNC OWNER MODE CLASS TO BODY
+  // This forcibly hides Next.js dev tools when not in owner mode via globals.css
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      if (isOwnerMode) {
+        document.body.classList.add('admin-mode');
+      } else {
+        document.body.classList.remove('admin-mode');
+      }
+    }
+  }, [isOwnerMode]);
 
   const initBillAcceptor = useCallback(async () => {
     if (typeof navigator === 'undefined' || !('serial' in navigator)) return;
@@ -295,10 +311,12 @@ export default function KioskPage() {
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
+    // IMMEDIATE QR GENERATION
     const sessionId = `sess_${Date.now()}`;
     const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
     
+    // START BACKGROUND PROCESSING
     (async () => {
       const exportCanvas = document.createElement('canvas');
       exportCanvas.width = 1600;
@@ -347,8 +365,10 @@ export default function KioskPage() {
       exportCanvas.toBlob(async (blob) => {
         if (!blob) return;
 
+        // LOCAL PERSISTENCE FIRST
         await SessionStore.savePhotoLocally(sessionId, blob);
         
+        // BACKGROUND CLOUD SYNC
         setUploadStatus("uploading");
         (async () => {
           try {
@@ -368,6 +388,7 @@ export default function KioskPage() {
           }
         })();
 
+        // BACKGROUND USB SYNC
         if (usbDirectoryHandle) {
           (async () => {
             try {
@@ -381,6 +402,7 @@ export default function KioskPage() {
           })();
         }
 
+        // PHYSICAL PRINT SIGNAL
         initiatePrint(blob);
 
       }, 'image/jpeg', 0.85);
@@ -397,7 +419,7 @@ export default function KioskPage() {
       exportTriggeredRef.current = false;
       setUploadStatus("idle");
       setSoftCopyQrUrl("");
-      setIsOwnerMode(false);
+      setIsOwnerMode(false); // Force exit owner mode for next customer
     }
   }, [appState, handleFinalExport]);
 
@@ -428,7 +450,7 @@ export default function KioskPage() {
     setSelectedStickerId(null);
     setPrintProgress(0);
     setPromoConsent(null);
-    setIsOwnerMode(false);
+    setIsOwnerMode(false); // FORCED SECURITY RESET
   }, [promoConsent]);
 
   const startCamera = async (deviceId?: string) => {
@@ -476,6 +498,7 @@ export default function KioskPage() {
     setAppState("capturing");
     setCapturedPhotos([]); 
     
+    // 2-Second Camera Readiness Preview
     await new Promise(r => setTimeout(r, 2000)); 
 
     for (let i = 0; i < totalShots; i++) {
@@ -552,13 +575,18 @@ export default function KioskPage() {
           />
         )}
 
+        {/* OWNER-ONLY STATUS INDICATORS */}
         {isOwnerMode && <HealthMonitor />}
 
         {appState === "welcome" && (
           <div className="flex flex-col items-center w-full h-full animate-in fade-in duration-1000 safe-area-spacing">
             <div className="flex-1 flex flex-col items-center justify-center">
-              <div className="flex justify-center" onClick={handleHiddenTrigger}>
-                <JnlLogo variant="hero" color="light" />
+              <div className="flex flex-col items-center cursor-pointer" onClick={handleHiddenTrigger}>
+                <JnlLogo variant="hero" color="light" className="mb-10" />
+                <h1 className="font-headline font-black text-6xl gap-4 italic uppercase leading-none text-white text-center">
+                  <span>JNL</span>
+                  <span className="text-primary ml-4">STUDIO</span>
+                </h1>
               </div>
             </div>
 

@@ -1,4 +1,3 @@
-
 export type PhotoSlot = {
   x: number;
   y: number;

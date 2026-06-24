@@ -27,13 +27,18 @@ import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "thankyou" | "test-camera";
 
-// STRICT: 5 TikTok-Style Filters
+// STRICT: 10 TikTok-Style Filters (First 5 for PHP 50, all 10 for PHP 100)
 export const FILTERS = [
   { id: "glowup", label: "GLOW UP", sub: "TIKTOK SKIN", class: "brightness-110 contrast-[1.05] saturate-[1.15] sepia-[0.05] drop-shadow-md" },
   { id: "retro", label: "RETRO", sub: "WARM VIBE", class: "sepia-[0.35] contrast-[1.1] brightness-[1.05] saturate-[1.3] hue-rotate-[-5deg]" },
   { id: "icey", label: "ICEY", sub: "COOL TONES", class: "hue-rotate-[10deg] saturate-[0.8] brightness-[1.1] contrast-[1.1] opacity-[0.95]" },
   { id: "indie", label: "INDIE", sub: "VIBRANT", class: "saturate-[1.6] contrast-[1.2] brightness-[1.05] sepia-[0.05]" },
   { id: "bwpro", label: "B&W PRO", sub: "CINEMATIC", class: "grayscale contrast-[1.6] brightness-[1.1]" },
+  { id: "aesthetic", label: "AESTHETIC", sub: "SOFT FOCUS", class: "brightness-[1.05] saturate-[0.7] contrast-[0.9] blur-[0.2px]" },
+  { id: "sunset", label: "SUNSET", sub: "GOLDEN HOUR", class: "sepia-[0.5] saturate-[1.5] brightness-[1.1] hue-rotate-[-10deg]" },
+  { id: "vibe", label: "VIBE", sub: "MOODY", class: "hue-rotate-[-20deg] saturate-[1.4] contrast-[1.1] brightness-[0.9]" },
+  { id: "natural", label: "NATURAL+", sub: "STUDIO", class: "brightness-[1.05] contrast-[1.05] saturate-[1.1]" },
+  { id: "silver", label: "SILVER", sub: "STARK B&W", class: "grayscale contrast-[2] brightness-[1.2]" },
 ];
 
 export const STICKER_DEFS = [
@@ -244,13 +249,12 @@ export default function KioskPage() {
   const availableBlueprints = useMemo(() => {
     if (appState === "test-camera") return BLUEPRINTS;
     if (!packageSelected) return [];
-    // Strictly limit PHP 50 to 5 layouts
-    const pool = BLUEPRINTS.filter(bp => bp.package === packageSelected);
-    return packageSelected === 50 ? pool.slice(0, 5) : pool;
+    // Strictly limit PHP 50 to 5 layouts, PHP 100 to all 10
+    return BLUEPRINTS.filter(bp => bp.package === packageSelected);
   }, [packageSelected, appState]);
 
   const availableFilters = useMemo(() => {
-    // Strictly limit to 5 filters for PHP 50
+    // Strictly limit to 5 filters for PHP 50, all 10 for PHP 100
     if (packageSelected === 50) return FILTERS.slice(0, 5);
     return FILTERS;
   }, [packageSelected]);
@@ -293,7 +297,7 @@ export default function KioskPage() {
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
-    // IMMEDIATE QR: Sub-second display
+    // IMMEDIATE QR: Calculated instantly
     const sessionId = `sess_${Date.now()}`;
     const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
@@ -325,10 +329,12 @@ export default function KioskPage() {
         const sW = isStrip ? slot.w / 2 : slot.w;
         
         ctx.save();
+        // Dynamic Filter Application for high-speed assembly
         if (filterClass.includes('brightness')) ctx.filter += ' brightness(1.1)';
         if (filterClass.includes('contrast')) ctx.filter += ' contrast(1.1)';
         if (filterClass.includes('sepia')) ctx.filter += ' sepia(0.2)';
         if (filterClass.includes('grayscale')) ctx.filter += ' grayscale(1)';
+        if (filterClass.includes('saturate')) ctx.filter += ' saturate(1.3)';
         
         ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
         ctx.restore();
@@ -408,7 +414,7 @@ export default function KioskPage() {
     if (appState === "printing" && printProgress < 100) {
       const timer = setInterval(() => {
         setPrintProgress(prev => Math.min(prev + 1, 100));
-      }, 100); 
+      }, 100); // Fast 10-second transition
       return () => clearInterval(timer);
     }
   }, [appState, printProgress]);

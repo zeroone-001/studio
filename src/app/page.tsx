@@ -560,15 +560,13 @@ export default function KioskPage() {
         {appState === "welcome" && (
           <div className="flex flex-col items-center w-full h-full animate-in fade-in duration-1000 safe-area-spacing">
             <div className="flex-1 flex flex-col items-center justify-center">
-              <div className="flex justify-center mb-10" onClick={handleHiddenTrigger}>
+              <div className="flex justify-center" onClick={handleHiddenTrigger}>
                 <JnlLogo variant="hero" color="light" />
               </div>
             </div>
 
             <div className="w-full flex flex-col items-center pb-20 space-y-12">
-              <div className="space-y-2 text-center">
-                <h2 className="font-headline font-black text-2xl sm:text-3xl tracking-[0.2em] uppercase italic text-white/90">TOUCH TO START</h2>
-              </div>
+              <h2 className="font-headline font-black text-2xl sm:text-3xl tracking-[0.2em] uppercase italic text-white/90">TOUCH TO START</h2>
               <NeonButton onClick={() => setAppState("payment")} className="w-[75%] sm:w-[60%] lg:w-[40%] text-3xl py-12">READY?</NeonButton>
             </div>
           </div>

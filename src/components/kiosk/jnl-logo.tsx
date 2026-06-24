@@ -56,7 +56,7 @@ export function JnlLogo({ variant = "hero", color = "light", className }: JnlLog
         </div>
       )}
 
-      {/* Main Typography - Added gap to prevent italic overlap */}
+      {/* Main Typography */}
       <div className="text-center">
         <h1 
           className={cn(
@@ -68,17 +68,6 @@ export function JnlLogo({ variant = "hero", color = "light", className }: JnlLog
           <span>JNL</span>
           <span style={{ color: activeColors.accent }}>STUDIO</span>
         </h1>
-        {variant !== "watermark" && (
-          <p 
-            className={cn(
-              "font-bold tracking-[0.4em] uppercase opacity-60 mt-1",
-              isHero ? "text-sm" : "text-[8px]"
-            )}
-            style={{ color: activeColors.main }}
-          >
-            PHOTOBOOTH
-          </p>
-        )}
       </div>
     </div>
   );

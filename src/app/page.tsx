@@ -293,7 +293,7 @@ export default function KioskPage() {
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
-    // 1. INSTANT QR GENERATION (SYNCHRONOUS)
+    // 1. INSTANT QR GENERATION (SYNCHRONOUS) - Decoupled from background tasks
     const sessionId = `sess_${Date.now()}`;
     const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
@@ -347,7 +347,7 @@ export default function KioskPage() {
       exportCanvas.toBlob(async (blob) => {
         if (!blob) return;
 
-        // Local Buffer
+        // Local Buffer - INSTANT
         await SessionStore.savePhotoLocally(sessionId, blob);
         
         // Cloud Sync (Background)
@@ -387,7 +387,7 @@ export default function KioskPage() {
         // Parallel Physical Print
         initiatePrint(blob);
 
-      }, 'image/jpeg', 0.85);
+      }, 'image/jpeg', 0.82);
     })();
 
   }, [usbDirectoryHandle, selectedBlueprint, capturedPhotos, selectedFilter]);
@@ -478,6 +478,7 @@ export default function KioskPage() {
     setAppState("capturing");
     setCapturedPhotos([]); 
     
+    // CAMERA READINESS: 2-second preview before countdown starts
     await new Promise(r => setTimeout(r, 2000)); 
 
     for (let i = 0; i < totalShots; i++) {
@@ -567,7 +568,6 @@ export default function KioskPage() {
             <div className="w-full flex flex-col items-center pb-20 space-y-12">
               <div className="space-y-2 text-center">
                 <h2 className="font-headline font-black text-2xl sm:text-3xl tracking-[0.2em] uppercase italic text-white/90">TOUCH TO START</h2>
-                <p className="text-[10px] text-white/40 font-bold uppercase tracking-[0.5em]">JNL STUDIO PORTRAITS</p>
               </div>
               <NeonButton onClick={() => setAppState("payment")} className="w-[75%] sm:w-[60%] lg:w-[40%] text-3xl py-12">READY?</NeonButton>
             </div>

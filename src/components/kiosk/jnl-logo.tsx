@@ -41,7 +41,7 @@ export function JnlLogo({ variant = "hero", color = "light", className }: JnlLog
     <div className={cn("flex flex-col items-center select-none", className)}>
       {/* Custom Monogram Icon */}
       {!isWatermark && (
-        <div className={cn("relative mb-2", isHero ? "w-24 h-24" : "w-10 h-10")}>
+        <div className={cn("relative", isHero ? "w-24 h-24 mb-10" : "w-10 h-10 mb-2")}>
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <rect x="5" y="5" width="90" height="90" fill="none" stroke={activeColors.main} strokeWidth="0.5" opacity="0.5" transform="rotate(45 50 50)" />
             <path 

@@ -327,7 +327,8 @@ export default function KioskPage() {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
     const sessionId = `sess_${Date.now()}`;
-    KioskLogger.log('info', 'Export', `Photo Generated: ${new Date().toISOString()}`);
+    const startTime = Date.now();
+    KioskLogger.log('info', 'Export', `Photo Generated: ${new Date(startTime).toISOString()}`);
 
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1600;
@@ -376,52 +377,47 @@ export default function KioskPage() {
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
 
-      // 1. SAVE LOCALLY IMMEDIATELY
-      await SessionStore.savePhotoLocally(sessionId, blob);
-      KioskLogger.log('info', 'Export', `Photo Saved Locally: ${new Date().toISOString()}`);
+      const blobTime = Date.now();
+      KioskLogger.log('info', 'Export', `Soft Copy Saved: ${new Date(blobTime).toISOString()} (+${blobTime - startTime}ms)`);
 
-      // 2. START PRINTING IN PARALLEL
+      // 1. SAVE LOCALLY IMMEDIATELY (IndexedDB)
+      SessionStore.savePhotoLocally(sessionId, blob);
+
+      // 2. INITIATE PRINT IMMEDIATELY (Parallel)
+      const printStartTime = Date.now();
       initiatePrint(blob);
+      KioskLogger.log('info', 'Export', `Print Started: ${new Date(printStartTime).toISOString()} (+${printStartTime - blobTime}ms)`);
 
-      // 3. START SYNC IN BACKGROUND
-      setUploadStatus("uploading");
-      KioskLogger.log('info', 'Export', `Cloud Sync Started: ${new Date().toISOString()}`);
+      // 3. GENERATE QR CODE IMMEDIATELY (Don't wait for Cloud Sync)
+      const qrGenStartTime = Date.now();
+      const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
+      setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
+      const qrDispTime = Date.now();
+      KioskLogger.log('info', 'Export', `QR Code Displayed: ${new Date(qrDispTime).toISOString()} (+${qrDispTime - qrGenStartTime}ms)`);
 
-      try {
-        const { storage, db } = initializeFirebase();
-        const photoRef = ref(storage, `photos/${sessionId}.jpg`);
-        
-        // UPLOAD
-        await uploadBytes(photoRef, blob);
-        
-        // CREATE RETRIEVAL RECORD
-        await setDoc(doc(db, "photos", sessionId), {
-          id: sessionId,
-          storagePath: photoRef.fullPath,
-          timestamp: serverTimestamp(),
-          isDownloaded: false
-        });
-        KioskLogger.log('info', 'Export', `Retrieval Record Created: ${new Date().toISOString()}`);
+      // 4. START CLOUD SYNC IN BACKGROUND (Non-blocking)
+      (async () => {
+        setUploadStatus("uploading");
+        try {
+          const { storage, db } = initializeFirebase();
+          const photoRef = ref(storage, `photos/${sessionId}.jpg`);
+          
+          await uploadBytes(photoRef, blob);
+          await setDoc(doc(db, "photos", sessionId), {
+            id: sessionId,
+            storagePath: photoRef.fullPath,
+            timestamp: serverTimestamp(),
+            isDownloaded: false
+          });
+          setUploadStatus("complete");
+          KioskLogger.log('info', 'Export', `Cloud Sync Complete: ${new Date().toISOString()}`);
+        } catch (e) {
+          setUploadStatus("error");
+          KioskLogger.log('error', 'Export', `Cloud Sync Failed: ${e}`);
+        }
+      })();
 
-        // 4. VERIFY READINESS BEFORE SHOWING QR
-        const verifiedUrl = await getDownloadURL(photoRef);
-        // Simple fetch verification to ensure CDN propagation
-        const testRes = await fetch(verifiedUrl, { method: 'HEAD', mode: 'no-cors' });
-        
-        KioskLogger.log('info', 'Export', `Retrieval URL Verified: ${new Date().toISOString()}`);
-
-        // 5. FINALLY GENERATE QR
-        const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
-        setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-        setUploadStatus("complete");
-        KioskLogger.log('info', 'Export', `QR Code Displayed: ${new Date().toISOString()}`);
-
-      } catch (e) {
-        setUploadStatus("error");
-        KioskLogger.log('error', 'Export', `Sync/Verification Error: ${e}`);
-      }
-
-      // 6. USB BACKUP IN PARALLEL
+      // 5. USB BACKUP IN BACKGROUND (Non-blocking)
       if (usbDirectoryHandle) {
         (async () => {
           try {
@@ -431,7 +427,10 @@ export default function KioskPage() {
             await writable.write(blob);
             await writable.close();
             SessionStore.save({ isUsbBackedUp: true });
-          } catch (e) {}
+            KioskLogger.log('info', 'Export', `USB Backup Complete: ${new Date().toISOString()}`);
+          } catch (e) {
+            KioskLogger.log('error', 'Export', `USB Backup Failed: ${e}`);
+          }
         })();
       }
 

@@ -309,9 +309,11 @@ export default function KioskPage() {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
     const sessionId = `sess_${Date.now()}`;
-    const startTime = Date.now();
-    KioskLogger.log('info', 'Export', `Pipeline Start: ${new Date(startTime).toISOString()}`);
+    const startTime = performance.now();
+    KioskLogger.log('info', 'Export', `Pipeline Handshake: ${new Date().toISOString()}`);
 
+    // Step 1: Photo Generation
+    const genStart = performance.now();
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1600;
     exportCanvas.height = 2400;
@@ -355,49 +357,63 @@ export default function KioskPage() {
     } else {
       await drawContent(0);
     }
+    const genEnd = performance.now();
 
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
 
-      const blobTime = Date.now();
-      KioskLogger.log('info', 'Export', `Layout Rendered: +${blobTime - startTime}ms`);
-
-      // 1. Parallel Print & Local Save
+      // Step 2: Photo Save (Local)
+      const saveStart = performance.now();
       initiatePrint(blob);
-      SessionStore.savePhotoLocally(sessionId, blob);
-      KioskLogger.log('info', 'Export', `Print/Local Save Initiated: +${Date.now() - blobTime}ms`);
+      await SessionStore.savePhotoLocally(sessionId, blob);
+      const saveEnd = performance.now();
 
-      // 2. Verified Cloud Sync (Essential for QR)
+      // Step 3: Firebase Storage Upload & Database Write
       setUploadStatus("uploading");
-      const syncStartTime = Date.now();
+      const cloudStart = performance.now();
       try {
         const { storage, db } = initializeFirebase();
         const photoRef = ref(storage, `photos/${sessionId}.jpg`);
         
-        // Upload & Record
+        // Storage Upload
         await uploadBytes(photoRef, blob);
+        const uploadEnd = performance.now();
+
+        // Database Write
+        const dbStart = performance.now();
         await setDoc(doc(db, "photos", sessionId), {
           id: sessionId,
           storagePath: photoRef.fullPath,
           timestamp: serverTimestamp(),
           isDownloaded: false
         });
+        const dbEnd = performance.now();
 
-        const syncDoneTime = Date.now();
-        KioskLogger.log('info', 'Export', `Cloud Sync Complete: +${syncDoneTime - syncStartTime}ms`);
-
-        // 3. Display QR only after confirmation
+        // Step 4: QR Generation & Display
+        const qrStart = performance.now();
         const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
         setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
         setUploadStatus("complete");
-        KioskLogger.log('info', 'Export', `QR Displayed: +${Date.now() - syncDoneTime}ms`);
+        const qrEnd = performance.now();
+
+        // Performance Audit Report
+        const audit = {
+          "Photo Generation": `${(genEnd - genStart).toFixed(2)}ms`,
+          "Local Save (IndexedDB)": `${(saveEnd - saveStart).toFixed(2)}ms`,
+          "Firebase Storage Upload": `${(uploadEnd - cloudStart).toFixed(2)}ms`,
+          "Database Write (Firestore)": `${(dbEnd - dbStart).toFixed(2)}ms`,
+          "QR Generation": `${(qrEnd - qrStart).toFixed(2)}ms`,
+          "Total Export Cycle": `${(performance.now() - startTime).toFixed(2)}ms`
+        };
+        console.table(audit);
+        KioskLogger.log('info', 'Performance', `Verified Readiness Cycle Complete: ${audit["Total Export Cycle"]}`);
 
       } catch (e) {
         setUploadStatus("error");
         KioskLogger.log('error', 'Export', `Sync Failed: ${e}`);
       }
 
-      // 4. Background USB backup
+      // Parallel Background USB backup
       if (usbDirectoryHandle) {
         (async () => {
           try {
@@ -406,7 +422,6 @@ export default function KioskPage() {
             const writable = await fileHandle.createWritable();
             await writable.write(blob);
             await writable.close();
-            KioskLogger.log('info', 'Export', `USB Backup Complete`);
           } catch (e) {}
         })();
       }

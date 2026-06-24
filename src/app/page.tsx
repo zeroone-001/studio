@@ -27,7 +27,7 @@ import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "thankyou" | "test-camera";
 
-// STRICT: 10 TikTok-Style Filters (First 5 for PHP 50, all 10 for PHP 100)
+// PHP 50 gets first 5, PHP 100 gets all 10
 export const FILTERS = [
   { id: "glowup", label: "GLOW UP", sub: "TIKTOK SKIN", class: "brightness-110 contrast-[1.05] saturate-[1.15] sepia-[0.05] drop-shadow-md" },
   { id: "retro", label: "RETRO", sub: "WARM VIBE", class: "sepia-[0.35] contrast-[1.1] brightness-[1.05] saturate-[1.3] hue-rotate-[-5deg]" },
@@ -249,12 +249,12 @@ export default function KioskPage() {
   const availableBlueprints = useMemo(() => {
     if (appState === "test-camera") return BLUEPRINTS;
     if (!packageSelected) return [];
-    // Strictly limit PHP 50 to 5 layouts, PHP 100 to all 10
-    return BLUEPRINTS.filter(bp => bp.package === packageSelected);
+    // PHP 50 = first 5, PHP 100 = all 10
+    return BLUEPRINTS.filter(bp => bp.package === packageSelected).slice(0, packageSelected === 50 ? 5 : 10);
   }, [packageSelected, appState]);
 
   const availableFilters = useMemo(() => {
-    // Strictly limit to 5 filters for PHP 50, all 10 for PHP 100
+    // 5 filters for PHP 50, 10 filters for PHP 100
     if (packageSelected === 50) return FILTERS.slice(0, 5);
     return FILTERS;
   }, [packageSelected]);
@@ -297,12 +297,12 @@ export default function KioskPage() {
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
-    // IMMEDIATE QR: Calculated instantly
+    // IMMEDIATE QR: Unique ID calculated instantly for sub-second QR display
     const sessionId = `sess_${Date.now()}`;
     const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
     
-    // START ALL BACKGROUND TASKS IN PARALLEL
+    // START PARALLEL BACKGROUND PROCESSING
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1600;
     exportCanvas.height = 2400;
@@ -329,7 +329,7 @@ export default function KioskPage() {
         const sW = isStrip ? slot.w / 2 : slot.w;
         
         ctx.save();
-        // Dynamic Filter Application for high-speed assembly
+        // High-Speed Filter Matrix
         if (filterClass.includes('brightness')) ctx.filter += ' brightness(1.1)';
         if (filterClass.includes('contrast')) ctx.filter += ' contrast(1.1)';
         if (filterClass.includes('sepia')) ctx.filter += ' sepia(0.2)';
@@ -354,7 +354,7 @@ export default function KioskPage() {
       // 1. INSTANT LOCAL BUFFER (Honor Pad Internal)
       await SessionStore.savePhotoLocally(sessionId, blob);
       
-      // 2. BACKGROUND: CLOUD SYNC
+      // 2. BACKGROUND: CLOUD SYNC (Non-blocking)
       setUploadStatus("uploading");
       (async () => {
         try {
@@ -368,7 +368,7 @@ export default function KioskPage() {
             isDownloaded: false
           });
           setUploadStatus("complete");
-          KioskLogger.log('info', 'Cloud', `Session ${sessionId} synced.`);
+          KioskLogger.log('info', 'Cloud', `Session ${sessionId} HD Ready.`);
         } catch (e) {
           setUploadStatus("error");
         }
@@ -384,10 +384,7 @@ export default function KioskPage() {
             await writable.write(blob);
             await writable.close();
             SessionStore.save({ isUsbBackedUp: true });
-            KioskLogger.log('info', 'Backup', 'USB Transfer complete.');
-          } catch (e) {
-            KioskLogger.log('error', 'Backup', 'USB Transfer failed.');
-          }
+          } catch (e) {}
         })();
       }
 
@@ -414,7 +411,7 @@ export default function KioskPage() {
     if (appState === "printing" && printProgress < 100) {
       const timer = setInterval(() => {
         setPrintProgress(prev => Math.min(prev + 1, 100));
-      }, 100); // Fast 10-second transition
+      }, 100); // 10-second transition (100 * 100ms)
       return () => clearInterval(timer);
     }
   }, [appState, printProgress]);
@@ -484,7 +481,7 @@ export default function KioskPage() {
     setAppState("capturing");
     setCapturedPhotos([]); 
     
-    // READY PERIOD: Camera is open before countdown starts
+    // 2-second "Ready" Period before numeric countdown
     await new Promise(r => setTimeout(r, 2000)); 
 
     for (let i = 0; i < totalShots; i++) {
@@ -561,23 +558,21 @@ export default function KioskPage() {
           />
         )}
 
-        <HealthMonitor />
+        {isOwnerMode && <HealthMonitor />}
 
         {appState === "welcome" && (
-          <div className="flex flex-col items-center w-full max-w-4xl animate-in fade-in duration-1000" style={{ paddingTop: '120px' }}>
-            <div className="flex justify-center mb-[40px]" onClick={handleHiddenTrigger}>
+          <div className="flex flex-col items-center w-full max-w-4xl animate-in fade-in duration-1000" style={{ paddingTop: '100px' }}>
+            <div className="flex justify-center mb-8" onClick={handleHiddenTrigger}>
               <JnlLogo variant="icon" color="light" className="w-32 h-32" />
             </div>
-            <div className="flex justify-center mb-[30px] w-full px-4">
-              <h1 className="font-headline font-black text-5xl sm:text-7xl tracking-tight uppercase italic text-center flex items-center gap-4 text-white">
+            <div className="flex flex-col items-center mb-16 w-full px-4 text-center">
+              <h1 className="font-headline font-black text-5xl sm:text-7xl tracking-tight uppercase italic flex items-center justify-center gap-4 text-white mb-4">
                 <span>JNL</span>
                 <span className="text-primary">STUDIO</span>
               </h1>
+              <h2 className="font-headline font-black text-2xl sm:text-3xl tracking-[0.2em] uppercase italic text-white/90">TOUCH TO START</h2>
             </div>
-            <div className="flex justify-center mb-[20px] w-full px-4">
-              <h2 className="font-headline font-black text-2xl sm:text-3xl tracking-[0.2em] uppercase italic text-white/90 text-center">TOUCH TO START</h2>
-            </div>
-            <div className="flex justify-center w-full">
+            <div className="flex justify-center w-full mt-12">
               <NeonButton onClick={() => setAppState("payment")} className="w-[75%] sm:w-[60%] lg:w-[40%] text-2xl py-10">READY?</NeonButton>
             </div>
           </div>

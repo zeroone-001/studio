@@ -34,11 +34,6 @@ export const FILTERS = [
   { id: "icey", label: "ICEY", sub: "COOL TONES", class: "hue-rotate-[10deg] saturate-[0.8] brightness-[1.1] contrast-[1.1] opacity-[0.95]" },
   { id: "indie", label: "INDIE", sub: "VIBRANT", class: "saturate-[1.6] contrast-[1.2] brightness-[1.05] sepia-[0.05]" },
   { id: "bwpro", label: "B&W PRO", sub: "CINEMATIC", class: "grayscale contrast-[1.6] brightness-[1.1]" },
-  { id: "aesthetic", label: "AESTHETIC", sub: "SOFT CLEAN", class: "saturate-[0.6] brightness-[1.15] contrast-[0.95] sepia-[0.1]" },
-  { id: "sunset", label: "SUNSET", sub: "GOLDEN HOUR", class: "sepia-[0.3] hue-rotate-[-12deg] saturate-[1.45] brightness-[1.08] contrast-[1.05]" },
-  { id: "vibe", label: "VIBE", sub: "MOODY", class: "hue-rotate-[345deg] saturate-[1.2] brightness-[1.05] contrast-[1.15]" },
-  { id: "naturalplus", label: "NATURAL+", sub: "HD CLEAN", class: "brightness-[1.08] contrast-[1.12] saturate-[1.2] contrast-[1.05]" },
-  { id: "silver", label: "SILVER", sub: "TIMELESS", class: "grayscale contrast-[1.3] brightness-[1.2] sepia-[0.08]" },
 ];
 
 export const STICKER_DEFS = [
@@ -295,14 +290,14 @@ export default function KioskPage() {
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
-    // IMMEDIATE STEP 1: Generate Session ID and QR URL
+    // IMMEDIATE STEP 1: Generate Session ID and QR URL INSTANTLY
     const sessionId = `sess_${Date.now()}`;
     const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
     
     setUploadStatus("uploading");
 
-    // IMMEDIATE STEP 2: Start Drawing
+    // Start assembly
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1600;
     exportCanvas.height = 2400;
@@ -337,23 +332,6 @@ export default function KioskPage() {
         ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
         ctx.restore();
       }
-      
-      // Stickers
-      for (const s of placedStickers) {
-        const def = STICKER_DEFS.find(d => d.id === s.type);
-        if (!def) continue;
-        const sX = (s.x / 100) * (isStrip ? 800 : 1600);
-        const sY = (s.y / 100) * 2400;
-        const sSize = (s.size / 100) * 1600;
-
-        ctx.save();
-        ctx.translate(sX + offsetX, sY);
-        ctx.rotate((s.rotation * Math.PI) / 180);
-        // Use a simple colored square placeholder for stickers in this immediate render if needed
-        ctx.fillStyle = '#FF3399';
-        ctx.fillRect(-sSize/2, -sSize/2, sSize, sSize);
-        ctx.restore();
-      }
     };
 
     if (isStrip) {
@@ -366,7 +344,7 @@ export default function KioskPage() {
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
 
-      // PARALLEL STEP 3: Save Locally (Buffer)
+      // PARALLEL STEP 3: Save Locally
       SessionStore.savePhotoLocally(sessionId, blob);
       
       // PARALLEL STEP 4: Cloud Task
@@ -384,17 +362,15 @@ export default function KioskPage() {
           });
 
           setUploadStatus("complete");
-          SessionStore.save({ isSynced: true });
           KioskLogger.log('info', 'Cloud', `Session ${sessionId} synced.`);
         } catch (e) {
           setUploadStatus("error");
-          KioskLogger.log('error', 'Cloud', `Sync failed for ${sessionId}`);
         }
       })();
 
       // PARALLEL STEP 5: USB Task
-      (async () => {
-        if (usbDirectoryHandle) {
+      if (usbDirectoryHandle) {
+        (async () => {
           try {
             const filename = `JNL_STUDIO_${sessionId}.jpg`;
             const fileHandle = await (usbDirectoryHandle as any).getFileHandle(filename, { create: true });
@@ -403,15 +379,15 @@ export default function KioskPage() {
             await writable.close();
             SessionStore.save({ isUsbBackedUp: true });
           } catch (e) {}
-        }
-      })();
+        })();
+      }
 
       // PARALLEL STEP 6: Automatic Print Signal
       initiatePrint(blob);
 
     }, 'image/jpeg', 0.85);
 
-  }, [usbDirectoryHandle, selectedBlueprint, capturedPhotos, selectedFilter, placedStickers]);
+  }, [usbDirectoryHandle, selectedBlueprint, capturedPhotos, selectedFilter]);
 
   useEffect(() => {
     if (appState === "printing" && !exportTriggeredRef.current) {
@@ -429,7 +405,7 @@ export default function KioskPage() {
     if (appState === "printing" && printProgress < 100) {
       const timer = setInterval(() => {
         setPrintProgress(prev => Math.min(prev + 1, 100));
-      }, 100); // 10 seconds total
+      }, 100); // Exactly 10 seconds
       return () => clearInterval(timer);
     }
   }, [appState, printProgress]);
@@ -455,12 +431,9 @@ export default function KioskPage() {
   }, [promoConsent]);
 
   const startCamera = async (deviceId?: string) => {
-    if (cameraStream && videoRef.current && videoRef.current.srcObject === cameraStream) {
-      return true;
-    }
-    if (cameraStream) {
-      cameraStream.getTracks().forEach(track => track.stop());
-    }
+    if (cameraStream && videoRef.current && videoRef.current.srcObject === cameraStream) return true;
+    if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
+    
     const tryStream = async (constraints: MediaStreamConstraints) => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -470,27 +443,10 @@ export default function KioskPage() {
           await videoRef.current.play();
         }
         return true;
-      } catch (e) {
-        return false;
-      }
+      } catch (e) { return false; }
     };
-    let success = await tryStream({
-      video: { 
-        deviceId: deviceId ? { exact: deviceId } : undefined,
-        facingMode: "user", 
-        width: { ideal: 1280 }, 
-        height: { ideal: 1706 } 
-      },
-      audio: false
-    });
-    if (!success) {
-      success = await tryStream({ video: deviceId ? { deviceId: { exact: deviceId } } : true, audio: false });
-    }
-    if (!success) {
-      setCameraError("Check Connection.");
-      return false;
-    }
-    return true;
+    
+    return await tryStream({ video: { deviceId: deviceId ? { exact: deviceId } : undefined, facingMode: "user", width: { ideal: 1280 }, height: { ideal: 1706 } }, audio: false });
   };
 
   const stopCamera = () => {
@@ -568,11 +524,7 @@ export default function KioskPage() {
       <iframe ref={printIframeRef} className="hidden" title="print-frame" />
       <div className="flex-1 w-full h-full flex flex-col items-center overflow-hidden kiosk-container safe-area-spacing landscape-container">
         
-        <AdminAuthDialog 
-          isOpen={isAdminDialogOpen} 
-          onClose={() => setIsAdminDialogOpen(false)}
-          onAuthSuccess={() => setIsOwnerMode(true)}
-        />
+        <AdminAuthDialog isOpen={isAdminDialogOpen} onClose={() => setIsAdminDialogOpen(false)} onAuthSuccess={() => setIsOwnerMode(true)} />
 
         {isOwnerMode && (
           <AdminControls 
@@ -584,20 +536,8 @@ export default function KioskPage() {
             onSimulateCash={(amount) => setPaymentReceived(prev => prev + amount)}
             onBypassPayment={(pkg) => { setPackageSelected(pkg); setPaymentReceived(pkg); setAppState("setup"); }}
             usbStatus={usbDirectoryHandle ? "connected" : "disconnected"}
-            onSetupUsb={async () => {
-              try {
-                const handle = await (window as any).showDirectoryPicker();
-                setUsbDirectoryHandle(handle);
-              } catch (e) {}
-            }}
-            onSetupBillAcceptor={async () => {
-              try {
-                if ('serial' in navigator) {
-                  await (navigator as any).serial.requestPort();
-                  initBillAcceptor();
-                }
-              } catch (e) {}
-            }}
+            onSetupUsb={async () => { try { const handle = await (window as any).showDirectoryPicker(); setUsbDirectoryHandle(handle); } catch (e) {} }}
+            onSetupBillAcceptor={async () => { try { if ('serial' in navigator) { await (navigator as any).serial.requestPort(); initBillAcceptor(); } } catch (e) {} }}
             isDevMode={isDevMode}
             onToggleDevMode={() => setIsDevMode(!isDevMode)}
             isCameraActive={!!cameraStream}
@@ -605,7 +545,6 @@ export default function KioskPage() {
             cameras={availableCameras}
             selectedCameraId={selectedCameraId}
             onSelectCamera={setSelectedCameraId}
-            resolution={cameraResolution}
           />
         )}
 
@@ -624,9 +563,6 @@ export default function KioskPage() {
             </div>
             <div className="flex justify-center mb-[20px] w-full px-4">
               <h2 className="font-headline font-black text-2xl sm:text-3xl tracking-[0.2em] uppercase italic text-white/90 text-center">TOUCH TO START</h2>
-            </div>
-            <div className="flex justify-center mb-[80px] w-full px-4">
-              <p className="font-bold text-[10px] sm:text-xs tracking-[0.5em] uppercase text-white/40 text-center">PHOTOBOOTH</p>
             </div>
             <div className="flex justify-center w-full">
               <NeonButton onClick={() => setAppState("payment")} className="w-[75%] sm:w-[60%] lg:w-[40%] text-2xl py-10">READY?</NeonButton>
@@ -657,13 +593,7 @@ export default function KioskPage() {
         {(appState === "setup" || appState === "test-camera") && (
           <div className="w-full h-full max-w-7xl flex flex-col lg:flex-row gap-8 items-center lg:items-start animate-in fade-in duration-500 py-10 px-8">
              <div className="relative w-full lg:flex-1 aspect-[3/4] max-h-[70vh] bg-zinc-900 border-4 border-white shadow-[0_0_30px_rgba(255,51,153,0.3)] overflow-hidden flex items-center justify-center">
-                <video 
-                  ref={videoRef} 
-                  autoPlay 
-                  playsInline 
-                  muted 
-                  className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} 
-                />
+                <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} />
              </div>
              <div className="w-full lg:w-[450px] space-y-8 max-h-[75vh] overflow-y-auto scrollbar-hide">
               <h2 className="font-headline font-black text-4xl italic uppercase text-primary">Styling</h2>
@@ -721,13 +651,7 @@ export default function KioskPage() {
           <div className="w-full h-full max-w-7xl flex flex-col lg:flex-row items-center justify-center gap-12 animate-in fade-in duration-500 py-6 px-8">
             <div className="relative w-full lg:flex-1 h-full flex items-center justify-center overflow-hidden">
               <div className="h-full w-auto max-w-full shadow-[0_0_60px_rgba(0,0,0,0.8)] relative border-4 border-white">
-                 {selectedBlueprint && capturedPhotos.length > 0 ? (
-                   <BlueprintFrame blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.class} isPreview />
-                 ) : (
-                   <div className="absolute inset-0 bg-zinc-900 flex items-center justify-center w-full h-full">
-                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-                   </div>
-                 )}
+                 {selectedBlueprint && capturedPhotos.length > 0 && <BlueprintFrame blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.class} isPreview />}
               </div>
             </div>
             <div className="w-full lg:w-96 space-y-6 flex flex-col items-center lg:items-start shrink-0">
@@ -750,17 +674,9 @@ export default function KioskPage() {
                 <div className="relative h-full w-auto max-w-[450px] shadow-[0_0_40px_rgba(255,51,153,0.2)]">
                   {selectedBlueprint && capturedPhotos.length > 0 && (
                     <BlueprintFrame 
-                      blueprint={selectedBlueprint} 
-                      photos={capturedPhotos} 
-                      filterClass={selectedFilter.class}
-                      isPreview
-                      quoteText={selectedQuote.text}
-                      stickers={placedStickers}
-                      selectedStickerId={selectedStickerId}
-                      onUpdateSticker={handleUpdateSticker}
-                      onRemoveSticker={handleRemoveSticker}
-                      onSelectSticker={setSelectedStickerId}
-                      onBringToFront={handleBringToFront}
+                      blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.class} isPreview
+                      quoteText={selectedQuote.text} stickers={placedStickers} selectedStickerId={selectedStickerId}
+                      onUpdateSticker={handleUpdateSticker} onRemoveSticker={handleRemoveSticker} onSelectSticker={setSelectedStickerId} onBringToFront={handleBringToFront}
                     />
                   )}
                 </div>
@@ -842,28 +758,13 @@ export default function KioskPage() {
                      </div>
                      
                      <div className="aspect-square w-full bg-white p-4 rounded-2xl shadow-[0_0_30px_rgba(255,51,153,0.3)] relative overflow-hidden">
-                        {softCopyQrUrl ? (
-                          <img src={softCopyQrUrl} alt="Soft Copy QR" className="w-full h-full object-contain animate-in fade-in duration-300" />
-                        ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center space-y-2">
-                             <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                             <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest">Generating Code...</p>
-                          </div>
-                        )}
+                        {softCopyQrUrl ? <img src={softCopyQrUrl} alt="Soft Copy QR" className="w-full h-full object-contain animate-in fade-in duration-300" /> : <Loader2 className="w-8 h-8 text-primary animate-spin" />}
                      </div>
 
                      <div className="flex flex-col items-center gap-1">
                        <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest text-center">Instant HD Download</p>
-                       {uploadStatus === "uploading" && (
-                         <div className="flex items-center gap-2 text-[7px] text-primary/60 font-black uppercase animate-pulse">
-                           <Loader2 className="w-2.5 h-2.5 animate-spin" /> Uploading HD Buffer...
-                         </div>
-                       )}
-                       {uploadStatus === "complete" && (
-                         <div className="flex items-center gap-2 text-[7px] text-green-500 font-black uppercase">
-                           <CheckCircle2 className="w-2.5 h-2.5" /> HD Ready in Cloud
-                         </div>
-                       )}
+                       {uploadStatus === "uploading" && <div className="text-[7px] text-primary/60 font-black uppercase animate-pulse">Uploading HD Buffer...</div>}
+                       {uploadStatus === "complete" && <div className="text-[7px] text-green-500 font-black uppercase">HD Ready in Cloud</div>}
                      </div>
                    </div>
                    

@@ -31,7 +31,8 @@ import {
   FolderOpen,
   CheckCircle2,
   Printer,
-  Banknote
+  Banknote,
+  Cpu
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
@@ -82,6 +83,7 @@ export function AdminControls({
   const [view, setView] = useState<'main' | 'logs' | 'diag' | 'hardware'>('main');
   const [stats, setStats] = useState({ used: '0MB', percent: '0', queue: 0 });
   const [isMaintenance, setIsMaintenance] = useState(false);
+  const [usbPrinterInfo, setUsbPrinterInfo] = useState<any>(null);
   const logs = KioskLogger.getLogs();
 
   useEffect(() => {
@@ -95,12 +97,35 @@ export function AdminControls({
     return () => clearInterval(interval);
   }, []);
 
+  // Update USB Printer info
+  useEffect(() => {
+    const fetchUsbInfo = async () => {
+      if ('usb' in navigator) {
+        const devices = await navigator.usb.getDevices();
+        if (devices.length > 0) {
+          const device = devices[0];
+          setUsbPrinterInfo({
+            name: device.productName || "Generic USB Device",
+            manufacturer: device.manufacturerName || "Unknown",
+            vid: device.vendorId.toString(16).padStart(4, '0').toUpperCase(),
+            pid: device.productId.toString(16).padStart(4, '0').toUpperCase(),
+            status: "Connected"
+          });
+        } else {
+          setUsbPrinterInfo(null);
+        }
+      }
+    };
+    fetchUsbInfo();
+    const int = setInterval(fetchUsbInfo, 5000);
+    return () => clearInterval(int);
+  }, []);
+
   const handleRequestUsb = async () => {
     try {
       if ('usb' in navigator) {
-        // @ts-ignore
-        await navigator.usb.requestDevice({ filters: [] });
-        KioskLogger.log('info', 'Hardware', 'USB Printer Access Granted.');
+        const device = await navigator.usb.requestDevice({ filters: [] });
+        KioskLogger.log('info', 'Hardware', `USB Device Paired: ${device.productName}`);
       }
     } catch (e) {
       KioskLogger.log('error', 'Hardware', 'USB Permission Denied or Cancelled.');
@@ -193,6 +218,35 @@ export function AdminControls({
 
         {view === 'hardware' && (
           <div className="space-y-4 animate-in fade-in duration-300">
+            {/* Printer Diagnostics */}
+            <div className="bg-white/5 border border-white/10 p-3 rounded-lg space-y-2">
+              <div className="flex items-center gap-2 text-[8px] font-black uppercase text-primary mb-1">
+                 <Printer className="w-3 h-3" /> Printer Diagnostics
+              </div>
+              {usbPrinterInfo ? (
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[7px] font-bold uppercase">
+                    <span className="text-white/40">Product:</span>
+                    <span className="text-white truncate max-w-[120px]">{usbPrinterInfo.name}</span>
+                  </div>
+                  <div className="flex justify-between text-[7px] font-bold uppercase">
+                    <span className="text-white/40">Maker:</span>
+                    <span className="text-white truncate max-w-[120px]">{usbPrinterInfo.manufacturer}</span>
+                  </div>
+                  <div className="flex justify-between text-[7px] font-bold uppercase">
+                    <span className="text-white/40">VID/PID:</span>
+                    <span className="text-primary">{usbPrinterInfo.vid}:{usbPrinterInfo.pid}</span>
+                  </div>
+                  <div className="flex justify-between text-[7px] font-bold uppercase">
+                    <span className="text-white/40">Status:</span>
+                    <span className="text-green-500">Ready</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-[7px] font-black uppercase text-white/20 italic">No Paired Printer Detected</div>
+              )}
+            </div>
+
             <div className="space-y-2">
               <label className="text-[8px] font-black uppercase text-white/40 tracking-widest">Select Video Source</label>
               <Select value={selectedCameraId} onValueChange={onSelectCamera}>
@@ -245,7 +299,7 @@ export function AdminControls({
                 onClick={handleRequestUsb} 
                 className="w-full py-3 bg-zinc-800 text-[9px] font-black uppercase text-white/60 border border-white/10 hover:border-white/30 transition-all flex items-center justify-center gap-2"
               >
-                <Printer className="w-3 h-3" /> Grant Printer Access
+                <Printer className="w-3 h-3" /> Pair & Detect Printer
               </button>
             </div>
           </div>

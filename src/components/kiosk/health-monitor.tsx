@@ -10,7 +10,7 @@ import { KioskLogger } from "@/lib/kiosk/logger";
 /**
  * Health Monitor component.
  * Automatically detects hardware state (Camera, UGreen Hub, Printer, Bill Acceptor).
- * Optimized for Honor Pad X10 via UGreen 7-in-1 Hub.
+ * Optimized for Honor Pad X10 via UGreen 7-in-1 Hub using WebUSB for printer monitoring.
  */
 export function HealthMonitor() {
   const [status, setStatus] = useState({
@@ -21,7 +21,8 @@ export function HealthMonitor() {
     printer: "HUB PENDING",
     camera: false,
     usbHub: false,
-    billAcceptor: false
+    billAcceptor: false,
+    printerDevice: null as USBDevice | null
   });
 
   const checkHealth = useCallback(async () => {
@@ -34,12 +35,15 @@ export function HealthMonitor() {
       
       let hasUsb = false;
       let hasSerial = false;
+      let detectedPrinter: USBDevice | null = null;
 
       if (typeof navigator !== 'undefined') {
         if ('usb' in navigator) {
-          // @ts-ignore
           const usbDevices = await navigator.usb.getDevices();
           hasUsb = usbDevices.length > 0;
+          // Look for common photo printer classes or known PIDs/VIDs if needed
+          // For now, we identify the first paired USB device as a potential printer
+          detectedPrinter = usbDevices[0] || null;
         }
         if ('serial' in navigator) {
           // @ts-ignore
@@ -48,24 +52,23 @@ export function HealthMonitor() {
         }
       }
       
-      setStatus({
+      setStatus(prev => ({
+        ...prev,
         online: typeof navigator !== 'undefined' ? navigator.onLine : true,
         storage: `${stats.usedMB}MB`,
         storagePercent: stats.percent,
         syncPending: queue.length,
-        printer: hasUsb ? "PRINTER READY" : "HUB PENDING",
+        printer: detectedPrinter ? (detectedPrinter.productName || "PRINTER READY") : (hasUsb ? "HUB ACTIVE" : "HUB PENDING"),
         camera: hasCam,
         usbHub: hasUsb,
-        billAcceptor: hasSerial
-      });
+        billAcceptor: hasSerial,
+        printerDevice: detectedPrinter
+      }));
 
-      if (hasUsb && !status.usbHub) {
-        KioskLogger.log('info', 'Hardware', 'UGreen Hub detected.');
-      }
     } catch (e) {
       // Handshake silent retry
     }
-  }, [status.usbHub]);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(checkHealth, 3000);
@@ -76,25 +79,28 @@ export function HealthMonitor() {
       window.addEventListener('offline', checkHealth);
       
       if ('usb' in navigator) {
-        // @ts-ignore
-        navigator.usb.addEventListener('connect', checkHealth);
-        // @ts-ignore
-        navigator.usb.addEventListener('disconnect', checkHealth);
+        const handleConnect = (event: USBConnectionEvent) => {
+          KioskLogger.log('info', 'Hardware', `USB Device Connected: ${event.device.productName || 'Unknown'}`);
+          checkHealth();
+        };
+        const handleDisconnect = (event: USBConnectionEvent) => {
+          KioskLogger.log('warn', 'Hardware', `USB Device Disconnected: ${event.device.productName || 'Unknown'}`);
+          checkHealth();
+        };
+
+        navigator.usb.addEventListener('connect', handleConnect);
+        navigator.usb.addEventListener('disconnect', handleDisconnect);
+
+        return () => {
+          navigator.usb.removeEventListener('connect', handleConnect);
+          navigator.usb.removeEventListener('disconnect', handleDisconnect);
+          clearInterval(interval);
+        };
       }
     }
 
     return () => {
       clearInterval(interval);
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('online', checkHealth);
-        window.removeEventListener('offline', checkHealth);
-        if ('usb' in navigator) {
-          // @ts-ignore
-          navigator.usb.removeEventListener('connect', checkHealth);
-          // @ts-ignore
-          navigator.usb.removeEventListener('disconnect', checkHealth);
-        }
-      }
     };
   }, [checkHealth]);
 
@@ -114,7 +120,7 @@ export function HealthMonitor() {
           <span>Bill Acceptor: {status.billAcceptor ? "LINKED" : "OFFLINE"}</span>
         </div>
         <div className="flex items-center gap-1 text-[8px] font-black uppercase text-white tracking-tighter">
-          <Printer className={cn("w-2.5 h-2.5", status.usbHub ? "text-primary" : "text-white/20")} />
+          <Printer className={cn("w-2.5 h-2.5", status.printerDevice ? "text-primary" : "text-white/20")} />
           <span>{status.printer}</span>
         </div>
         <div className="flex items-center gap-1 text-[8px] font-black uppercase text-white tracking-tighter">

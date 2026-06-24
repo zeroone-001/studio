@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -247,7 +248,10 @@ export default function KioskPage() {
   const availableBlueprints = useMemo(() => {
     if (appState === "test-camera") return BLUEPRINTS;
     if (!packageSelected) return [];
-    return BLUEPRINTS.filter(bp => bp.package === packageSelected);
+    // Strict PHP 50 Limit (5 Layouts) vs PHP 100 (10 Layouts)
+    const filtered = BLUEPRINTS.filter(bp => bp.package === packageSelected);
+    if (packageSelected === 50) return filtered.slice(0, 5);
+    return filtered.slice(0, 10);
   }, [packageSelected, appState]);
 
   const availableFilters = useMemo(() => {
@@ -293,7 +297,7 @@ export default function KioskPage() {
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
-    // 1. INSTANT QR GENERATION (SYNCHRONOUS) - Decoupled from background tasks
+    // 1. INSTANT QR GENERATION (SYNCHRONOUS)
     const sessionId = `sess_${Date.now()}`;
     const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
@@ -401,6 +405,8 @@ export default function KioskPage() {
       exportTriggeredRef.current = false;
       setUploadStatus("idle");
       setSoftCopyQrUrl("");
+      // Force exit owner mode visual diagnostics if they were active
+      setIsOwnerMode(false);
     }
   }, [appState, handleFinalExport]);
 
@@ -431,6 +437,8 @@ export default function KioskPage() {
     setSelectedStickerId(null);
     setPrintProgress(0);
     setPromoConsent(null);
+    // Reset owner mode state to ensure diagnostics "N" are hidden for next customer
+    setIsOwnerMode(false);
   }, [promoConsent]);
 
   const startCamera = async (deviceId?: string) => {
@@ -555,6 +563,7 @@ export default function KioskPage() {
           />
         )}
 
+        {/* Health Monitor strictly gated to isOwnerMode only */}
         {isOwnerMode && <HealthMonitor />}
 
         {appState === "welcome" && (

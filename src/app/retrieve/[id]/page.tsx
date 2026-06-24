@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
@@ -26,13 +27,14 @@ export default function RetrievePage() {
       const photoRef = ref(storage, `photos/${id}.jpg`);
       
       // TARGET: Direct CDN fetch - high frequency polling for instant result
+      // Increased polling frequency to 400ms for ultra-fast customer experience
       const url = await getDownloadURL(photoRef);
       setImageUrl(url);
       setLoading(false);
     } catch (err) {
-      // High-speed polling (every 500ms) to detect background upload completion immediately
-      if (retries < 40) { // Approx 20 seconds total
-        setTimeout(() => setRetries(prev => prev + 1), 500);
+      // High-speed polling (every 400ms) to detect background upload completion immediately
+      if (retries < 50) { // Approx 20 seconds total
+        setTimeout(() => setRetries(prev => prev + 1), 400);
       } else {
         setError("Finalizing HD portrait... please try again in a few seconds.");
         setLoading(false);
@@ -140,6 +142,7 @@ export default function RetrievePage() {
           )}
         </div>
 
+        {/* Branding N (Monogram) is hidden on soft-copy page for customers */}
         <p className="mt-12 text-[8px] font-black uppercase tracking-[0.6em] text-white/10">
           © JNL STUDIO PORTRAITS
         </p>

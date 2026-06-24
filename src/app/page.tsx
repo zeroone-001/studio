@@ -34,6 +34,11 @@ export const FILTERS = [
   { id: "icey", label: "ICEY", sub: "COOL TONES", class: "hue-rotate-[10deg] saturate-[0.8] brightness-[1.1] contrast-[1.1] opacity-[0.95]" },
   { id: "indie", label: "INDIE", sub: "VIBRANT", class: "saturate-[1.6] contrast-[1.2] brightness-[1.05] sepia-[0.05]" },
   { id: "bwpro", label: "B&W PRO", sub: "CINEMATIC", class: "grayscale contrast-[1.6] brightness-[1.1]" },
+  { id: "candy", label: "CANDY", sub: "POP VIBE", class: "saturate-[1.8] contrast-[1.25] brightness-[1.1] hue-rotate-[5deg]" },
+  { id: "velvet", label: "VELVET", sub: "WARM PINK", class: "sepia-[0.1] saturate-[1.4] contrast-[1.1] hue-rotate-[-10deg] brightness-[1.05]" },
+  { id: "sunset", label: "SUNSET", sub: "GOLDEN HOUR", class: "sepia-[0.4] saturate-[1.7] brightness-[1.1] contrast-[1.1] hue-rotate-[-15deg]" },
+  { id: "dream", label: "DREAM", sub: "SOFT GLOW", class: "brightness-[1.2] contrast-[0.9] saturate-[1.1] blur-[0.5px]" },
+  { id: "film", label: "FILM", sub: "VINTAGE", class: "grayscale-[0.2] sepia-[0.15] contrast-[1.3] brightness-[0.95] saturate-[1.2]" },
 ];
 
 export const STICKER_DEFS = [
@@ -269,8 +274,19 @@ export default function KioskPage() {
   }, [packageSelected, appState]);
 
   const availableFilters = useMemo(() => {
-    return FILTERS;
-  }, []);
+    if (appState === "test-camera" || packageSelected === 100) return FILTERS;
+    return FILTERS.slice(0, 5); // Only 5 filters for PHP 50
+  }, [packageSelected, appState]);
+
+  // RESET FILTER IF PACKAGE 50 IS SELECTED AND CURRENT FILTER IS BEYOND INDEX 4
+  useEffect(() => {
+    if (packageSelected === 50) {
+      const index = FILTERS.findIndex(f => f.id === selectedFilter.id);
+      if (index > 4) {
+        setSelectedFilter(FILTERS[0]);
+      }
+    }
+  }, [packageSelected, selectedFilter.id]);
 
   useEffect(() => {
     if (packageSelected || appState === "test-camera") {

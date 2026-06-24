@@ -144,19 +144,19 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* Footer Branding Layer - Optimized for tighter spacing and maximum photo area */}
+      {/* Footer Branding Layer - Optimized to bridge the gap and minimize whitespace */}
       <div 
-        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-start pt-[0.8%]"
+        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-start"
         style={{ height: '9.2%' }}
       >
         {quoteText && (
-          <div className="flex items-center justify-center mb-1">
+          <div className="flex items-center justify-center mb-0.5">
             <span className="font-headline font-black italic uppercase text-black/30 text-center px-4 leading-none" style={{ fontSize: isStrip ? '8.5px' : '10.5px', letterSpacing: '0.04em' }}>{quoteText}</span>
           </div>
         )}
 
         <div className="w-[94%] mx-auto flex justify-between items-center">
-          <div className="flex flex-col items-start leading-none gap-0.5">
+          <div className="flex flex-col items-start leading-none gap-0">
              <span className="font-headline font-black italic uppercase text-black flex items-center gap-0.5" style={{ fontSize: isStrip ? '12px' : '16px' }}>
                <span>JNL</span>
                <span className="text-[#FF3399]">STUDIO</span>

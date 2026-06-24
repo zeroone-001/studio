@@ -33,11 +33,6 @@ export const FILTERS = [
   { id: "icey", label: "ICEY", sub: "COOL TONES", class: "hue-rotate-[10deg] saturate-[0.8] brightness-[1.1] contrast-[1.1] opacity-[0.95]" },
   { id: "indie", label: "INDIE", sub: "VIBRANT", class: "saturate-[1.6] contrast-[1.2] brightness-[1.05] sepia-[0.05]" },
   { id: "bwpro", label: "B&W PRO", sub: "CINEMATIC", class: "grayscale contrast-[1.6] brightness-[1.1]" },
-  { id: "aesthetic", label: "AESTHETIC", sub: "SOFT FOCUS", class: "brightness-[1.05] saturate-[0.7] contrast-[0.9] blur-[0.2px]" },
-  { id: "sunset", label: "SUNSET", sub: "GOLDEN HOUR", class: "sepia-[0.5] saturate-[1.5] brightness-[1.1] hue-rotate-[-10deg]" },
-  { id: "vibe", label: "VIBE", sub: "MOODY", class: "hue-rotate-[-20deg] saturate-[1.4] contrast-[1.1] brightness-[0.9]" },
-  { id: "natural", label: "NATURAL+", sub: "STUDIO", class: "brightness-[1.05] contrast-[1.05] saturate-[1.1]" },
-  { id: "silver", label: "SILVER", sub: "STARK B&W", class: "grayscale contrast-[2] brightness-[1.2]" },
 ];
 
 export const STICKER_DEFS = [
@@ -273,9 +268,8 @@ export default function KioskPage() {
   }, [packageSelected, appState]);
 
   const availableFilters = useMemo(() => {
-    if (packageSelected === 50) return FILTERS.slice(0, 5);
     return FILTERS;
-  }, [packageSelected]);
+  }, []);
 
   useEffect(() => {
     if (packageSelected || appState === "test-camera") {

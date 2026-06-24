@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -553,7 +552,6 @@ export default function KioskPage() {
           />
         )}
 
-        {/* Health Monitor strictly gated to isOwnerMode only */}
         {isOwnerMode && <HealthMonitor />}
 
         {appState === "welcome" && (

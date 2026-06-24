@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useMemo, useRef, useState, useEffect } from "react";
@@ -145,26 +144,26 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* Footer Branding Layer - Reduced height to 8% to maximize photo area */}
+      {/* Footer Branding Layer - Ultra-tightened spacing to maximize photo area */}
       <div 
-        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-end pb-[1.2%]"
-        style={{ height: '8.5%' }}
+        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-end pb-[0.8%]"
+        style={{ height: '7.2%' }}
       >
         {quoteText && (
           <div className="mb-auto pt-0.5 flex items-center justify-center">
-            <span className="font-headline font-black italic uppercase text-black/30 text-center px-4 leading-none" style={{ fontSize: isStrip ? '9px' : '11px', letterSpacing: '0.04em' }}>{quoteText}</span>
+            <span className="font-headline font-black italic uppercase text-black/30 text-center px-4 leading-none" style={{ fontSize: isStrip ? '8.5px' : '10.5px', letterSpacing: '0.04em' }}>{quoteText}</span>
           </div>
         )}
 
-        <div className="w-[94%] mx-auto flex justify-between items-end">
-          <div className="flex flex-col items-start leading-none">
-             <span className="font-headline font-black italic uppercase text-black flex items-center gap-1" style={{ fontSize: isStrip ? '13px' : '17px' }}>
+        <div className="w-[94%] mx-auto flex justify-between items-end gap-1">
+          <div className="flex flex-col items-start leading-none gap-0.5">
+             <span className="font-headline font-black italic uppercase text-black flex items-center gap-0.5" style={{ fontSize: isStrip ? '12px' : '16px' }}>
                <span>JNL</span>
                <span className="text-[#FF3399]">STUDIO</span>
              </span>
-             <span className="font-bold uppercase tracking-[0.3em] text-black/20" style={{ fontSize: isStrip ? '4px' : '5px' }}>PHOTOBOOTH</span>
+             <span className="font-bold uppercase tracking-[0.2em] text-black/20" style={{ fontSize: isStrip ? '3.5px' : '4.5px' }}>PHOTOBOOTH</span>
           </div>
-          <span className="font-bold uppercase tracking-[0.1em] text-black/20 leading-none" style={{ fontSize: isStrip ? '6px' : '8px' }}>{displayDate}</span>
+          <span className="font-bold uppercase tracking-[0.1em] text-black/20 leading-none mb-[0.2%]" style={{ fontSize: isStrip ? '5.5px' : '7.5px' }}>{displayDate}</span>
         </div>
       </div>
     </div>

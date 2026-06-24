@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Session persistence and Hybrid Sync Queue for JNL Studio Kiosk.
  * Optimized for Honor Pad X10 local storage and lifecycle management.
@@ -48,7 +47,7 @@ export const SessionStore = {
     });
   },
 
-  // Save photo to IndexedDB for instant local persistence (Temporary Working Location)
+  // Save photo to IndexedDB for instant local persistence
   savePhotoLocally: async (id: string, blob: Blob) => {
     try {
       if (typeof window === 'undefined') return;
@@ -61,7 +60,7 @@ export const SessionStore = {
         tx.onerror = () => reject(tx.error);
       });
     } catch (e) {
-      console.error('Local Temp Save Failed', e);
+      console.error('Local Buffer Failed', e);
     }
   },
 

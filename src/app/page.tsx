@@ -27,7 +27,7 @@ import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "thankyou" | "test-camera";
 
-// STRICT: 5 Professional TikTok Filters for PHP 50
+// STRICT: 5 TikTok-Style Filters
 export const FILTERS = [
   { id: "glowup", label: "GLOW UP", sub: "TIKTOK SKIN", class: "brightness-110 contrast-[1.05] saturate-[1.15] sepia-[0.05] drop-shadow-md" },
   { id: "retro", label: "RETRO", sub: "WARM VIBE", class: "sepia-[0.35] contrast-[1.1] brightness-[1.05] saturate-[1.3] hue-rotate-[-5deg]" },
@@ -244,20 +244,21 @@ export default function KioskPage() {
   const availableBlueprints = useMemo(() => {
     if (appState === "test-camera") return BLUEPRINTS;
     if (!packageSelected) return [];
-    return BLUEPRINTS.filter(bp => bp.package === packageSelected);
+    // Strictly limit PHP 50 to 5 layouts
+    const pool = BLUEPRINTS.filter(bp => bp.package === packageSelected);
+    return packageSelected === 50 ? pool.slice(0, 5) : pool;
   }, [packageSelected, appState]);
 
   const availableFilters = useMemo(() => {
-    // Limit to 5 filters if PHP 50 package is selected
+    // Strictly limit to 5 filters for PHP 50
     if (packageSelected === 50) return FILTERS.slice(0, 5);
     return FILTERS;
   }, [packageSelected]);
 
   useEffect(() => {
     if (packageSelected || appState === "test-camera") {
-      const filterSet = availableBlueprints;
       if (!selectedBlueprint || selectedBlueprint.package !== packageSelected) {
-        const first = filterSet[0];
+        const first = availableBlueprints[0];
         if (first) setSelectedBlueprint(first);
       }
     }
@@ -292,14 +293,12 @@ export default function KioskPage() {
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
-    // IMMEDIATE STEP 1: Generate Session ID and QR URL INSTANTLY
+    // IMMEDIATE QR: Sub-second display
     const sessionId = `sess_${Date.now()}`;
     const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
     
-    setUploadStatus("uploading");
-
-    // Start assembly
+    // START ALL BACKGROUND TASKS IN PARALLEL
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1600;
     exportCanvas.height = 2400;
@@ -346,23 +345,22 @@ export default function KioskPage() {
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
 
-      // PARALLEL STEP 3: Save Locally
-      SessionStore.savePhotoLocally(sessionId, blob);
+      // 1. INSTANT LOCAL BUFFER (Honor Pad Internal)
+      await SessionStore.savePhotoLocally(sessionId, blob);
       
-      // PARALLEL STEP 4: Cloud Task
+      // 2. BACKGROUND: CLOUD SYNC
+      setUploadStatus("uploading");
       (async () => {
         try {
           const { storage, db } = initializeFirebase();
           const photoRef = ref(storage, `photos/${sessionId}.jpg`);
           await uploadBytes(photoRef, blob);
-          
           await setDoc(doc(db, "photos", sessionId), {
             id: sessionId,
             storagePath: photoRef.fullPath,
             timestamp: serverTimestamp(),
             isDownloaded: false
           });
-
           setUploadStatus("complete");
           KioskLogger.log('info', 'Cloud', `Session ${sessionId} synced.`);
         } catch (e) {
@@ -370,7 +368,7 @@ export default function KioskPage() {
         }
       })();
 
-      // PARALLEL STEP 5: USB Task
+      // 3. BACKGROUND: USB BACKUP (Lexar)
       if (usbDirectoryHandle) {
         (async () => {
           try {
@@ -380,11 +378,14 @@ export default function KioskPage() {
             await writable.write(blob);
             await writable.close();
             SessionStore.save({ isUsbBackedUp: true });
-          } catch (e) {}
+            KioskLogger.log('info', 'Backup', 'USB Transfer complete.');
+          } catch (e) {
+            KioskLogger.log('error', 'Backup', 'USB Transfer failed.');
+          }
         })();
       }
 
-      // PARALLEL STEP 6: Automatic Print Signal
+      // 4. PARALLEL: PHYSICAL PRINT SIGNAL
       initiatePrint(blob);
 
     }, 'image/jpeg', 0.85);
@@ -407,7 +408,7 @@ export default function KioskPage() {
     if (appState === "printing" && printProgress < 100) {
       const timer = setInterval(() => {
         setPrintProgress(prev => Math.min(prev + 1, 100));
-      }, 100); // Exactly 10 seconds
+      }, 100); 
       return () => clearInterval(timer);
     }
   }, [appState, printProgress]);
@@ -477,7 +478,7 @@ export default function KioskPage() {
     setAppState("capturing");
     setCapturedPhotos([]); 
     
-    // OPTIMIZATION: Ensure camera is visible full screen so customer can see themselves BEFORE countdown
+    // READY PERIOD: Camera is open before countdown starts
     await new Promise(r => setTimeout(r, 2000)); 
 
     for (let i = 0; i < totalShots; i++) {
@@ -622,7 +623,7 @@ export default function KioskPage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
-                    <Sparkles className="w-4 h-4 text-primary" /> TikTok Filters
+                    <Sparkles className="w-4 h-4 text-primary" /> Premium Filters
                   </div>
                   <div className="grid grid-cols-5 gap-3">
                     {availableFilters.map((f) => (
@@ -654,7 +655,7 @@ export default function KioskPage() {
         )}
 
         {appState === "review" && (
-          <div className="w-full h-full max-w-7xl flex flex-col lg:flex-row items-center justify-center gap-12 animate-in fade-in duration-500 py-6 px-8">
+          <div className="w-full h-full max-7xl flex flex-col lg:flex-row items-center justify-center gap-12 animate-in fade-in duration-500 py-6 px-8">
             <div className="relative w-full lg:flex-1 h-full flex items-center justify-center overflow-hidden">
               <div className="h-full w-auto max-w-full shadow-[0_0_60px_rgba(0,0,0,0.8)] relative border-4 border-white">
                  {selectedBlueprint && capturedPhotos.length > 0 && <BlueprintFrame blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.class} isPreview />}
@@ -769,8 +770,8 @@ export default function KioskPage() {
 
                      <div className="flex flex-col items-center gap-1">
                        <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest text-center">Instant HD Download</p>
-                       {uploadStatus === "uploading" && <div className="text-[7px] text-primary/60 font-black uppercase animate-pulse">Uploading HD Buffer...</div>}
-                       {uploadStatus === "complete" && <div className="text-[7px] text-green-500 font-black uppercase">HD Ready in Cloud</div>}
+                       {uploadStatus === "uploading" && <div className="text-[7px] text-primary/60 font-black uppercase animate-pulse">Syncing Cloud...</div>}
+                       {uploadStatus === "complete" && <div className="text-[7px] text-green-500 font-black uppercase">HD Ready</div>}
                      </div>
                    </div>
                    

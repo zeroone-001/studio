@@ -72,12 +72,12 @@ export const BlueprintFrame = React.memo(({
         zIndex: 0
       }}
     >
-      {/* Background Photos */}
-      <div className="absolute inset-0 z-0 bg-zinc-100">
+      {/* Background Photos - Absolute tight positioning */}
+      <div className="absolute inset-0 z-0 bg-white">
         {blueprint.slots.map((slot, index) => (
           <div
             key={index}
-            className="absolute bg-zinc-200 overflow-hidden"
+            className="absolute bg-zinc-100 overflow-hidden"
             style={{
               left: `${((isStrip ? slot.x / 2 : slot.x) / STRIP_W) * 100}%`,
               top: `${(slot.y / 2400) * 100}%`, 
@@ -97,7 +97,7 @@ export const BlueprintFrame = React.memo(({
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <span className="text-[10px] text-black/20 font-black uppercase">POSE {index + 1}</span>
+                <span className="text-[10px] text-black/10 font-black uppercase">POSE {index + 1}</span>
               </div>
             )}
           </div>
@@ -144,26 +144,26 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* Footer Branding Layer - Optimized to bridge the gap and minimize whitespace */}
+      {/* Footer Branding Layer - Tight spacing immediately after photo area */}
       <div 
-        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-start"
+        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-start pt-[0.5%]"
         style={{ height: '9.2%' }}
       >
         {quoteText && (
-          <div className="flex items-center justify-center mb-0.5">
-            <span className="font-headline font-black italic uppercase text-black/30 text-center px-4 leading-none" style={{ fontSize: isStrip ? '8.5px' : '10.5px', letterSpacing: '0.04em' }}>{quoteText}</span>
+          <div className="flex items-center justify-center mb-[0.2%]">
+            <span className="font-headline font-black italic uppercase text-black/40 text-center px-4 leading-none" style={{ fontSize: isStrip ? '8.5px' : '10.5px', letterSpacing: '0.04em' }}>{quoteText}</span>
           </div>
         )}
 
-        <div className="w-[94%] mx-auto flex justify-between items-center">
+        <div className="w-[94%] mx-auto flex justify-between items-center mt-[0.5%]">
           <div className="flex flex-col items-start leading-none gap-0">
-             <span className="font-headline font-black italic uppercase text-black flex items-center gap-0.5" style={{ fontSize: isStrip ? '12px' : '16px' }}>
+             <span className="font-headline font-black italic uppercase text-black flex items-center gap-0.5" style={{ fontSize: isStrip ? '13px' : '17px' }}>
                <span>JNL</span>
                <span className="text-[#FF3399]">STUDIO</span>
              </span>
-             <span className="font-bold uppercase tracking-[0.2em] text-black/20" style={{ fontSize: isStrip ? '3.5px' : '4.5px' }}>PHOTOBOOTH</span>
+             <span className="font-bold uppercase tracking-[0.2em] text-black/30" style={{ fontSize: isStrip ? '3.8px' : '4.8px' }}>PHOTOBOOTH</span>
           </div>
-          <span className="font-bold uppercase tracking-[0.1em] text-black/20 leading-none" style={{ fontSize: isStrip ? '5.5px' : '7.5px' }}>{displayDate}</span>
+          <span className="font-bold uppercase tracking-[0.1em] text-black/30 leading-none" style={{ fontSize: isStrip ? '6px' : '8px' }}>{displayDate}</span>
         </div>
       </div>
     </div>

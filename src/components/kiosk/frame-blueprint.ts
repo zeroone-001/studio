@@ -16,10 +16,10 @@ export type FrameBlueprint = {
 };
 
 /**
- * Simplified JNL Studio Blueprints
+ * Optimized JNL Studio Blueprints
  * Internal Coordinate System: 1600 (W) x 2400 (H)
  * Footer area starts at ~9.2% (approx Y=2180)
- * All slots optimized for portrait-friendly framing (Faces fully visible)
+ * Gaps between slots reduced to minimum (8-10 units) for maximum photo area.
  */
 export const BLUEPRINTS: FrameBlueprint[] = [
   // ₱50 PACKAGE (3 SHOTS) - Optimized for 2x6 Strips
@@ -28,9 +28,9 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "STACKED",
     package: 50,
     slots: [
-      { x: 180, y: 80, w: 1240, h: 660 },
-      { x: 180, y: 780, w: 1240, h: 660 },
-      { x: 180, y: 1480, w: 1240, h: 660 },
+      { x: 40, y: 40, w: 1520, h: 690 },
+      { x: 40, y: 740, w: 1520, h: 690 },
+      { x: 40, y: 1440, w: 1520, h: 690 },
     ],
   },
   {
@@ -38,9 +38,9 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "TOP-HEAVY",
     package: 50,
     slots: [
-      { x: 120, y: 80, w: 1360, h: 1000 },
-      { x: 120, y: 1120, w: 650, h: 1020 },
-      { x: 830, y: 1120, w: 650, h: 1020 },
+      { x: 40, y: 40, w: 1520, h: 1060 },
+      { x: 40, y: 1110, w: 755, h: 1020 },
+      { x: 805, y: 1110, w: 755, h: 1020 },
     ],
   },
   {
@@ -48,9 +48,9 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "BALANCED",
     package: 50,
     slots: [
-      { x: 120, y: 80, w: 650, h: 1040 },
-      { x: 830, y: 80, w: 650, h: 1040 },
-      { x: 120, y: 1160, w: 1360, h: 980 },
+      { x: 40, y: 40, w: 755, h: 1060 },
+      { x: 805, y: 40, w: 755, h: 1060 },
+      { x: 40, y: 1110, w: 1520, h: 1020 },
     ],
   },
 
@@ -60,9 +60,9 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "CLASSIC GRID",
     package: 100,
     slots: [
-      { x: 60, y: 60, w: 720, h: 680 }, { x: 820, y: 60, w: 720, h: 680 },
-      { x: 60, y: 780, w: 720, h: 680 }, { x: 820, y: 780, w: 720, h: 680 },
-      { x: 60, y: 1500, w: 720, h: 680 }, { x: 820, y: 1500, w: 720, h: 680 },
+      { x: 40, y: 40, w: 755, h: 690 }, { x: 805, y: 40, w: 755, h: 690 },
+      { x: 40, y: 740, w: 755, h: 690 }, { x: 805, y: 740, w: 755, h: 690 },
+      { x: 40, y: 1440, w: 755, h: 690 }, { x: 805, y: 1440, w: 755, h: 690 },
     ],
   },
   {
@@ -70,51 +70,51 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "MODERN THREE",
     package: 100,
     slots: [
-      { x: 60, y: 60, w: 460, h: 1040 }, { x: 570, y: 60, w: 460, h: 1040 }, { x: 1080, y: 60, w: 460, h: 1040 },
-      { x: 60, y: 1140, w: 460, h: 1040 }, { x: 570, y: 1140, w: 460, h: 1040 }, { x: 1080, y: 1140, w: 460, h: 1040 },
+      { x: 40, y: 40, w: 500, h: 1050 }, { x: 550, y: 40, w: 500, h: 1050 }, { x: 1060, y: 40, w: 500, h: 1050 },
+      { x: 40, y: 1100, w: 500, h: 1050 }, { x: 550, y: 1100, w: 500, h: 1050 }, { x: 1060, y: 1100, w: 500, h: 1050 },
     ],
   },
   {
     id: "p100-layout-3",
-    label: "FEATURE DUO",
+    label: "MOSAIC",
     package: 100,
     slots: [
-      { x: 60, y: 60, w: 720, h: 1000 }, { x: 820, y: 60, w: 720, h: 1000 },
-      { x: 60, y: 1100, w: 340, h: 1080 }, { x: 440, y: 1100, w: 340, h: 1080 },
-      { x: 820, y: 1100, w: 340, h: 1080 }, { x: 1200, y: 1100, w: 340, h: 1080 },
+      { x: 40, y: 40, w: 1000, h: 1050 },
+      { x: 1050, y: 40, w: 510, h: 520 },
+      { x: 1050, y: 570, w: 510, h: 520 },
+      { x: 40, y: 1100, w: 500, h: 1050 },
+      { x: 550, y: 1100, w: 500, h: 1050 },
+      { x: 1060, y: 1100, w: 500, h: 1050 },
     ],
   },
   {
     id: "p100-layout-4",
-    label: "MOSAIC",
+    label: "PORTRAIT GRID",
     package: 100,
     slots: [
-      { x: 60, y: 60, w: 1000, h: 1040 },
-      { x: 1120, y: 60, w: 420, h: 500 },
-      { x: 1120, y: 600, w: 420, h: 500 },
-      { x: 60, y: 1140, w: 460, h: 1040 },
-      { x: 570, y: 1140, w: 460, h: 1040 },
-      { x: 1080, y: 1140, w: 460, h: 1040 },
+      { x: 40, y: 40, w: 755, h: 1060 }, { x: 805, y: 40, w: 755, h: 1060 },
+      { x: 40, y: 1110, w: 375, h: 1020 }, { x: 425, y: 1110, w: 375, h: 1020 },
+      { x: 805, y: 1110, w: 375, h: 1020 }, { x: 1190, y: 1110, w: 375, h: 1020 },
     ],
   },
   {
     id: "p100-layout-5",
-    label: "PORTRAIT GRID",
+    label: "PIN-UP",
     package: 100,
     slots: [
-      { x: 60, y: 60, w: 720, h: 1040 }, { x: 820, y: 60, w: 720, h: 1040 },
-      { x: 60, y: 1140, w: 340, h: 1040 }, { x: 440, y: 1140, w: 340, h: 1040 },
-      { x: 820, y: 1140, w: 340, h: 1040 }, { x: 1200, y: 1140, w: 340, h: 1040 },
+      { x: 40, y: 40, w: 460, h: 460 }, { x: 570, y: 40, w: 460, h: 460 }, { x: 1100, y: 40, w: 460, h: 460 },
+      { x: 40, y: 540, w: 1520, h: 1040 },
+      { x: 40, y: 1620, w: 755, h: 520 }, { x: 805, y: 1620, w: 755, h: 520 },
     ],
   },
   {
     id: "p100-layout-6",
-    label: "PREMIUM EVENT",
+    label: "NINE-UP",
     package: 100,
     slots: [
-      { x: 100, y: 60, w: 680, h: 680 }, { x: 820, y: 60, w: 680, h: 680 },
-      { x: 100, y: 780, w: 680, h: 680 }, { x: 820, y: 780, w: 680, h: 680 },
-      { x: 100, y: 1500, w: 680, h: 680 }, { x: 820, y: 1500, w: 680, h: 680 },
+      { x: 40, y: 40, w: 500, h: 690 }, { x: 550, y: 40, w: 500, h: 690 }, { x: 1060, y: 40, w: 500, h: 690 },
+      { x: 40, y: 740, w: 500, h: 690 }, { x: 550, y: 740, w: 500, h: 690 }, { x: 1060, y: 740, w: 500, h: 690 },
+      // Note: Extra slots are ignored if the package is 6 shots, but kept for design flexibility
     ],
   }
 ];

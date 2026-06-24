@@ -16,68 +16,48 @@ export type FrameBlueprint = {
 };
 
 /**
- * Professional Studio Blueprints (Optimized for 4x6 / 2x6)
+ * Simplified JNL Studio Blueprints
  * Internal Coordinate System: 1600 (W) x 2400 (H)
- * Footer branding minimized to 7.2% to maximize photo area.
- * Slots re-proportioned to Vertical (3:4) and Square ratios to avoid cutting off faces.
+ * Footer area starts at ~9.2% (approx Y=2180)
+ * All slots optimized for portrait-friendly framing (Faces fully visible)
  */
 export const BLUEPRINTS: FrameBlueprint[] = [
-  // ₱50 PACKAGE (3 SHOTS) - 2x6 STRIP
+  // ₱50 PACKAGE (3 SHOTS) - Optimized for 2x6 Strips
   {
-    id: "p50-l1",
-    label: "TRIO",
+    id: "p50-layout-a",
+    label: "STACKED",
     package: 50,
     slots: [
-      { x: 60, y: 60, w: 1480, h: 680 },
-      { x: 60, y: 780, w: 1480, h: 680 },
-      { x: 60, y: 1500, w: 1480, h: 680 },
+      { x: 180, y: 80, w: 1240, h: 640 },
+      { x: 180, y: 780, w: 1240, h: 640 },
+      { x: 180, y: 1480, w: 1240, h: 640 },
     ],
   },
   {
-    id: "p50-l2",
-    label: "STACK",
+    id: "p50-layout-b",
+    label: "TOP-HEAVY",
     package: 50,
     slots: [
-      { x: 60, y: 60, w: 1480, h: 1000 },
-      { x: 60, y: 1100, w: 720, h: 1080 },
-      { x: 820, y: 1100, w: 720, h: 1080 },
+      { x: 120, y: 80, w: 1360, h: 920 },
+      { x: 120, y: 1060, w: 650, h: 960 },
+      { x: 830, y: 1060, w: 650, h: 960 },
     ],
   },
   {
-    id: "p50-l3",
-    label: "COLUMNS",
+    id: "p50-layout-c",
+    label: "BALANCED",
     package: 50,
     slots: [
-      { x: 60, y: 60, w: 460, h: 2100 },
-      { x: 570, y: 60, w: 460, h: 2100 },
-      { x: 1080, y: 60, w: 460, h: 2100 },
-    ],
-  },
-  {
-    id: "p50-l4",
-    label: "PORTRAIT+",
-    package: 50,
-    slots: [
-      { x: 60, y: 60, w: 1480, h: 800 },
-      { x: 60, y: 900, w: 1480, h: 600 },
-      { x: 60, y: 1540, w: 1480, h: 600 },
-    ],
-  },
-  {
-    id: "p50-l5",
-    label: "CLASSIC",
-    package: 50,
-    slots: [
-      { x: 140, y: 100, w: 1320, h: 640 },
-      { x: 140, y: 800, w: 1320, h: 640 },
-      { x: 140, y: 1500, w: 1320, h: 640 },
+      { x: 120, y: 80, w: 650, h: 1000 },
+      { x: 830, y: 80, w: 650, h: 1000 },
+      { x: 120, y: 1140, w: 1360, h: 900 },
     ],
   },
 
-  // ₱100 PACKAGE (6 SHOTS) - 4x6 PHOTO (1600x2400)
+  // ₱100 PACKAGE (6 SHOTS) - Optimized for 4x6 Photo
   {
-    id: "p100-l1",
-    label: "GRID 6",
+    id: "p100-layout-1",
+    label: "CLASSIC GRID",
     package: 100,
     slots: [
       { x: 60, y: 60, w: 720, h: 680 }, { x: 820, y: 60, w: 720, h: 680 },
@@ -86,94 +66,55 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     ],
   },
   {
-    id: "p100-l2",
-    label: "STUDIO",
-    package: 100,
-    slots: [
-      { x: 60, y: 60, w: 1480, h: 900 },
-      { x: 60, y: 1000, w: 460, h: 540 }, { x: 570, y: 1000, w: 460, h: 540 }, { x: 1080, y: 1000, w: 460, h: 540 },
-      { x: 60, y: 1580, w: 720, h: 580 }, { x: 820, y: 1580, w: 720, h: 580 },
-    ],
-  },
-  {
-    id: "p100-l3",
-    label: "SIX-STACK",
+    id: "p100-layout-2",
+    label: "MODERN THREE",
     package: 100,
     slots: [
       { x: 60, y: 60, w: 460, h: 1000 }, { x: 570, y: 60, w: 460, h: 1000 }, { x: 1080, y: 60, w: 460, h: 1000 },
-      { x: 60, y: 1100, w: 460, h: 1000 }, { x: 570, y: 1100, w: 460, h: 1000 }, { x: 1080, y: 1100, w: 460, h: 1000 },
+      { x: 60, y: 1120, w: 460, h: 1000 }, { x: 570, y: 1120, w: 460, h: 1000 }, { x: 1080, y: 1120, w: 460, h: 1000 },
     ],
   },
   {
-    id: "p100-l4",
-    label: "COLLEGE",
+    id: "p100-layout-3",
+    label: "FEATURE DUO",
     package: 100,
     slots: [
-      { x: 60, y: 60, w: 960, h: 960 }, { x: 1060, y: 60, w: 480, h: 460 }, { x: 1060, y: 560, w: 480, h: 460 },
-      { x: 60, y: 1060, w: 460, h: 1100 }, { x: 570, y: 1060, w: 460, h: 1100 }, { x: 1080, y: 1060, w: 460, h: 1100 },
+      { x: 60, y: 60, w: 720, h: 960 }, { x: 820, y: 60, w: 720, h: 960 },
+      { x: 60, y: 1080, w: 340, h: 1040 }, { x: 440, y: 1080, w: 340, h: 1040 },
+      { x: 820, y: 1080, w: 340, h: 1040 }, { x: 1200, y: 1080, w: 340, h: 1040 },
     ],
   },
   {
-    id: "p100-l5",
-    label: "STORY",
+    id: "p100-layout-4",
+    label: "MOSAIC",
     package: 100,
     slots: [
-      { x: 60, y: 60, w: 720, h: 1000 }, { x: 820, y: 60, w: 720, h: 1000 },
-      { x: 60, y: 1100, w: 460, h: 1100 }, { x: 570, y: 1100, w: 460, h: 1100 }, { x: 1080, y: 1100, w: 460, h: 1100 },
-      { x: 60, y: 2230, w: 1480, h: 10 },
+      { x: 60, y: 60, w: 1000, h: 1000 },
+      { x: 1120, y: 60, w: 420, h: 470 },
+      { x: 1120, y: 590, w: 420, h: 470 },
+      { x: 60, y: 1120, w: 460, h: 1000 },
+      { x: 570, y: 1120, w: 460, h: 1000 },
+      { x: 1080, y: 1120, w: 460, h: 1000 },
     ],
   },
   {
-    id: "p100-l6",
-    label: "CUBE",
-    package: 100,
-    slots: [
-      { x: 60, y: 60, w: 720, h: 720 }, { x: 820, y: 60, w: 720, h: 720 },
-      { x: 60, y: 820, w: 1480, h: 600 },
-      { x: 60, y: 1460, w: 460, h: 720 }, { x: 570, y: 1460, w: 460, h: 720 }, { x: 1080, y: 1460, w: 460, h: 720 },
-    ],
-  },
-  {
-    id: "p100-l7",
-    label: "DRAMA",
-    package: 100,
-    slots: [
-      { x: 60, y: 60, w: 1480, h: 320 },
-      { x: 60, y: 420, w: 1480, h: 320 },
-      { x: 60, y: 780, w: 1480, h: 320 },
-      { x: 60, y: 1140, w: 1480, h: 320 },
-      { x: 60, y: 1500, w: 1480, h: 320 },
-      { x: 60, y: 1860, w: 1480, h: 320 },
-    ],
-  },
-  {
-    id: "p100-l8",
-    label: "ECHO",
-    package: 100,
-    slots: [
-      { x: 60, y: 60, w: 720, h: 640 }, { x: 820, y: 60, w: 720, h: 640 },
-      { x: 60, y: 760, w: 720, h: 680 }, { x: 820, y: 760, w: 720, h: 680 },
-      { x: 60, y: 1480, w: 720, h: 680 }, { x: 820, y: 1480, w: 720, h: 680 },
-    ],
-  },
-  {
-    id: "p100-l9",
-    label: "PIN-UP",
+    id: "p100-layout-5",
+    label: "PORTRAIT GRID",
     package: 100,
     slots: [
       { x: 60, y: 60, w: 720, h: 1000 }, { x: 820, y: 60, w: 720, h: 1000 },
-      { x: 60, y: 1100, w: 460, h: 500 }, { x: 570, y: 1100, w: 460, h: 500 }, { x: 1080, y: 1100, w: 460, h: 500 },
-      { x: 60, y: 1640, w: 1480, h: 540 }
+      { x: 60, y: 1120, w: 340, h: 1000 }, { x: 440, y: 1120, w: 340, h: 1000 },
+      { x: 820, y: 1120, w: 340, h: 1000 }, { x: 1200, y: 1120, w: 340, h: 1000 },
     ],
   },
   {
-    id: "p100-l10",
-    label: "MUSEUM",
+    id: "p100-layout-6",
+    label: "PREMIUM EVENT",
     package: 100,
     slots: [
-      { x: 60, y: 60, w: 1480, h: 1300 },
-      { x: 60, y: 1400, w: 260, h: 780 }, { x: 360, y: 1400, w: 260, h: 780 }, { x: 660, y: 1400, w: 260, h: 780 },
-      { x: 960, y: 1400, w: 260, h: 780 }, { x: 1260, y: 1400, w: 280, h: 780 },
+      { x: 100, y: 60, w: 680, h: 660 }, { x: 820, y: 60, w: 680, h: 660 },
+      { x: 100, y: 760, w: 680, h: 660 }, { x: 820, y: 760, w: 680, h: 660 },
+      { x: 100, y: 1460, w: 680, h: 660 }, { x: 820, y: 1460, w: 680, h: 660 },
     ],
   }
 ];

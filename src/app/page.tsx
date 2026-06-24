@@ -149,7 +149,6 @@ export default function KioskPage() {
   const serialPortRef = useRef<any>(null);
 
   // SYNC OWNER MODE CLASS TO BODY
-  // This forcibly hides Next.js dev tools when not in owner mode via globals.css
   useEffect(() => {
     if (typeof document !== 'undefined') {
       if (isOwnerMode) {
@@ -270,9 +269,7 @@ export default function KioskPage() {
   const availableBlueprints = useMemo(() => {
     if (appState === "test-camera") return BLUEPRINTS;
     if (!packageSelected) return [];
-    const filtered = BLUEPRINTS.filter(bp => bp.package === packageSelected);
-    if (packageSelected === 50) return filtered.slice(0, 5);
-    return filtered.slice(0, 10);
+    return BLUEPRINTS.filter(bp => bp.package === packageSelected);
   }, [packageSelected, appState]);
 
   const availableFilters = useMemo(() => {
@@ -318,12 +315,10 @@ export default function KioskPage() {
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
-    // IMMEDIATE QR GENERATION
     const sessionId = `sess_${Date.now()}`;
     const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
     
-    // START BACKGROUND PROCESSING
     (async () => {
       const exportCanvas = document.createElement('canvas');
       exportCanvas.width = 1600;
@@ -372,10 +367,8 @@ export default function KioskPage() {
       exportCanvas.toBlob(async (blob) => {
         if (!blob) return;
 
-        // LOCAL PERSISTENCE FIRST
         await SessionStore.savePhotoLocally(sessionId, blob);
         
-        // BACKGROUND CLOUD SYNC
         setUploadStatus("uploading");
         (async () => {
           try {
@@ -395,7 +388,6 @@ export default function KioskPage() {
           }
         })();
 
-        // BACKGROUND USB SYNC
         if (usbDirectoryHandle) {
           (async () => {
             try {
@@ -409,7 +401,6 @@ export default function KioskPage() {
           })();
         }
 
-        // PHYSICAL PRINT SIGNAL
         initiatePrint(blob);
 
       }, 'image/jpeg', 0.85);
@@ -426,7 +417,7 @@ export default function KioskPage() {
       exportTriggeredRef.current = false;
       setUploadStatus("idle");
       setSoftCopyQrUrl("");
-      setIsOwnerMode(false); // Force exit owner mode for next customer
+      setIsOwnerMode(false); 
     }
   }, [appState, handleFinalExport]);
 
@@ -457,7 +448,7 @@ export default function KioskPage() {
     setSelectedStickerId(null);
     setPrintProgress(0);
     setPromoConsent(null);
-    setIsOwnerMode(false); // FORCED SECURITY RESET
+    setIsOwnerMode(false); 
   }, [promoConsent]);
 
   const startCamera = async (deviceId?: string) => {
@@ -505,7 +496,6 @@ export default function KioskPage() {
     setAppState("capturing");
     setCapturedPhotos([]); 
     
-    // 2-Second Camera Readiness Preview
     await new Promise(r => setTimeout(r, 2000)); 
 
     for (let i = 0; i < totalShots; i++) {
@@ -582,7 +572,6 @@ export default function KioskPage() {
           />
         )}
 
-        {/* OWNER-ONLY STATUS INDICATORS */}
         {isOwnerMode && <HealthMonitor />}
 
         {appState === "welcome" && (
@@ -632,7 +621,7 @@ export default function KioskPage() {
                   <div className="flex items-center gap-3 mb-4 text-white uppercase font-black text-xs tracking-widest border-b border-white/10 pb-2">
                     <Frame className="w-4 h-4 text-primary" /> Select Layout
                   </div>
-                  <div className="grid grid-cols-5 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     {availableBlueprints.map((bp) => (
                       <button key={bp.id} onClick={() => setSelectedBlueprint(bp)} className={cn("aspect-[3/4] relative border-2 transition-all p-1", selectedBlueprint?.id === bp.id ? "bg-primary/20 border-primary shadow-[0_0_15px_#FF3399]" : "bg-white/5 border-white/10")}>
                         <div className="relative w-full h-full bg-zinc-800/50">

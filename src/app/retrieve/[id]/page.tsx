@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
@@ -18,7 +17,6 @@ export default function RetrievePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retries, setRetries] = useState(0);
-  const [startTime] = useState(Date.now());
 
   const fetchPhoto = useCallback(async () => {
     if (!id) return;
@@ -27,14 +25,14 @@ export default function RetrievePage() {
       const { storage } = initializeFirebase();
       const photoRef = ref(storage, `photos/${id}.jpg`);
       
-      // TARGET: Direct CDN fetch
+      // TARGET: Direct CDN fetch - high frequency polling for instant result
       const url = await getDownloadURL(photoRef);
       setImageUrl(url);
       setLoading(false);
     } catch (err) {
-      // If scanned immediately after generation, it might still be uploading
-      if (retries < 15) {
-        setTimeout(() => setRetries(prev => prev + 1), 1000);
+      // High-speed polling (every 500ms) to detect background upload completion immediately
+      if (retries < 40) { // Approx 20 seconds total
+        setTimeout(() => setRetries(prev => prev + 1), 500);
       } else {
         setError("Finalizing HD portrait... please try again in a few seconds.");
         setLoading(false);

@@ -387,7 +387,7 @@ export default function KioskPage() {
         // Parallel Physical Print
         initiatePrint(blob);
 
-      }, 'image/jpeg', 0.82);
+      }, 'image/jpeg', 0.85);
     })();
 
   }, [usbDirectoryHandle, selectedBlueprint, capturedPhotos, selectedFilter]);

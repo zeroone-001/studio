@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -28,6 +27,7 @@ import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "thankyou" | "test-camera";
 
+// STRICT: 5 Professional TikTok Filters for PHP 50
 export const FILTERS = [
   { id: "glowup", label: "GLOW UP", sub: "TIKTOK SKIN", class: "brightness-110 contrast-[1.05] saturate-[1.15] sepia-[0.05] drop-shadow-md" },
   { id: "retro", label: "RETRO", sub: "WARM VIBE", class: "sepia-[0.35] contrast-[1.1] brightness-[1.05] saturate-[1.3] hue-rotate-[-5deg]" },
@@ -248,8 +248,10 @@ export default function KioskPage() {
   }, [packageSelected, appState]);
 
   const availableFilters = useMemo(() => {
+    // Limit to 5 filters if PHP 50 package is selected
+    if (packageSelected === 50) return FILTERS.slice(0, 5);
     return FILTERS;
-  }, []);
+  }, [packageSelected]);
 
   useEffect(() => {
     if (packageSelected || appState === "test-camera") {
@@ -474,6 +476,10 @@ export default function KioskPage() {
     const photos: string[] = [];
     setAppState("capturing");
     setCapturedPhotos([]); 
+    
+    // OPTIMIZATION: Ensure camera is visible full screen so customer can see themselves BEFORE countdown
+    await new Promise(r => setTimeout(r, 2000)); 
+
     for (let i = 0; i < totalShots; i++) {
       for (let c = 3; c > 0; c--) {
         setCountdown(c);

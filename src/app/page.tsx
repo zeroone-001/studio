@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -310,7 +309,7 @@ export default function KioskPage() {
     
     const sessionId = `sess_${Date.now()}`;
     const startTime = performance.now();
-    KioskLogger.log('info', 'Export', `Pipeline Handshake: ${new Date().toISOString()}`);
+    KioskLogger.log('info', 'Export', `Pipeline Handshake Start: ${new Date().toISOString()}`);
 
     // Step 1: Photo Generation
     const genStart = performance.now();
@@ -364,7 +363,7 @@ export default function KioskPage() {
 
       // Step 2: Photo Save (Local)
       const saveStart = performance.now();
-      initiatePrint(blob);
+      initiatePrint(blob); // Parallel printing start
       await SessionStore.savePhotoLocally(sessionId, blob);
       const saveEnd = performance.now();
 
@@ -396,21 +395,21 @@ export default function KioskPage() {
         setUploadStatus("complete");
         const qrEnd = performance.now();
 
-        // Performance Audit Report
+        // High-Precision Performance Audit Report
         const audit = {
-          "Photo Generation": `${(genEnd - genStart).toFixed(2)}ms`,
-          "Local Save (IndexedDB)": `${(saveEnd - saveStart).toFixed(2)}ms`,
-          "Firebase Storage Upload": `${(uploadEnd - cloudStart).toFixed(2)}ms`,
-          "Database Write (Firestore)": `${(dbEnd - dbStart).toFixed(2)}ms`,
-          "QR Generation": `${(qrEnd - qrStart).toFixed(2)}ms`,
+          "1. Photo Generation": `${(genEnd - genStart).toFixed(2)}ms`,
+          "2. Local Save (IndexedDB)": `${(saveEnd - saveStart).toFixed(2)}ms`,
+          "3. Firebase Storage Upload": `${(uploadEnd - cloudStart).toFixed(2)}ms`,
+          "4. Database Write (Firestore)": `${(dbEnd - dbStart).toFixed(2)}ms`,
+          "5. QR Generation": `${(qrEnd - qrStart).toFixed(2)}ms`,
           "Total Export Cycle": `${(performance.now() - startTime).toFixed(2)}ms`
         };
         console.table(audit);
-        KioskLogger.log('info', 'Performance', `Verified Readiness Cycle Complete: ${audit["Total Export Cycle"]}`);
+        KioskLogger.log('info', 'Performance', `Verified Readiness Audit Complete: ${audit["Total Export Cycle"]}`);
 
       } catch (e) {
         setUploadStatus("error");
-        KioskLogger.log('error', 'Export', `Sync Failed: ${e}`);
+        KioskLogger.log('error', 'Export', `Sync Pipeline Interrupted: ${e}`);
       }
 
       // Parallel Background USB backup

@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useMemo, useRef, useState, useEffect } from "react";
@@ -73,7 +72,7 @@ export const BlueprintFrame = React.memo(({
         zIndex: 0
       }}
     >
-      {/* Background Photos - Absolute tight positioning */}
+      {/* Background Photos - Zero Gap Absolute Positioning */}
       <div className="absolute inset-0 z-0 bg-white">
         {blueprint.slots.map((slot, index) => (
           <div
@@ -145,26 +144,20 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* Footer Branding Layer - Tight spacing immediately after photo area */}
+      {/* Compact Branding Footer - Tightened for Mall-Style Output */}
       <div 
-        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-start pt-0"
-        style={{ height: '9.2%' }}
+        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-center items-center"
+        style={{ height: '7.5%' }}
       >
-        {quoteText && (
-          <div className="flex items-center justify-center mb-0.5">
-            <span className="font-headline font-black italic uppercase text-black/40 text-center px-4 leading-none" style={{ fontSize: isStrip ? '8.5px' : '10.5px', letterSpacing: '0.04em' }}>{quoteText}</span>
-          </div>
-        )}
-
-        <div className="w-[96%] mx-auto flex justify-between items-center mt-0">
+        <div className="w-[94%] flex justify-between items-center">
           <div className="flex flex-col items-start leading-none gap-0">
-             <span className="font-headline font-black italic uppercase text-black flex items-center gap-0.5" style={{ fontSize: isStrip ? '13px' : '17px' }}>
+             <span className="font-headline font-black italic uppercase text-black flex items-center gap-0.5" style={{ fontSize: isStrip ? '12px' : '16px' }}>
                <span>JNL</span>
                <span className="text-[#FF3399]">STUDIO</span>
              </span>
-             <span className="font-bold uppercase tracking-[0.2em] text-black/30" style={{ fontSize: isStrip ? '3.8px' : '4.8px' }}>PHOTOBOOTH</span>
+             <span className="font-bold uppercase tracking-[0.2em] text-black/20" style={{ fontSize: isStrip ? '3.5px' : '4.5px' }}>PHOTOBOOTH</span>
           </div>
-          <span className="font-bold uppercase tracking-[0.1em] text-black/30 leading-none" style={{ fontSize: isStrip ? '6px' : '8px' }}>{displayDate}</span>
+          <span className="font-bold uppercase tracking-[0.1em] text-black/20 leading-none" style={{ fontSize: isStrip ? '6px' : '8px' }}>{displayDate}</span>
         </div>
       </div>
     </div>

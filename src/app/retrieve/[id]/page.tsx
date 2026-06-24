@@ -8,7 +8,6 @@ import { ref, getDownloadURL } from "firebase/storage";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { KioskLayout } from "@/components/kiosk/kiosk-layout";
 import { NeonButton } from "@/components/kiosk/neon-button";
-import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { Download, Loader2, AlertCircle, Share2, Activity, Clock } from "lucide-react";
 
 export default function RetrievePage() {
@@ -27,13 +26,13 @@ export default function RetrievePage() {
       const photoRef = ref(storage, `photos/${id}.jpg`);
       
       // TARGET: Direct CDN fetch - high frequency polling for instant result
-      // Increased polling frequency to 400ms for ultra-fast customer experience
+      // Polling frequency at 400ms for ultra-fast customer experience
       const url = await getDownloadURL(photoRef);
       setImageUrl(url);
       setLoading(false);
     } catch (err) {
       // High-speed polling (every 400ms) to detect background upload completion immediately
-      if (retries < 50) { // Approx 20 seconds total
+      if (retries < 60) { // Approx 24 seconds total
         setTimeout(() => setRetries(prev => prev + 1), 400);
       } else {
         setError("Finalizing HD portrait... please try again in a few seconds.");
@@ -86,7 +85,6 @@ export default function RetrievePage() {
   return (
     <KioskLayout className="bg-zinc-950 overflow-y-auto scrollbar-hide">
       <div className="flex flex-col items-center justify-center min-h-screen w-full px-4 py-8 text-center">
-        <JnlLogo variant="icon" className="mb-6 w-20 h-20" />
         
         <div className="w-full max-w-lg bg-zinc-900 border border-white/10 p-6 rounded-[2.5rem] shadow-2xl backdrop-blur-3xl animate-in slide-in-from-bottom-8 duration-500">
           {loading ? (
@@ -141,11 +139,6 @@ export default function RetrievePage() {
             </div>
           )}
         </div>
-
-        {/* Branding N (Monogram) is hidden on soft-copy page for customers */}
-        <p className="mt-12 text-[8px] font-black uppercase tracking-[0.6em] text-white/10">
-          © JNL STUDIO PORTRAITS
-        </p>
       </div>
     </KioskLayout>
   );

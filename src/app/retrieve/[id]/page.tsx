@@ -1,6 +1,7 @@
+
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import { initializeFirebase } from "@/firebase";
 import { ref, getDownloadURL } from "firebase/storage";
@@ -15,29 +16,40 @@ export default function RetrievePage() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [retries, setRetries] = useState(0);
+  const retryCount = useRef(0);
+  const MAX_RETRIES = 60; // 30 seconds at 500ms intervals
 
   const fetchPhoto = useCallback(async () => {
     if (!id) return;
     
     try {
-      const { storage } = initializeFirebase();
-      const photoRef = ref(storage, `photos/${id}.jpg`);
+      const { storage, db } = initializeFirebase();
       
-      // ULTRA-HIGH-FREQUENCY POLLING: Every 200ms for instant mobile experience
+      // Verification Step 1: Record exists?
+      const docRef = doc(db, "photos", id);
+      const docSnap = await getDoc(docRef);
+      
+      if (!docSnap.exists()) {
+        throw new Error("Metadata record pending...");
+      }
+
+      // Verification Step 2: Storage file accessible?
+      const photoRef = ref(storage, `photos/${id}.jpg`);
       const url = await getDownloadURL(photoRef);
+      
       setImageUrl(url);
       setLoading(false);
+      setError(null);
     } catch (err) {
-      // Extended retry window: 150 retries * 200ms = 30 seconds total
-      if (retries < 150) { 
-        setTimeout(() => setRetries(prev => prev + 1), 200);
+      if (retryCount.current < MAX_RETRIES) {
+        retryCount.current += 1;
+        setTimeout(fetchPhoto, 500);
       } else {
-        setError("Finalizing HD portrait... please try again in a few seconds.");
+        setError("Finalizing HD portrait... please refresh this page in a few seconds.");
         setLoading(false);
       }
     }
-  }, [id, retries]);
+  }, [id]);
 
   useEffect(() => {
     fetchPhoto();
@@ -48,11 +60,7 @@ export default function RetrievePage() {
     try {
       const { db } = initializeFirebase();
       const docRef = doc(db, "photos", id);
-      const docSnap = await getDoc(docRef);
-      
-      if (docSnap.exists()) {
-        await updateDoc(docRef, { isDownloaded: true });
-      }
+      await updateDoc(docRef, { isDownloaded: true });
 
       const response = await fetch(imageUrl);
       const blob = await response.blob();
@@ -94,8 +102,8 @@ export default function RetrievePage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <p className="text-white/80 font-black uppercase tracking-[0.3em] text-[10px]">Processing HD Buffer...</p>
-                <p className="text-white/20 font-bold uppercase text-[8px]">Session sync in progress</p>
+                <p className="text-white/80 font-black uppercase tracking-[0.3em] text-[10px]">Fetching HD Portrait...</p>
+                <p className="text-white/20 font-bold uppercase text-[8px]">Verifying secure link</p>
               </div>
             </div>
           ) : error ? (

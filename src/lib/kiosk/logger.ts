@@ -15,14 +15,15 @@ export interface LogEntry {
     printer: string;
     sessionState: string;
     payment: number;
+    perfStats?: string;
   };
 }
 
-const MAX_LOGS = 300;
+const MAX_LOGS = 500;
 const LOG_KEY = 'jnl_kiosk_system_logs';
 
 export const KioskLogger = {
-  log: (level: LogEntry['level'], module: string, message: string, stateContext?: any) => {
+  log: (level: LogEntry['level'], module: string, message: string, perfStats?: string) => {
     const entry: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
@@ -31,10 +32,11 @@ export const KioskLogger = {
       context: {
         online: typeof navigator !== 'undefined' ? navigator.onLine : true,
         storage: 'Monitor Active',
-        camera: !!stateContext?.cameraActive,
-        printer: stateContext?.printerStatus || 'Ready',
-        sessionState: stateContext?.appState || 'Unknown',
-        payment: stateContext?.paymentReceived || 0
+        camera: true,
+        printer: 'Ready',
+        sessionState: 'Active',
+        payment: 0,
+        perfStats
       }
     };
 
@@ -43,11 +45,13 @@ export const KioskLogger = {
       logs.unshift(entry);
       localStorage.setItem(LOG_KEY, JSON.stringify(logs.slice(0, MAX_LOGS)));
       
-      // Removed console.error to prevent NextJS development overlay from blocking the kiosk screen.
-      // System state is preserved in the hidden Owner mastery panel for diagnostics.
-    } catch (e) {
-      // Recovery failsafe
-    }
+      // Mirror to console for developer analysis as requested
+      if (level === 'error' || level === 'critical') {
+        console.error(`[${module}] ${message}`, perfStats);
+      } else {
+        console.log(`[${module}] ${message}`, perfStats);
+      }
+    } catch (e) {}
   },
 
   getLogs: (): LogEntry[] => {

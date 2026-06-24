@@ -23,7 +23,7 @@ import * as Kawaii from "@/components/kiosk/kawaii-stickers";
 import { SessionStore } from "@/lib/kiosk/persistence";
 import { KioskLogger } from "@/lib/kiosk/logger";
 import { initializeFirebase } from "@/firebase";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes } from "firebase/storage";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "thankyou" | "test-camera";
@@ -130,26 +130,21 @@ export default function KioskPage() {
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [activeStickerCategory, setActiveStickerCategory] = useState("HEARTS");
 
-  // Owner/Admin state
   const [isOwnerMode, setIsOwnerMode] = useState(false);
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
   const [usbDirectoryHandle, setUsbDirectoryHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [isDevMode, setIsDevMode] = useState<boolean>(true);
 
-  // Hidden Trigger State
   const [logoTapCount, setLogoTapCount] = useState(0);
   const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // QR & Printing State
   const [softCopyQrUrl, setSoftCopyQrUrl] = useState("");
   const [facebookQrUrl, setFacebookQrUrl] = useState("");
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "complete" | "error">("idle");
   const exportTriggeredRef = useRef(false);
 
-  // Bill Acceptor State
   const serialPortRef = useRef<any>(null);
 
-  // SYNC OWNER MODE CLASS TO BODY
   useEffect(() => {
     if (typeof document !== 'undefined') {
       if (isOwnerMode) {
@@ -160,7 +155,6 @@ export default function KioskPage() {
     }
   }, [isOwnerMode]);
 
-  // RESET OWNER MODE ON WELCOME SCREEN TO PREVENT LEAKAGE
   useEffect(() => {
     if (appState === "welcome") {
       setIsOwnerMode(false);
@@ -215,17 +209,6 @@ export default function KioskPage() {
     }
   }, [appState]);
 
-  useEffect(() => {
-    const lockLandscape = async () => {
-      try {
-        if (typeof screen !== 'undefined' && 'orientation' in screen && 'lock' in screen.orientation) {
-          await (screen.orientation as any).lock('landscape');
-        }
-      } catch (e) {}
-    };
-    lockLandscape();
-  }, []);
-
   const handleHiddenTrigger = useCallback(() => {
     setLogoTapCount((prev) => {
       const newCount = prev + 1;
@@ -275,10 +258,9 @@ export default function KioskPage() {
 
   const availableFilters = useMemo(() => {
     if (appState === "test-camera" || packageSelected === 100) return FILTERS;
-    return FILTERS.slice(0, 5); // Only 5 filters for PHP 50
+    return FILTERS.slice(0, 5); 
   }, [packageSelected, appState]);
 
-  // RESET FILTER IF PACKAGE 50 IS SELECTED AND CURRENT FILTER IS BEYOND INDEX 4
   useEffect(() => {
     if (packageSelected === 50) {
       const index = FILTERS.findIndex(f => f.id === selectedFilter.id);
@@ -328,7 +310,7 @@ export default function KioskPage() {
     
     const sessionId = `sess_${Date.now()}`;
     const startTime = Date.now();
-    KioskLogger.log('info', 'Export', `Photo Generated: ${new Date(startTime).toISOString()}`);
+    KioskLogger.log('info', 'Export', `Pipeline Start: ${new Date(startTime).toISOString()}`);
 
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1600;
@@ -378,46 +360,44 @@ export default function KioskPage() {
       if (!blob) return;
 
       const blobTime = Date.now();
-      KioskLogger.log('info', 'Export', `Soft Copy Saved: ${new Date(blobTime).toISOString()} (+${blobTime - startTime}ms)`);
+      KioskLogger.log('info', 'Export', `Layout Rendered: +${blobTime - startTime}ms`);
 
-      // 1. SAVE LOCALLY IMMEDIATELY (IndexedDB)
-      SessionStore.savePhotoLocally(sessionId, blob);
-
-      // 2. INITIATE PRINT IMMEDIATELY (Parallel)
-      const printStartTime = Date.now();
+      // 1. Parallel Print & Local Save
       initiatePrint(blob);
-      KioskLogger.log('info', 'Export', `Print Started: ${new Date(printStartTime).toISOString()} (+${printStartTime - blobTime}ms)`);
+      SessionStore.savePhotoLocally(sessionId, blob);
+      KioskLogger.log('info', 'Export', `Print/Local Save Initiated: +${Date.now() - blobTime}ms`);
 
-      // 3. GENERATE QR CODE IMMEDIATELY (Don't wait for Cloud Sync)
-      const qrGenStartTime = Date.now();
-      const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
-      setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-      const qrDispTime = Date.now();
-      KioskLogger.log('info', 'Export', `QR Code Displayed: ${new Date(qrDispTime).toISOString()} (+${qrDispTime - qrGenStartTime}ms)`);
+      // 2. Verified Cloud Sync (Essential for QR)
+      setUploadStatus("uploading");
+      const syncStartTime = Date.now();
+      try {
+        const { storage, db } = initializeFirebase();
+        const photoRef = ref(storage, `photos/${sessionId}.jpg`);
+        
+        // Upload & Record
+        await uploadBytes(photoRef, blob);
+        await setDoc(doc(db, "photos", sessionId), {
+          id: sessionId,
+          storagePath: photoRef.fullPath,
+          timestamp: serverTimestamp(),
+          isDownloaded: false
+        });
 
-      // 4. START CLOUD SYNC IN BACKGROUND (Non-blocking)
-      (async () => {
-        setUploadStatus("uploading");
-        try {
-          const { storage, db } = initializeFirebase();
-          const photoRef = ref(storage, `photos/${sessionId}.jpg`);
-          
-          await uploadBytes(photoRef, blob);
-          await setDoc(doc(db, "photos", sessionId), {
-            id: sessionId,
-            storagePath: photoRef.fullPath,
-            timestamp: serverTimestamp(),
-            isDownloaded: false
-          });
-          setUploadStatus("complete");
-          KioskLogger.log('info', 'Export', `Cloud Sync Complete: ${new Date().toISOString()}`);
-        } catch (e) {
-          setUploadStatus("error");
-          KioskLogger.log('error', 'Export', `Cloud Sync Failed: ${e}`);
-        }
-      })();
+        const syncDoneTime = Date.now();
+        KioskLogger.log('info', 'Export', `Cloud Sync Complete: +${syncDoneTime - syncStartTime}ms`);
 
-      // 5. USB BACKUP IN BACKGROUND (Non-blocking)
+        // 3. Display QR only after confirmation
+        const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
+        setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
+        setUploadStatus("complete");
+        KioskLogger.log('info', 'Export', `QR Displayed: +${Date.now() - syncDoneTime}ms`);
+
+      } catch (e) {
+        setUploadStatus("error");
+        KioskLogger.log('error', 'Export', `Sync Failed: ${e}`);
+      }
+
+      // 4. Background USB backup
       if (usbDirectoryHandle) {
         (async () => {
           try {
@@ -426,11 +406,8 @@ export default function KioskPage() {
             const writable = await fileHandle.createWritable();
             await writable.write(blob);
             await writable.close();
-            SessionStore.save({ isUsbBackedUp: true });
-            KioskLogger.log('info', 'Export', `USB Backup Complete: ${new Date().toISOString()}`);
-          } catch (e) {
-            KioskLogger.log('error', 'Export', `USB Backup Failed: ${e}`);
-          }
+            KioskLogger.log('info', 'Export', `USB Backup Complete`);
+          } catch (e) {}
         })();
       }
 
@@ -447,7 +424,6 @@ export default function KioskPage() {
       exportTriggeredRef.current = false;
       setUploadStatus("idle");
       setSoftCopyQrUrl("");
-      setIsOwnerMode(false); 
     }
   }, [appState, handleFinalExport]);
 
@@ -455,16 +431,12 @@ export default function KioskPage() {
     if (appState === "printing" && printProgress < 100) {
       const timer = setInterval(() => {
         setPrintProgress(prev => Math.min(prev + 1, 100));
-      }, 100); 
+      }, 150); 
       return () => clearInterval(timer);
     }
   }, [appState, printProgress]);
 
   const resetSession = useCallback(() => {
-    const session = SessionStore.load();
-    if (session) {
-      SessionStore.cleanupSession(session.id, !promoConsent);
-    }
     setAppState("welcome");
     setPaymentReceived(0);
     setPackageSelected(null);
@@ -479,7 +451,7 @@ export default function KioskPage() {
     setPrintProgress(0);
     setPromoConsent(null);
     setIsOwnerMode(false); 
-  }, [promoConsent]);
+  }, []);
 
   const startCamera = async (deviceId?: string) => {
     if (cameraStream && videoRef.current && videoRef.current.srcObject === cameraStream) return true;
@@ -806,8 +778,15 @@ export default function KioskPage() {
                        <h3 className="font-headline font-black text-xl uppercase italic">SCAN TO SAVE</h3>
                      </div>
                      
-                     <div className="aspect-square w-full bg-white p-4 rounded-2xl shadow-[0_0_30px_rgba(255,51,153,0.3)] relative overflow-hidden">
-                        {softCopyQrUrl ? <img src={softCopyQrUrl} alt="Soft Copy QR" className="w-full h-full object-contain animate-in fade-in duration-300" /> : <Loader2 className="w-8 h-8 text-primary animate-spin" />}
+                     <div className="aspect-square w-full bg-white p-4 rounded-2xl shadow-[0_0_30px_rgba(255,51,153,0.3)] relative overflow-hidden flex items-center justify-center">
+                        {uploadStatus === "complete" && softCopyQrUrl ? (
+                          <img src={softCopyQrUrl} alt="Soft Copy QR" className="w-full h-full object-contain animate-in fade-in duration-300" />
+                        ) : (
+                          <div className="flex flex-col items-center gap-2 text-primary">
+                            <Loader2 className="w-8 h-8 animate-spin" />
+                            <span className="text-[8px] font-black uppercase text-zinc-400">Preparing HD Link</span>
+                          </div>
+                        )}
                      </div>
 
                      <div className="flex flex-col items-center gap-1">

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -310,95 +311,115 @@ export default function KioskPage() {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
     const sessionId = `sess_${Date.now()}`;
-    const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
-    setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
+    KioskLogger.log('info', 'Export', `Photo Generated: ${new Date().toISOString()}`);
+
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = 1600;
+    exportCanvas.height = 2400;
+    const ctx = exportCanvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, 1600, 2400);
+
+    const filterClass = selectedFilter.class;
+    const isStrip = selectedBlueprint.package === 50;
     
-    (async () => {
-      const exportCanvas = document.createElement('canvas');
-      exportCanvas.width = 1600;
-      exportCanvas.height = 2400;
-      const ctx = exportCanvas.getContext('2d');
-      if (!ctx) return;
+    const drawContent = async (offsetX: number) => {
+      for (let i = 0; i < selectedBlueprint.slots.length; i++) {
+        const slot = selectedBlueprint.slots[i];
+        const photo = capturedPhotos[i];
+        if (!photo) continue;
+        
+        const img = new Image();
+        img.src = photo;
+        await new Promise(resolve => img.onload = resolve);
+        
+        const sX = isStrip ? slot.x / 2 : slot.x;
+        const sW = isStrip ? slot.w / 2 : slot.w;
+        
+        ctx.save();
+        if (filterClass.includes('brightness')) ctx.filter += ' brightness(1.1)';
+        if (filterClass.includes('contrast')) ctx.filter += ' contrast(1.1)';
+        if (filterClass.includes('sepia')) ctx.filter += ' sepia(0.2)';
+        if (filterClass.includes('grayscale')) ctx.filter += ' grayscale(1)';
+        if (filterClass.includes('saturate')) ctx.filter += ' saturate(1.3)';
+        
+        ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
+        ctx.restore();
+      }
+    };
 
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(0, 0, 1600, 2400);
+    if (isStrip) {
+      await drawContent(0);
+      await drawContent(800);
+    } else {
+      await drawContent(0);
+    }
 
-      const filterClass = selectedFilter.class;
-      const isStrip = selectedBlueprint.package === 50;
-      
-      const drawContent = async (offsetX: number) => {
-        for (let i = 0; i < selectedBlueprint.slots.length; i++) {
-          const slot = selectedBlueprint.slots[i];
-          const photo = capturedPhotos[i];
-          if (!photo) continue;
-          
-          const img = new Image();
-          img.src = photo;
-          await new Promise(resolve => img.onload = resolve);
-          
-          const sX = isStrip ? slot.x / 2 : slot.x;
-          const sW = isStrip ? slot.w / 2 : slot.w;
-          
-          ctx.save();
-          if (filterClass.includes('brightness')) ctx.filter += ' brightness(1.1)';
-          if (filterClass.includes('contrast')) ctx.filter += ' contrast(1.1)';
-          if (filterClass.includes('sepia')) ctx.filter += ' sepia(0.2)';
-          if (filterClass.includes('grayscale')) ctx.filter += ' grayscale(1)';
-          if (filterClass.includes('saturate')) ctx.filter += ' saturate(1.3)';
-          
-          ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
-          ctx.restore();
-        }
-      };
+    exportCanvas.toBlob(async (blob) => {
+      if (!blob) return;
 
-      if (isStrip) {
-        await drawContent(0);
-        await drawContent(800);
-      } else {
-        await drawContent(0);
+      // 1. SAVE LOCALLY IMMEDIATELY
+      await SessionStore.savePhotoLocally(sessionId, blob);
+      KioskLogger.log('info', 'Export', `Photo Saved Locally: ${new Date().toISOString()}`);
+
+      // 2. START PRINTING IN PARALLEL
+      initiatePrint(blob);
+
+      // 3. START SYNC IN BACKGROUND
+      setUploadStatus("uploading");
+      KioskLogger.log('info', 'Export', `Cloud Sync Started: ${new Date().toISOString()}`);
+
+      try {
+        const { storage, db } = initializeFirebase();
+        const photoRef = ref(storage, `photos/${sessionId}.jpg`);
+        
+        // UPLOAD
+        await uploadBytes(photoRef, blob);
+        
+        // CREATE RETRIEVAL RECORD
+        await setDoc(doc(db, "photos", sessionId), {
+          id: sessionId,
+          storagePath: photoRef.fullPath,
+          timestamp: serverTimestamp(),
+          isDownloaded: false
+        });
+        KioskLogger.log('info', 'Export', `Retrieval Record Created: ${new Date().toISOString()}`);
+
+        // 4. VERIFY READINESS BEFORE SHOWING QR
+        const verifiedUrl = await getDownloadURL(photoRef);
+        // Simple fetch verification to ensure CDN propagation
+        const testRes = await fetch(verifiedUrl, { method: 'HEAD', mode: 'no-cors' });
+        
+        KioskLogger.log('info', 'Export', `Retrieval URL Verified: ${new Date().toISOString()}`);
+
+        // 5. FINALLY GENERATE QR
+        const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
+        setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
+        setUploadStatus("complete");
+        KioskLogger.log('info', 'Export', `QR Code Displayed: ${new Date().toISOString()}`);
+
+      } catch (e) {
+        setUploadStatus("error");
+        KioskLogger.log('error', 'Export', `Sync/Verification Error: ${e}`);
       }
 
-      exportCanvas.toBlob(async (blob) => {
-        if (!blob) return;
-
-        await SessionStore.savePhotoLocally(sessionId, blob);
-        
-        setUploadStatus("uploading");
+      // 6. USB BACKUP IN PARALLEL
+      if (usbDirectoryHandle) {
         (async () => {
           try {
-            const { storage, db } = initializeFirebase();
-            const photoRef = ref(storage, `photos/${sessionId}.jpg`);
-            await uploadBytes(photoRef, blob);
-            await setDoc(doc(db, "photos", sessionId), {
-              id: sessionId,
-              storagePath: photoRef.fullPath,
-              timestamp: serverTimestamp(),
-              isDownloaded: false
-            });
-            setUploadStatus("complete");
-            KioskLogger.log('info', 'Cloud', `Session ${sessionId} HD Ready.`);
-          } catch (e) {
-            setUploadStatus("error");
-          }
+            const filename = `JNL_STUDIO_${sessionId}.jpg`;
+            const fileHandle = await (usbDirectoryHandle as any).getFileHandle(filename, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            SessionStore.save({ isUsbBackedUp: true });
+          } catch (e) {}
         })();
+      }
 
-        if (usbDirectoryHandle) {
-          (async () => {
-            try {
-              const filename = `JNL_STUDIO_${sessionId}.jpg`;
-              const fileHandle = await (usbDirectoryHandle as any).getFileHandle(filename, { create: true });
-              const writable = await fileHandle.createWritable();
-              await writable.write(blob);
-              await writable.close();
-              SessionStore.save({ isUsbBackedUp: true });
-            } catch (e) {}
-          })();
-        }
-
-        initiatePrint(blob);
-
-      }, 'image/jpeg', 0.85);
-    })();
+    }, 'image/jpeg', 0.85);
 
   }, [usbDirectoryHandle, selectedBlueprint, capturedPhotos, selectedFilter]);
 

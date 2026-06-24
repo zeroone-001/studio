@@ -309,7 +309,7 @@ export default function KioskPage() {
     
     const sessionId = `sess_${Date.now()}`;
     const startTime = performance.now();
-    KioskLogger.log('info', 'Export', `Pipeline Handshake Start: ${new Date().toISOString()}`);
+    KioskLogger.log('info', 'Export', `Pipeline Start: ${sessionId}`);
 
     // Step 1: Photo Generation
     const genStart = performance.now();
@@ -361,58 +361,41 @@ export default function KioskPage() {
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
 
-      // Step 2: Photo Save (Local)
-      const saveStart = performance.now();
-      initiatePrint(blob); // Parallel printing start
-      await SessionStore.savePhotoLocally(sessionId, blob);
-      const saveEnd = performance.now();
+      // Step 2: Instant QR Ready (Predictive ID)
+      const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
+      setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
+      const qrReadyTime = performance.now();
 
-      // Step 3: Firebase Storage Upload & Database Write
+      // Step 3: Parallel Printing
+      initiatePrint(blob); 
+      const printStartTime = performance.now();
+
+      // Step 4: Local Save (Background)
+      SessionStore.savePhotoLocally(sessionId, blob);
+      const localSaveTime = performance.now();
+
+      // Step 5: Cloud Upload (Background Parallel)
       setUploadStatus("uploading");
-      const cloudStart = performance.now();
-      try {
-        const { storage, db } = initializeFirebase();
-        const photoRef = ref(storage, `photos/${sessionId}.jpg`);
-        
-        // Storage Upload
-        await uploadBytes(photoRef, blob);
-        const uploadEnd = performance.now();
+      const cloudTask = (async () => {
+        try {
+          const { storage, db } = initializeFirebase();
+          const photoRef = ref(storage, `photos/${sessionId}.jpg`);
+          await uploadBytes(photoRef, blob);
+          await setDoc(doc(db, "photos", sessionId), {
+            id: sessionId,
+            storagePath: photoRef.fullPath,
+            timestamp: serverTimestamp(),
+            isDownloaded: false
+          });
+          setUploadStatus("complete");
+          KioskLogger.log('info', 'Sync', `Cloud Record Ready: ${sessionId}`);
+        } catch (e) {
+          setUploadStatus("error");
+          KioskLogger.log('error', 'Sync', `Cloud Fail: ${e}`);
+        }
+      })();
 
-        // Database Write
-        const dbStart = performance.now();
-        await setDoc(doc(db, "photos", sessionId), {
-          id: sessionId,
-          storagePath: photoRef.fullPath,
-          timestamp: serverTimestamp(),
-          isDownloaded: false
-        });
-        const dbEnd = performance.now();
-
-        // Step 4: QR Generation & Display
-        const qrStart = performance.now();
-        const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
-        setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-        setUploadStatus("complete");
-        const qrEnd = performance.now();
-
-        // High-Precision Performance Audit Report
-        const audit = {
-          "1. Photo Generation": `${(genEnd - genStart).toFixed(2)}ms`,
-          "2. Local Save (IndexedDB)": `${(saveEnd - saveStart).toFixed(2)}ms`,
-          "3. Firebase Storage Upload": `${(uploadEnd - cloudStart).toFixed(2)}ms`,
-          "4. Database Write (Firestore)": `${(dbEnd - dbStart).toFixed(2)}ms`,
-          "5. QR Generation": `${(qrEnd - qrStart).toFixed(2)}ms`,
-          "Total Export Cycle": `${(performance.now() - startTime).toFixed(2)}ms`
-        };
-        console.table(audit);
-        KioskLogger.log('info', 'Performance', `Verified Readiness Audit Complete: ${audit["Total Export Cycle"]}`);
-
-      } catch (e) {
-        setUploadStatus("error");
-        KioskLogger.log('error', 'Export', `Sync Pipeline Interrupted: ${e}`);
-      }
-
-      // Parallel Background USB backup
+      // Step 6: USB Backup (Background Parallel)
       if (usbDirectoryHandle) {
         (async () => {
           try {
@@ -424,6 +407,17 @@ export default function KioskPage() {
           } catch (e) {}
         })();
       }
+
+      // Performance Audit Log
+      const audit = {
+        "1. Generation": `${(genEnd - genStart).toFixed(2)}ms`,
+        "2. QR Ready": `${(qrReadyTime - genEnd).toFixed(2)}ms`,
+        "3. Local Buffer": `${(localSaveTime - qrReadyTime).toFixed(2)}ms`,
+        "4. Print Handshake": `${(printStartTime - qrReadyTime).toFixed(2)}ms`,
+        "Total Pipeline Latency": `${(performance.now() - startTime).toFixed(2)}ms`
+      };
+      console.table(audit);
+      KioskLogger.log('info', 'Performance', `High-Speed Session Ready: ${audit["Total Pipeline Latency"]}`);
 
     }, 'image/jpeg', 0.85);
 
@@ -793,12 +787,12 @@ export default function KioskPage() {
                      </div>
                      
                      <div className="aspect-square w-full bg-white p-4 rounded-2xl shadow-[0_0_30px_rgba(255,51,153,0.3)] relative overflow-hidden flex items-center justify-center">
-                        {uploadStatus === "complete" && softCopyQrUrl ? (
+                        {softCopyQrUrl ? (
                           <img src={softCopyQrUrl} alt="Soft Copy QR" className="w-full h-full object-contain animate-in fade-in duration-300" />
                         ) : (
                           <div className="flex flex-col items-center gap-2 text-primary">
                             <Loader2 className="w-8 h-8 animate-spin" />
-                            <span className="text-[8px] font-black uppercase text-zinc-400">Preparing HD Link</span>
+                            <span className="text-[8px] font-black uppercase text-zinc-400">Handshaking...</span>
                           </div>
                         )}
                      </div>

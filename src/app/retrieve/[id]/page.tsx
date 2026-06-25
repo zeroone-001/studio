@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
@@ -16,7 +17,7 @@ export default function RetrievePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const retryCount = useRef(0);
-  const MAX_RETRIES = 150; // High-frequency polling for instant mall-style performance
+  const MAX_RETRIES = 100; // High-frequency polling for instant mall-style performance
 
   const fetchPhoto = useCallback(async () => {
     if (!id) return;
@@ -24,34 +25,35 @@ export default function RetrievePage() {
     try {
       const { storage, db } = initializeFirebase();
       
-      // COMMERCIAL SECURITY: Fetch metadata first to verify existence and privacy
+      // Step 1: Verify document existence first (Firestore)
       const docRef = doc(db, "photos", id);
       const docSnap = await getDoc(docRef);
       
       if (!docSnap.exists()) {
+        // High-frequency retry logic to handle background upload latency
         if (retryCount.current < MAX_RETRIES) {
           retryCount.current += 1;
-          setTimeout(fetchPhoto, 200); // 200ms polling for instant readiness
+          setTimeout(fetchPhoto, 500); // Poll every 500ms
           return;
         }
-        setError("Portrait not found. Please scan the QR code again or contact JNL Studio support.");
+        setError("Portrait not found. Please scan the QR code again or contact support.");
         setLoading(false);
         return;
       }
 
-      // Metadata exists, now get signed production URL
+      // Step 2: Get signed production URL from Storage
       const photoRef = ref(storage, `photos/${id}.jpg`);
       const url = await getDownloadURL(photoRef);
       
       setImageUrl(url);
       setLoading(false);
       setError(null);
-    } catch (err) {
+    } catch (err: any) {
       if (retryCount.current < MAX_RETRIES) {
         retryCount.current += 1;
-        setTimeout(fetchPhoto, 200);
+        setTimeout(fetchPhoto, 500);
       } else {
-        setError("System is finalizing your HD portrait. Please refresh in a few seconds.");
+        setError("HD Portrait is still syncing. Please refresh in a few seconds.");
         setLoading(false);
       }
     }
@@ -66,7 +68,7 @@ export default function RetrievePage() {
     try {
       const { db } = initializeFirebase();
       const docRef = doc(db, "photos", id);
-      // Background analytics tracking
+      // Track download for analytics
       updateDoc(docRef, { isDownloaded: true }).catch(() => {});
 
       const response = await fetch(imageUrl);
@@ -89,7 +91,7 @@ export default function RetrievePage() {
     try {
       await navigator.share({
         title: 'JNL Studio Portrait',
-        text: 'My HD moment from JNL Studio!',
+        text: 'Check out my HD moment from JNL Studio!',
         url: window.location.href,
       });
     } catch (e) {}
@@ -110,7 +112,7 @@ export default function RetrievePage() {
               </div>
               <div className="space-y-2">
                 <p className="text-white/80 font-black uppercase tracking-[0.3em] text-[10px]">VERIFYING SESSION...</p>
-                <p className="text-white/20 font-bold uppercase text-[7px] tracking-tighter">Secure ID Handshake Active</p>
+                <p className="text-white/20 font-bold uppercase text-[7px] tracking-tighter">SECURE ID HANDSHAKE ACTIVE</p>
               </div>
             </div>
           ) : error ? (

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -301,10 +302,10 @@ export default function KioskPage() {
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
-    // COMMERCIAL SECURITY: Unique random unguessable Session ID
-    const sessionId = `jnl_${Math.random().toString(36).substring(2, 15)}_${Math.random().toString(36).substring(2, 15)}`;
+    // COMMERCIAL SECURITY: High-entropy Secure Session ID
+    const sessionId = `jnl_${Math.random().toString(36).substring(2, 10)}_${Math.random().toString(36).substring(2, 10)}`;
     const startTime = performance.now();
-    KioskLogger.log('info', 'Export', `Secure Session Start: ${sessionId}`);
+    KioskLogger.log('info', 'Export', `Secure Session Init: ${sessionId}`);
 
     // Step 1: Photo Generation
     const genStart = performance.now();
@@ -352,31 +353,28 @@ export default function KioskPage() {
       await drawContent(0);
     }
     const genEnd = performance.now();
-    const genTime = (genEnd - genStart).toFixed(2);
-    console.log(`[AUDIT] Photo Generation: ${genTime}ms`);
+    KioskLogger.log('info', 'Export', `Gen: ${(genEnd - genStart).toFixed(2)}ms`);
 
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
 
-      // Step 2: Instant QR Display (STRICT PRODUCTION ROUTING)
-      const qrReadyStart = performance.now();
-      const retrievalUrl = `${PUBLIC_KIOSK_URL}/retrieve/${sessionId}`;
-      console.log(`[AUDIT] FINAL QR URL: ${retrievalUrl}`);
-      setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-      const qrReadyEnd = performance.now();
-      const qrTime = (qrReadyEnd - qrReadyStart).toFixed(2);
-      console.log(`[AUDIT] QR Display Ready: ${qrTime}ms`);
-
-      // Step 3: Parallel Tasks (Local Save + Print)
+      // Step 2: Instant Local Save (Non-blocking)
       const localSaveStart = performance.now();
       SessionStore.savePhotoLocally(sessionId, blob);
-      const localSaveEnd = performance.now();
-      console.log(`[AUDIT] Local Save: ${(localSaveEnd - localSaveStart).toFixed(2)}ms`);
+      KioskLogger.log('info', 'Export', `Local Save: ${(performance.now() - localSaveStart).toFixed(2)}ms`);
 
+      // Step 3: INSTANT QR Display (STRICT COMMERCIAL ROUTING)
+      // We show the QR code immediately. The retrieval page will auto-poll for the file.
+      const retrievalUrl = `${PUBLIC_KIOSK_URL}/retrieve/${sessionId}`;
+      console.log(`[SECURE RETRIEVAL] Session ID: ${sessionId}`);
+      console.log(`[SECURE RETRIEVAL] Final QR URL: ${retrievalUrl}`);
+      setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
+
+      // Step 4: Parallel Print Start
       initiatePrint(blob); 
-      console.log(`[AUDIT] Print Handshake Parallelized`);
+      KioskLogger.log('info', 'Export', `Print Started in Parallel`);
 
-      // Step 4: Background Cloud Sync (STRICT PRIVACY)
+      // Step 5: Background Cloud Sync (STRICT PRIVACY)
       setUploadStatus("uploading");
       const cloudSyncStart = performance.now();
       (async () => {
@@ -391,18 +389,18 @@ export default function KioskPage() {
             isDownloaded: false
           });
           setUploadStatus("complete");
-          KioskLogger.log('info', 'Sync', `Secure Cloud Ready: ${sessionId} in ${(performance.now() - cloudSyncStart).toFixed(2)}ms`);
+          KioskLogger.log('info', 'Sync', `Cloud Ready: ${sessionId} in ${(performance.now() - cloudSyncStart).toFixed(2)}ms`);
         } catch (e) {
           setUploadStatus("error");
           KioskLogger.log('error', 'Sync', `Cloud Fail: ${e}`);
         }
       })();
 
-      // Step 5: Parallel USB Backup
+      // Step 6: Parallel USB Backup
       if (usbDirectoryHandle) {
         (async () => {
           try {
-            const filename = `JNL_SECURE_${sessionId}.jpg`;
+            const filename = `JNL_SESSION_${sessionId}.jpg`;
             const fileHandle = await (usbDirectoryHandle as any).getFileHandle(filename, { create: true });
             const writable = await fileHandle.createWritable();
             await writable.write(blob);
@@ -784,14 +782,14 @@ export default function KioskPage() {
                         ) : (
                           <div className="flex flex-col items-center gap-2 text-primary">
                             <Loader2 className="w-8 h-8 animate-spin" />
-                            <span className="text-[8px] font-black uppercase text-zinc-400">Verifying HD...</span>
+                            <span className="text-[8px] font-black uppercase text-zinc-400">Preparing HD...</span>
                           </div>
                         )}
                      </div>
 
                      <div className="flex flex-col items-center gap-1">
                        <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest text-center">Instant HD Download</p>
-                       {uploadStatus === "uploading" && <div className="text-[7px] text-primary/60 font-black uppercase animate-pulse">Handshaking Cloud...</div>}
+                       {uploadStatus === "uploading" && <div className="text-[7px] text-primary/60 font-black uppercase animate-pulse">Syncing Cloud...</div>}
                        {uploadStatus === "complete" && <div className="text-[7px] text-green-500 font-black uppercase">HD Ready</div>}
                      </div>
                    </div>

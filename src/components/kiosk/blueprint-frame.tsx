@@ -144,10 +144,10 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* Compact Branding Footer - Mall-Style Zero Gap Output */}
+      {/* Compact Branding Footer - Zero Gap Output */}
       <div 
-        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-start items-center pt-[1.5%]"
-        style={{ height: '7.5%' }}
+        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-start items-center"
+        style={{ height: '7.5%', paddingBottom: '0.5%' }}
       >
         <div className="w-[94%] flex justify-between items-center">
           <div className="flex flex-col items-start leading-none gap-0">

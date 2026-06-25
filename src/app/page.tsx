@@ -362,21 +362,25 @@ export default function KioskPage() {
       if (!blob) return;
 
       // Step 2: Instant QR Ready (Predictive ID)
+      const qrReadyStart = performance.now();
       const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
       setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-      const qrReadyTime = performance.now();
+      const qrReadyEnd = performance.now();
 
-      // Step 3: Parallel Printing
-      initiatePrint(blob); 
-      const printStartTime = performance.now();
-
-      // Step 4: Local Save (Background)
+      // Step 3: Local Save & Buffer
+      const localSaveStart = performance.now();
       SessionStore.savePhotoLocally(sessionId, blob);
-      const localSaveTime = performance.now();
+      const localSaveEnd = performance.now();
 
-      // Step 5: Cloud Upload (Background Parallel)
+      // Step 4: Parallel Printing
+      const printStart = performance.now();
+      initiatePrint(blob); 
+      const printEnd = performance.now();
+
+      // Step 5: Background Cloud Sync
       setUploadStatus("uploading");
-      const cloudTask = (async () => {
+      const cloudSyncStart = performance.now();
+      (async () => {
         try {
           const { storage, db } = initializeFirebase();
           const photoRef = ref(storage, `photos/${sessionId}.jpg`);
@@ -388,14 +392,14 @@ export default function KioskPage() {
             isDownloaded: false
           });
           setUploadStatus("complete");
-          KioskLogger.log('info', 'Sync', `Cloud Record Ready: ${sessionId}`);
+          KioskLogger.log('info', 'Sync', `Cloud Success: ${sessionId} in ${(performance.now() - cloudSyncStart).toFixed(2)}ms`);
         } catch (e) {
           setUploadStatus("error");
           KioskLogger.log('error', 'Sync', `Cloud Fail: ${e}`);
         }
       })();
 
-      // Step 6: USB Backup (Background Parallel)
+      // Step 6: Background USB Backup
       if (usbDirectoryHandle) {
         (async () => {
           try {
@@ -408,16 +412,16 @@ export default function KioskPage() {
         })();
       }
 
-      // Performance Audit Log
+      // Performance Audit
       const audit = {
-        "1. Generation": `${(genEnd - genStart).toFixed(2)}ms`,
-        "2. QR Ready": `${(qrReadyTime - genEnd).toFixed(2)}ms`,
-        "3. Local Buffer": `${(localSaveTime - qrReadyTime).toFixed(2)}ms`,
-        "4. Print Handshake": `${(printStartTime - qrReadyTime).toFixed(2)}ms`,
+        "Photo Generated": `${(genEnd - genStart).toFixed(2)}ms`,
+        "QR Ready": `${(qrReadyEnd - qrReadyStart).toFixed(2)}ms`,
+        "Local Save": `${(localSaveEnd - localSaveStart).toFixed(2)}ms`,
+        "Print Handshake": `${(printEnd - printStart).toFixed(2)}ms`,
         "Total Pipeline Latency": `${(performance.now() - startTime).toFixed(2)}ms`
       };
       console.table(audit);
-      KioskLogger.log('info', 'Performance', `High-Speed Session Ready: ${audit["Total Pipeline Latency"]}`);
+      KioskLogger.log('info', 'Performance', `High-Speed Ready: ${audit["Total Pipeline Latency"]}`);
 
     }, 'image/jpeg', 0.85);
 

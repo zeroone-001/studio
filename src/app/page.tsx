@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -375,30 +376,31 @@ export default function KioskPage() {
       }
 
       // Branding Footer (Zero Gap)
-      const footerY = 2304;
-      const footerH = 96;
+      const footerY = 2220;
+      const footerH = 180;
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(offsetX, footerY, 1600, footerH);
 
+      // Quote Center
       ctx.fillStyle = '#000000';
-      ctx.font = 'italic 24px Inter, sans-serif';
+      ctx.font = 'italic 28px Inter, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(selectedQuote.text, offsetX + 800, footerY + 40);
+      ctx.fillText(selectedQuote.text, offsetX + 800, footerY + 60);
 
+      // JNL STUDIO Left
       ctx.fillStyle = '#000000';
-      ctx.font = '900 italic 20px Inter, sans-serif';
+      ctx.font = '900 italic 24px Inter, sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText('JNL', offsetX + 40, footerY + 80);
+      ctx.fillText('JNL', offsetX + 60, footerY + 120);
       ctx.fillStyle = '#FF3399';
-      ctx.fillText('STUDIO', offsetX + 85, footerY + 80);
+      ctx.fillText('STUDIO', offsetX + 115, footerY + 120);
     };
 
     if (isStrip) {
-      // Photobooth Strip Rendering (Twin Copies)
-      const stripBlueprint = { ...selectedBlueprint, slots: selectedBlueprint.slots.map(s => ({ ...s, x: s.x / 2, w: s.w / 2 })) };
       const originalSlots = selectedBlueprint.slots;
+      const stripSlots = selectedBlueprint.slots.map(s => ({ ...s, x: s.x / 2, w: s.w / 2 }));
       // @ts-ignore
-      selectedBlueprint.slots = stripBlueprint.slots;
+      selectedBlueprint.slots = stripSlots;
       await drawContent(0);
       await drawContent(800);
       // @ts-ignore

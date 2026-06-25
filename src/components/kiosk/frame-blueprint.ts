@@ -1,3 +1,4 @@
+
 export type PhotoSlot = {
   x: number;
   y: number;
@@ -15,21 +16,18 @@ export type FrameBlueprint = {
 /**
  * JNL Studio Blueprints - BODY-SAFE & ZERO-GAP CALIBRATION
  * Internal Coordinate System: 1600 (W) x 2400 (H)
- * Footer begins at Y=2208 (exactly 8% height for quote space)
- * 
- * Optimized for 3:4 Portrait Camera (Aspect Ratio 0.75):
- * Every slot is designed with a width-to-height ratio that preserves the face and body.
+ * Footer begins at Y=2220 (exactly 7.5% height for quote space)
  */
 export const BLUEPRINTS: FrameBlueprint[] = [
-  // ₱50 PACKAGE (3 SHOTS) - REDESIGNED FOR BODY & FACE SAFETY
+  // ₱50 PACKAGE (3 SHOTS) - RECALIBRATED TO PREVENT CROPPED FACES
   {
     id: "p50-balanced-trio",
     label: "BALANCED TRIO",
     package: 50,
     slots: [
-      { x: 0, y: 0, w: 1600, h: 1000 },
-      { x: 0, y: 1000, w: 800, h: 1208 },
-      { x: 800, y: 1000, w: 800, h: 1208 },
+      { x: 0, y: 0, w: 1600, h: 1200 }, // Slot 1: Taller (1.33 aspect) to prevent face crop
+      { x: 0, y: 1200, w: 800, h: 1020 },
+      { x: 800, y: 1200, w: 800, h: 1020 },
     ],
   },
   {
@@ -37,9 +35,9 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "BODY HERO",
     package: 50,
     slots: [
-      { x: 0, y: 0, w: 1000, h: 2208 },
-      { x: 1000, y: 0, w: 600, h: 1104 },
-      { x: 1000, y: 1104, w: 600, h: 1104 },
+      { x: 0, y: 0, w: 1067, h: 2220 }, // Hero Body Slot
+      { x: 1067, y: 0, w: 533, h: 1110 },
+      { x: 1067, y: 1110, w: 533, h: 1110 },
     ],
   },
   {
@@ -47,9 +45,9 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "PORTRAIT STACK",
     package: 50,
     slots: [
-      { x: 0, y: 0, w: 800, h: 1104 },
-      { x: 800, y: 0, w: 800, h: 1104 },
-      { x: 0, y: 1104, w: 1600, h: 1104 },
+      { x: 0, y: 0, w: 1600, h: 740 },
+      { x: 0, y: 740, w: 1600, h: 740 },
+      { x: 0, y: 1480, w: 1600, h: 740 },
     ],
   },
 
@@ -59,18 +57,8 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "PORTRAIT SIX",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 533, h: 1104 }, { x: 533, y: 0, w: 534, h: 1104 }, { x: 1067, y: 0, w: 533, h: 1104 },
-      { x: 0, y: 1104, w: 533, h: 1104 }, { x: 533, y: 1104, w: 534, h: 1104 }, { x: 1067, y: 1104, w: 533, h: 1104 },
-    ],
-  },
-  {
-    id: "p100-classic-grid",
-    label: "CLASSIC 2X3",
-    package: 100,
-    slots: [
-      { x: 0, y: 0, w: 800, h: 736 }, { x: 800, y: 0, w: 800, h: 736 },
-      { x: 0, y: 736, w: 800, h: 736 }, { x: 800, y: 736, w: 800, h: 736 },
-      { x: 0, y: 1472, w: 800, h: 736 }, { x: 800, y: 1472, w: 800, h: 736 },
+      { x: 0, y: 0, w: 533, h: 1110 }, { x: 533, y: 0, w: 534, h: 1110 }, { x: 1067, y: 0, w: 533, h: 1110 },
+      { x: 0, y: 1110, w: 533, h: 1110 }, { x: 533, y: 1110, w: 534, h: 1110 }, { x: 1067, y: 1110, w: 533, h: 1110 },
     ],
   },
   {
@@ -78,12 +66,22 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "MOSAIC HERO",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 1067, h: 1472 },
-      { x: 1067, y: 0, w: 533, h: 736 },
-      { x: 1067, y: 736, w: 533, h: 736 },
-      { x: 0, y: 1472, w: 533, h: 736 },
-      { x: 533, y: 1472, w: 534, h: 736 },
-      { x: 1067, y: 1472, w: 533, h: 736 },
+      { x: 0, y: 0, w: 1067, h: 1480 },
+      { x: 1067, y: 0, w: 533, h: 740 },
+      { x: 1067, y: 740, w: 533, h: 740 },
+      { x: 0, y: 1480, w: 533, h: 740 },
+      { x: 533, y: 1480, w: 534, h: 740 },
+      { x: 1067, y: 1480, w: 533, h: 740 },
+    ],
+  },
+  {
+    id: "p100-staggered",
+    label: "STAGGERED",
+    package: 100,
+    slots: [
+      { x: 0, y: 0, w: 800, h: 740 }, { x: 800, y: 370, w: 800, h: 740 },
+      { x: 0, y: 740, w: 800, h: 740 }, { x: 800, y: 1110, w: 800, h: 740 },
+      { x: 0, y: 1480, w: 800, h: 740 }, { x: 800, y: 1850, w: 800, h: 370 },
     ],
   }
 ];

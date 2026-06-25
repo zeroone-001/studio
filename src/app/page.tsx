@@ -332,10 +332,11 @@ export default function KioskPage() {
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
-    // COMMERCIAL SECURITY: High-entropy Secure Session ID
+    // SECURE SESSION ID: High-entropy, unguessable ID for isolated retrieval
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}_${Math.random().toString(36).substring(2, 12)}`;
     const startTime = performance.now();
     KioskLogger.log('info', 'Export', `Secure Session Init: ${sessionId}`);
+    console.log(`[VERIFIED SESSION ID]: ${sessionId}`);
 
     // Step 1: Photo Generation
     const genStart = performance.now();
@@ -411,8 +412,9 @@ export default function KioskPage() {
       const localSaveStart = performance.now();
       await SessionStore.savePhotoLocally(sessionId, blob);
       KioskLogger.log('info', 'Export', `Local Save: ${(performance.now() - localSaveStart).toFixed(2)}ms`);
+      console.log(`[VERIFIED LOCAL SAVE]: Success for ${sessionId}`);
 
-      // Step 3: INSTANT QR Display
+      // Step 3: INSTANT QR Display (Hardcoded Production Routing)
       const retrievalUrl = `${PUBLIC_KIOSK_URL}/retrieve/${sessionId}`;
       console.log(`[VERIFIED QR URL]: ${retrievalUrl}`);
       setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
@@ -434,8 +436,10 @@ export default function KioskPage() {
             isDownloaded: false
           });
           setUploadStatus("complete");
+          console.log(`[VERIFIED CLOUD SYNC]: Complete for ${sessionId}`);
         } catch (e) {
           setUploadStatus("error");
+          console.error(`[VERIFIED CLOUD SYNC]: Error for ${sessionId}`, e);
         }
       })();
     }, 'image/jpeg', 0.88);

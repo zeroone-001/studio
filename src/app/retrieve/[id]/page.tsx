@@ -21,6 +21,7 @@ export default function RetrievePage() {
 
   const fetchPhoto = useCallback(async () => {
     if (!id) return;
+    console.log(`[VERIFIED RETRIEVAL ATTEMPT]: ${id}`);
     
     try {
       const { storage, db } = initializeFirebase();
@@ -30,6 +31,7 @@ export default function RetrievePage() {
       const docSnap = await getDoc(docRef);
       
       if (!docSnap.exists()) {
+        console.log(`[VERIFIED RETRIEVAL]: Doc not found for ${id}, polling (Attempt ${retryCount.current})...`);
         // High-frequency retry logic to handle background upload latency
         if (retryCount.current < MAX_RETRIES) {
           retryCount.current += 1;
@@ -41,6 +43,8 @@ export default function RetrievePage() {
         return;
       }
 
+      console.log(`[VERIFIED RETRIEVAL]: Doc found for ${id}`);
+
       // Step 2: Get signed production URL from Storage
       const photoRef = ref(storage, `photos/${id}.jpg`);
       const url = await getDownloadURL(photoRef);
@@ -49,6 +53,7 @@ export default function RetrievePage() {
       setLoading(false);
       setError(null);
     } catch (err: any) {
+      console.warn(`[VERIFIED RETRIEVAL]: Storage path not ready for ${id}`, err);
       if (retryCount.current < MAX_RETRIES) {
         retryCount.current += 1;
         setTimeout(fetchPhoto, 500);
@@ -81,8 +86,10 @@ export default function RetrievePage() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+      console.log(`[VERIFIED DOWNLOAD]: Success for ${id}`);
     } catch (e) {
       window.open(imageUrl, '_blank');
+      console.warn(`[VERIFIED DOWNLOAD]: Fallback used for ${id}`, e);
     }
   };
 

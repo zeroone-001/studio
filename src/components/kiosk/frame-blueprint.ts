@@ -18,17 +18,23 @@ export type FrameBlueprint = {
  * Internal Coordinate System: 1600 (W) x 2400 (H)
  * Footer begins at Y=2304 (4% height)
  * Total height: 2304 (slots) + 96 (footer) = 2400px
+ * 
+ * Aspect Ratios:
+ * 1067x2304 = 0.46 (Perfect for Body)
+ * 800x768 = 1.04 (Balanced)
+ * 533x1152 = 0.46 (Portrait)
+ * 1600x1152 = 1.38 (Wide)
  */
 export const BLUEPRINTS: FrameBlueprint[] = [
-  // ₱50 PACKAGE (3 SHOTS) - Optimized for full body/face visibility
+  // ₱50 PACKAGE (3 SHOTS) - Body-safe Vertical Layouts
   {
     id: "p50-hero-body",
     label: "HERO BODY",
     package: 50,
     slots: [
-      { x: 0, y: 0, w: 1000, h: 2304 },
-      { x: 1000, y: 0, w: 600, h: 1152 },
-      { x: 1000, y: 1152, w: 600, h: 1152 },
+      { x: 0, y: 0, w: 1067, h: 2304 },
+      { x: 1067, y: 0, w: 533, h: 1152 },
+      { x: 1067, y: 1152, w: 533, h: 1152 },
     ],
   },
   {
@@ -42,28 +48,19 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     ],
   },
   {
-    id: "p50-stacked",
-    label: "STACKED",
+    id: "p50-vertical-trio",
+    label: "VERTICAL TRIO",
     package: 50,
     slots: [
-      { x: 0, y: 0, w: 1600, h: 768 },
-      { x: 0, y: 768, w: 1600, h: 768 },
-      { x: 0, y: 1536, w: 1600, h: 768 },
+      { x: 0, y: 0, w: 533, h: 2304 },
+      { x: 533, y: 0, w: 534, h: 2304 },
+      { x: 1067, y: 0, w: 533, h: 2304 },
     ],
   },
 
-  // ₱100 PACKAGE (6 SHOTS) - Diverse, body-safe grids
+  // ₱100 PACKAGE (6 SHOTS) - Diverse grids with portrait emphasis
   {
-    id: "p100-vertical-six",
-    label: "VERTICAL SIX",
-    package: 100,
-    slots: [
-      { x: 0, y: 0, w: 533, h: 1152 }, { x: 533, y: 0, w: 534, h: 1152 }, { x: 1067, y: 0, w: 533, h: 1152 },
-      { x: 0, y: 1152, w: 533, h: 1152 }, { x: 533, y: 1152, w: 534, h: 1152 }, { x: 1067, y: 1152, w: 533, h: 1152 },
-    ],
-  },
-  {
-    id: "p100-classic",
+    id: "p100-classic-grid",
     label: "CLASSIC 2X3",
     package: 100,
     slots: [
@@ -73,7 +70,16 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     ],
   },
   {
-    id: "p100-mosaic-hero",
+    id: "p100-vertical-six",
+    label: "VERTICAL 3X2",
+    package: 100,
+    slots: [
+      { x: 0, y: 0, w: 533, h: 1152 }, { x: 533, y: 0, w: 534, h: 1152 }, { x: 1067, y: 0, w: 533, h: 1152 },
+      { x: 0, y: 1152, w: 533, h: 1152 }, { x: 533, y: 1152, w: 534, h: 1152 }, { x: 1067, y: 1152, w: 533, h: 1152 },
+    ],
+  },
+  {
+    id: "p100-mosaic",
     label: "MOSAIC HERO",
     package: 100,
     slots: [
@@ -83,6 +89,16 @@ export const BLUEPRINTS: FrameBlueprint[] = [
       { x: 0, y: 1536, w: 533, h: 768 },
       { x: 533, y: 1536, w: 534, h: 768 },
       { x: 1067, y: 1536, w: 533, h: 768 },
+    ],
+  },
+  {
+    id: "p100-split-hero",
+    label: "SPLIT HERO",
+    package: 100,
+    slots: [
+      { x: 0, y: 0, w: 1600, h: 1000 },
+      { x: 0, y: 1000, w: 533, h: 652 }, { x: 533, y: 1000, w: 534, h: 652 }, { x: 1067, y: 1000, w: 533, h: 652 },
+      { x: 0, y: 1652, w: 800, h: 652 }, { x: 800, y: 1652, w: 800, h: 652 },
     ],
   },
   {
@@ -97,23 +113,12 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     ],
   },
   {
-    id: "p100-split-vertical",
-    label: "SPLIT VERTICAL",
+    id: "p100-portrait-stack",
+    label: "PORTRAIT STACK",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 533, h: 2304 },
-      { x: 533, y: 0, w: 534, h: 1152 }, { x: 1067, y: 0, w: 533, h: 1152 },
-      { x: 533, y: 1152, w: 1067, h: 576 },
-      { x: 533, y: 1728, w: 534, h: 576 }, { x: 1067, y: 1728, w: 533, h: 576 },
-    ],
-  },
-  {
-    id: "p100-balanced-six",
-    label: "BALANCED SIX",
-    package: 100,
-    slots: [
-      { x: 0, y: 0, w: 800, h: 768 }, { x: 800, y: 0, w: 800, h: 768 },
-      { x: 0, y: 768, w: 1600, h: 768 },
+      { x: 0, y: 0, w: 1600, h: 768 },
+      { x: 0, y: 768, w: 800, h: 768 }, { x: 800, y: 768, w: 800, h: 768 },
       { x: 0, y: 1536, w: 533, h: 768 }, { x: 533, y: 1536, w: 534, h: 768 }, { x: 1067, y: 1536, w: 533, h: 768 },
     ],
   }

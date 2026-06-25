@@ -377,7 +377,7 @@ export default function KioskPage() {
       initiatePrint(blob); 
       const printEnd = performance.now();
 
-      // Step 5: Background Cloud Sync
+      // Step 5: Background Cloud Sync - Verified Readiness Workflow
       setUploadStatus("uploading");
       const cloudSyncStart = performance.now();
       (async () => {
@@ -612,7 +612,7 @@ export default function KioskPage() {
                <h2 className="font-headline font-black text-4xl mb-2 italic uppercase">INSERT CASH</h2>
                <p className="text-[10px] opacity-60 uppercase font-bold tracking-widest">AWAITING BILL ACCEPTOR</p>
             </div>
-            <div className="bg-white/5 border-2 border-white/10 p-10 mb-8 w-full max-w-md">
+            <div className="bg-white/5 border-2 border-white/10 p-10 mb-8 w-full max-md">
                <div className="text-6xl font-black italic text-primary mb-2">{paymentReceived} <span className="text-2xl text-white">PHP</span></div>
             </div>
             <div className="grid grid-cols-1 gap-4 w-full max-w-sm">

@@ -364,7 +364,6 @@ export default function KioskPage() {
       KioskLogger.log('info', 'Export', `Local Save: ${(performance.now() - localSaveStart).toFixed(2)}ms`);
 
       // Step 3: INSTANT QR Display (STRICT COMMERCIAL ROUTING)
-      // We show the QR code immediately. The retrieval page will auto-poll for the file.
       const retrievalUrl = `${PUBLIC_KIOSK_URL}/retrieve/${sessionId}`;
       console.log(`[SECURE RETRIEVAL] Session ID: ${sessionId}`);
       console.log(`[SECURE RETRIEVAL] Final QR URL: ${retrievalUrl}`);

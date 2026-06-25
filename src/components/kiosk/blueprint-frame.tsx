@@ -74,34 +74,37 @@ export const BlueprintFrame = React.memo(({
     >
       {/* Background Photos - Zero Gap Absolute Positioning */}
       <div className="absolute inset-0 z-0 bg-white">
-        {blueprint.slots.map((slot, index) => (
-          <div
-            key={index}
-            className="absolute bg-zinc-100 overflow-hidden"
-            style={{
-              left: `${((isStrip ? slot.x / 2 : slot.x) / STRIP_W) * 100}%`,
-              top: `${(slot.y / 2400) * 100}%`, 
-              width: `${((isStrip ? slot.w / 2 : slot.w) / STRIP_W) * 100}%`,
-              height: `${(slot.h / 2400) * 100}%`,
-            }}
-          >
-            {photos[index] ? (
-              <Image
-                src={photos[index]}
-                alt="Portrait"
-                fill
-                className={cn("object-cover opacity-100", filterClass)}
-                sizes="1000px"
-                unoptimized
-                priority
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <span className="text-[10px] text-black/10 font-black uppercase">POSE {index + 1}</span>
-              </div>
-            )}
-          </div>
-        ))}
+        {blueprint.slots.map((slot, index) => {
+          if (slot.w === 0 || slot.h === 0) return null;
+          return (
+            <div
+              key={index}
+              className="absolute bg-zinc-100 overflow-hidden"
+              style={{
+                left: `${((isStrip ? slot.x / 2 : slot.x) / STRIP_W) * 100}%`,
+                top: `${(slot.y / 2400) * 100}%`, 
+                width: `${((isStrip ? slot.w / 2 : slot.w) / STRIP_W) * 100}%`,
+                height: `${(slot.h / 2400) * 100}%`,
+              }}
+            >
+              {photos[index] ? (
+                <Image
+                  src={photos[index]}
+                  alt="Portrait"
+                  fill
+                  className={cn("object-cover opacity-100", filterClass)}
+                  sizes="1000px"
+                  unoptimized
+                  priority
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <span className="text-[10px] text-black/10 font-black uppercase">POSE {index + 1}</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Decorative Layer (Stickers) */}
@@ -144,7 +147,7 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* Compact Branding Footer - Zero Gap Output */}
+      {/* Compact Branding Footer - Zero Gap Output at 7.5% height (starting at Y=2220) */}
       <div 
         className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-start items-center"
         style={{ height: '7.5%', paddingBottom: '0.5%' }}

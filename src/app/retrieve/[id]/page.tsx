@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
@@ -16,7 +17,7 @@ export default function RetrievePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const retryCount = useRef(0);
-  const MAX_RETRIES = 150; // High-frequency polling: ~30 seconds at 200ms intervals
+  const MAX_RETRIES = 150; // ~30 seconds of high-frequency polling
 
   const fetchPhoto = useCallback(async () => {
     if (!id) return;
@@ -24,8 +25,7 @@ export default function RetrievePage() {
     try {
       const { storage } = initializeFirebase();
       
-      // Commercial Speed Rule: Direct Storage Access is faster than Firestore Verification
-      // We skip the Firestore check and try to hit Storage directly for maximum speed.
+      // Commercial Speed Rule: Direct Storage Access for maximum speed
       const photoRef = ref(storage, `photos/${id}.jpg`);
       const url = await getDownloadURL(photoRef);
       
@@ -35,10 +35,10 @@ export default function RetrievePage() {
     } catch (err) {
       if (retryCount.current < MAX_RETRIES) {
         retryCount.current += 1;
-        // Ultra-high frequency polling for mall-style instant load
+        // Ultra-high frequency polling (200ms) for instant experience
         setTimeout(fetchPhoto, 200);
       } else {
-        setError("Your HD portrait is being finalized. Please wait a moment and refresh.");
+        setError("Finalizing HD portrait. Please wait a few seconds and refresh.");
         setLoading(false);
       }
     }
@@ -53,7 +53,7 @@ export default function RetrievePage() {
     try {
       const { db } = initializeFirebase();
       const docRef = doc(db, "photos", id);
-      // Background update, non-blocking
+      // Background tracking
       updateDoc(docRef, { isDownloaded: true }).catch(() => {});
 
       const response = await fetch(imageUrl);
@@ -76,7 +76,7 @@ export default function RetrievePage() {
     try {
       await navigator.share({
         title: 'JNL Studio Portrait',
-        text: 'My studio portrait from JNL Studio Booth!',
+        text: 'My studio portrait from JNL Studio!',
         url: window.location.href,
       });
     } catch (e) {}
@@ -96,8 +96,8 @@ export default function RetrievePage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <p className="text-white/80 font-black uppercase tracking-[0.3em] text-[10px]">Processing HD Portrait...</p>
-                <p className="text-white/20 font-bold uppercase text-[8px]">Available in a few seconds</p>
+                <p className="text-white/80 font-black uppercase tracking-[0.3em] text-[10px]">PREPARING HD PORTRAIT...</p>
+                <p className="text-white/20 font-bold uppercase text-[8px]">Session Verified: {id}</p>
               </div>
             </div>
           ) : error ? (
@@ -120,7 +120,7 @@ export default function RetrievePage() {
                 <div className="space-y-1">
                   <h2 className="text-2xl font-headline font-black italic uppercase text-primary tracking-tight">HD SOFT COPY</h2>
                   <div className="flex items-center justify-center gap-2 text-[7px] font-black uppercase text-white/20 tracking-[0.4em]">
-                    <Activity className="w-2.5 h-2.5" /> SECURE CDN VERIFIED
+                    <Activity className="w-2.5 h-2.5" /> SECURE JNL VERIFIED
                   </div>
                 </div>
                 

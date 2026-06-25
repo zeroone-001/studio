@@ -26,7 +26,7 @@ import { initializeFirebase } from "@/firebase";
 import { ref, uploadBytes } from "firebase/storage";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
-// COMMERCIAL PRODUCTION SETTINGS
+// COMMERCIAL PRODUCTION ROUTING
 const PUBLIC_KIOSK_URL = "https://jnl-studio-booth.web.app";
 
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "thankyou" | "test-camera";
@@ -265,15 +265,6 @@ export default function KioskPage() {
   }, [packageSelected, appState]);
 
   useEffect(() => {
-    if (packageSelected === 50) {
-      const index = FILTERS.findIndex(f => f.id === selectedFilter.id);
-      if (index > 4) {
-        setSelectedFilter(FILTERS[0]);
-      }
-    }
-  }, [packageSelected, selectedFilter.id]);
-
-  useEffect(() => {
     if (packageSelected || appState === "test-camera") {
       if (!selectedBlueprint || selectedBlueprint.package !== packageSelected) {
         const first = availableBlueprints[0];
@@ -361,30 +352,30 @@ export default function KioskPage() {
       await drawContent(0);
     }
     const genEnd = performance.now();
-    console.log(`[PERF] Photo Generation: ${(genEnd - genStart).toFixed(2)}ms`);
+    console.log(`[AUDIT] Photo Generation: ${(genEnd - genStart).toFixed(2)}ms`);
 
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
 
-      // Step 2: Instant QR Ready (Predictive ID - PRODUCTION ROUTING)
+      // Step 2: Instant QR Ready (PRODUCTION ROUTING)
       const qrReadyStart = performance.now();
       const retrievalUrl = `${PUBLIC_KIOSK_URL}/retrieve/${sessionId}`;
-      console.log("CRITICAL: Final QR Retrieval URL:", retrievalUrl);
+      console.log("[AUDIT] Final QR Retrieval URL:", retrievalUrl);
       setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
       const qrReadyEnd = performance.now();
-      console.log(`[PERF] QR Ready: ${(qrReadyEnd - qrReadyStart).toFixed(2)}ms`);
+      console.log(`[AUDIT] QR Ready: ${(qrReadyEnd - qrReadyStart).toFixed(2)}ms`);
 
-      // Step 3: Local Save & Buffer
+      // Step 3: Local Save (Buffer)
       const localSaveStart = performance.now();
       SessionStore.savePhotoLocally(sessionId, blob);
       const localSaveEnd = performance.now();
-      console.log(`[PERF] Local Save: ${(localSaveEnd - localSaveStart).toFixed(2)}ms`);
+      console.log(`[AUDIT] Local Save: ${(localSaveEnd - localSaveStart).toFixed(2)}ms`);
 
-      // Step 4: Parallel Printing
+      // Step 4: Parallel Printing Handshake
       const printStart = performance.now();
       initiatePrint(blob); 
       const printEnd = performance.now();
-      console.log(`[PERF] Print Started: ${(printEnd - printStart).toFixed(2)}ms`);
+      console.log(`[AUDIT] Print Started: ${(printEnd - printStart).toFixed(2)}ms`);
 
       // Step 5: Background Cloud Sync
       setUploadStatus("uploading");
@@ -794,14 +785,14 @@ export default function KioskPage() {
                         ) : (
                           <div className="flex flex-col items-center gap-2 text-primary">
                             <Loader2 className="w-8 h-8 animate-spin" />
-                            <span className="text-[8px] font-black uppercase text-zinc-400">Handshaking...</span>
+                            <span className="text-[8px] font-black uppercase text-zinc-400">Verifying HD...</span>
                           </div>
                         )}
                      </div>
 
                      <div className="flex flex-col items-center gap-1">
                        <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest text-center">Instant HD Download</p>
-                       {uploadStatus === "uploading" && <div className="text-[7px] text-primary/60 font-black uppercase animate-pulse">Syncing Cloud...</div>}
+                       {uploadStatus === "uploading" && <div className="text-[7px] text-primary/60 font-black uppercase animate-pulse">Handshaking Cloud...</div>}
                        {uploadStatus === "complete" && <div className="text-[7px] text-green-500 font-black uppercase">HD Ready</div>}
                      </div>
                    </div>

@@ -121,12 +121,12 @@ export const QUOTES = [
   { id: "q42", label: "PEACE", text: "Find peace in the quiet little moments." },
   { id: "q43", label: "CHANCE", text: "Take every single chance that comes your way." },
   { id: "q44", label: "INSIDE", text: "Beauty starts deep from within the soul." },
-  { id: "q45", label: "GOLD", text: "You have a heart made of pure gold." },
+  { id: "q45", label: "GOLD", text: "You have a heart made of gold." },
   { id: "q46", label: "BORN", text: "You were born to stand out today." },
-  { id: "q47", label: "WONDER", text: "Never lose your sense of child-like wonder." },
+  { id: "q47", label: "WONDER", text: "Never lose your sense of wonder." },
   { id: "q48", label: "VIBE", text: "High vibes attract a high quality of life." },
   { id: "q49", label: "BEYOND", text: "Go beyond what you thought was possible." },
-  { id: "q50", label: "DONE", text: "Small steps every day lead to big results." }
+  { id: "q50", label: "DONE", text: "Small steps lead to big results." }
 ];
 
 export interface PlacedSticker {
@@ -332,19 +332,15 @@ export default function KioskPage() {
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
-    // SECURE SESSION ID: High-entropy, unguessable ID for isolated retrieval
+    // 1. SECURE SESSION ID (HIGH ENTROPY)
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}_${Math.random().toString(36).substring(2, 12)}`;
     
-    // IMMEDIATE QR GENERATION: constructing URL and setting QR code right away
+    // 2. IMMEDIATE QR GENERATION (PRODUCTION ROUTING)
     const retrievalUrl = `${PUBLIC_KIOSK_URL}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-    
-    // VERIFICATION LOGS
-    KioskLogger.log('info', 'Export', `Session ID: ${sessionId}`);
-    KioskLogger.log('info', 'Export', `QR URL: ${retrievalUrl}`);
-    console.log(`[VERIFIED SESSION ID]: ${sessionId}`);
-    console.log(`[VERIFIED QR URL]: ${retrievalUrl}`);
+    KioskLogger.log('info', 'Export', `Secure ID Linked: ${sessionId}`);
 
+    // 3. CANVAS RENDERING
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1600;
     exportCanvas.height = 2400;
@@ -358,7 +354,7 @@ export default function KioskPage() {
     const isStrip = selectedBlueprint.package === 50;
     
     const drawContent = async (offsetX: number) => {
-      // Background Slots
+      // Photo Slots
       for (let i = 0; i < selectedBlueprint.slots.length; i++) {
         const slot = selectedBlueprint.slots[i];
         const photo = capturedPhotos[i];
@@ -382,14 +378,14 @@ export default function KioskPage() {
         ctx.restore();
       }
 
-      // Branding Footer & Quote
+      // Branding Footer (Zero Gap)
       const footerY = 2304;
       const footerH = 96;
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(offsetX, footerY, isStrip ? 800 : 1600, footerH);
 
       ctx.fillStyle = '#000000';
-      ctx.font = 'bold 24px Inter, sans-serif';
+      ctx.font = 'italic 24px Inter, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(selectedQuote.text, offsetX + (isStrip ? 400 : 800), footerY + 40);
 
@@ -408,18 +404,17 @@ export default function KioskPage() {
       await drawContent(0);
     }
 
+    // 4. SAVE & PARALLEL SYNC
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
 
-      // INSTANT LOCAL SAVE
+      // Local Persistence
       await SessionStore.savePhotoLocally(sessionId, blob);
-      KioskLogger.log('info', 'Export', `Image Saved Locally: ${sessionId}`);
-      console.log(`[VERIFIED LOCAL SAVE]: Success for ${sessionId}`);
-
-      // PARALLEL PRINT START
+      
+      // Parallel Print Start
       initiatePrint(blob); 
 
-      // BACKGROUND CLOUD SYNC
+      // Background Cloud Sync
       setUploadStatus("uploading");
       (async () => {
         try {
@@ -433,10 +428,9 @@ export default function KioskPage() {
             isDownloaded: false
           });
           setUploadStatus("complete");
-          console.log(`[VERIFIED CLOUD SYNC]: Complete for ${sessionId}`);
         } catch (e) {
           setUploadStatus("error");
-          console.error(`[VERIFIED CLOUD SYNC]: Error for ${sessionId}`, e);
+          KioskLogger.log('error', 'Cloud', 'Sync handshake deferred.');
         }
       })();
     }, 'image/jpeg', 0.88);
@@ -459,7 +453,7 @@ export default function KioskPage() {
     if (appState === "printing" && printProgress < 100) {
       const timer = setInterval(() => {
         setPrintProgress(prev => Math.min(prev + 1, 100));
-      }, 150); 
+      }, 120); 
       return () => clearInterval(timer);
     }
   }, [appState, printProgress]);
@@ -824,7 +818,7 @@ export default function KioskPage() {
                      </div>
                    </div>
                    
-                   {printProgress === 100 && (
+                   {printProgress >= 90 && (
                      <button onClick={() => setAppState("thankyou")} className="w-full mt-4 bg-primary py-4 font-headline font-black italic uppercase rounded-xl shadow-lg active:scale-95 transition-transform animate-in slide-in-from-bottom-2">FINISH SESSION</button>
                    )}
                 </div>

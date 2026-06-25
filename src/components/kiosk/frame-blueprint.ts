@@ -19,9 +19,9 @@ export type FrameBlueprint = {
  * Footer begins at Y=2304 (4% height)
  * Total height: 2304 (slots) + 96 (footer) = 2400px
  * 
- * Aspect Ratios:
+ * Optimized Aspect Ratios (Portrait Emphasis):
  * 1067x2304 = 0.46 (Perfect for Body)
- * 800x768 = 1.04 (Balanced)
+ * 800x1152 = 0.69 (Portrait)
  * 533x1152 = 0.46 (Portrait)
  * 1600x1152 = 1.38 (Wide)
  */

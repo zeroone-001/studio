@@ -5,7 +5,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import { initializeFirebase } from "@/firebase";
 import { ref, getDownloadURL } from "firebase/storage";
-import { doc, updateDoc, getDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { KioskLayout } from "@/components/kiosk/kiosk-layout";
 import { NeonButton } from "@/components/kiosk/neon-button";
 import { Download, Loader2, AlertCircle, Share2, Activity, Clock } from "lucide-react";
@@ -17,7 +17,7 @@ export default function RetrievePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const retryCount = useRef(0);
-  const MAX_RETRIES = 120; // 1 minute of polling (500ms * 120)
+  const MAX_RETRIES = 120; // 1 minute of polling
 
   const fetchPhoto = useCallback(async () => {
     if (!id) return;
@@ -25,15 +25,14 @@ export default function RetrievePage() {
     try {
       const { storage, db } = initializeFirebase();
       
-      // Step 1: Verify document existence first (Firestore)
+      // Check Firestore document existence
       const docRef = doc(db, "photos", id);
       const docSnap = await getDoc(docRef);
       
       if (!docSnap.exists()) {
-        // High-frequency retry logic to handle background upload latency
         if (retryCount.current < MAX_RETRIES) {
           retryCount.current += 1;
-          setTimeout(fetchPhoto, 500); // Poll every 500ms
+          setTimeout(fetchPhoto, 500); 
           return;
         }
         setError("Photo not found. Please scan the QR code again.");
@@ -41,7 +40,7 @@ export default function RetrievePage() {
         return;
       }
 
-      // Step 2: Get signed production URL from Storage
+      // Get production Storage URL
       const photoRef = ref(storage, `photos/${id}.jpg`);
       const url = await getDownloadURL(photoRef);
       
@@ -64,13 +63,8 @@ export default function RetrievePage() {
   }, [fetchPhoto]);
 
   const handleDownload = async () => {
-    if (!imageUrl || !id) return;
+    if (!imageUrl) return;
     try {
-      const { db } = initializeFirebase();
-      const docRef = doc(db, "photos", id);
-      // Track download
-      updateDoc(docRef, { isDownloaded: true }).catch(() => {});
-
       const response = await fetch(imageUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -110,16 +104,13 @@ export default function RetrievePage() {
                    <Clock className="w-6 h-6 text-primary/40 animate-pulse" />
                 </div>
               </div>
-              <div className="space-y-2">
-                <p className="text-white/80 font-black uppercase tracking-[0.3em] text-[10px]">VERIFYING SESSION...</p>
-                <p className="text-white/20 font-bold uppercase text-[7px] tracking-tighter">SECURE ID HANDSHAKE ACTIVE</p>
-              </div>
+              <p className="text-white/80 font-black uppercase tracking-[0.3em] text-[10px]">VERIFYING SESSION...</p>
             </div>
           ) : error ? (
             <div className="flex flex-col items-center py-24 space-y-6">
               <AlertCircle className="w-16 h-16 text-red-500" />
               <p className="text-white/80 font-bold uppercase text-xs leading-relaxed max-w-[280px]">{error}</p>
-              <NeonButton onClick={() => window.location.reload()} className="!py-4 mt-4 w-full text-sm">RETRY HANDSHAKE</NeonButton>
+              <NeonButton onClick={() => window.location.reload()} className="!py-4 mt-4 w-full text-sm">RETRY</NeonButton>
             </div>
           ) : (
             <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">

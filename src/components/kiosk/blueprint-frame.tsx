@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo, useRef, useState, useEffect } from "react";
@@ -147,20 +148,20 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* Compact Branding Footer - Zero Gap Output at 7.5% height (starting at Y=2220) */}
+      {/* Compact Branding Footer - Reduced to 5% area */}
       <div 
-        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-start items-center"
-        style={{ height: '7.5%', paddingBottom: '0.5%' }}
+        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-center items-center"
+        style={{ height: '5%' }}
       >
-        <div className="w-[94%] flex justify-between items-center">
+        <div className="w-[96%] flex justify-between items-center px-1">
           <div className="flex flex-col items-start leading-none gap-0">
-             <span className="font-headline font-black italic uppercase text-black flex items-center gap-0.5" style={{ fontSize: isStrip ? '12px' : '16px' }}>
+             <span className="font-headline font-black italic uppercase text-black flex items-center gap-0.5" style={{ fontSize: isStrip ? '10px' : '14px' }}>
                <span>JNL</span>
                <span className="text-[#FF3399]">STUDIO</span>
              </span>
-             <span className="font-bold uppercase tracking-[0.2em] text-black/20" style={{ fontSize: isStrip ? '3.5px' : '4.5px' }}>PHOTOBOOTH</span>
+             <span className="font-bold uppercase tracking-[0.2em] text-black/20" style={{ fontSize: isStrip ? '3px' : '4px' }}>PHOTOBOOTH</span>
           </div>
-          <span className="font-bold uppercase tracking-[0.1em] text-black/20 leading-none" style={{ fontSize: isStrip ? '6px' : '8px' }}>{displayDate}</span>
+          <span className="font-bold uppercase tracking-[0.1em] text-black/20 leading-none" style={{ fontSize: isStrip ? '5px' : '7px' }}>{displayDate}</span>
         </div>
       </div>
     </div>

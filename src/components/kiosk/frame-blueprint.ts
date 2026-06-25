@@ -1,3 +1,4 @@
+
 export type PhotoSlot = {
   x: number;
   y: number;
@@ -16,112 +17,106 @@ export type FrameBlueprint = {
 };
 
 /**
- * JNL Studio Blueprints - Zero Gap & Portrait Visibility Optimization
+ * JNL Studio Blueprints - ZERO GAP & FULL BODY OPTIMIZATION
  * Internal Coordinate System: 1600 (W) x 2400 (H)
- * Footer begins at Y=2220 (7.5% height)
- * All slots calibrated to end exactly at Y=2220 to remove free space.
- * Layouts prioritized for vertical space to capture whole bodies and faces.
+ * Footer begins at Y=2280 (5% height)
+ * Total height: 2280 (slots) + 120 (footer) = 2400px
  */
 export const BLUEPRINTS: FrameBlueprint[] = [
-  // ₱50 PACKAGE (3 SHOTS) - Diverse Portrait Designs
+  // ₱50 PACKAGE (3 SHOTS) - Optimized for full body/face visibility
   {
     id: "p50-stacked",
     label: "STACKED",
     package: 50,
     slots: [
-      { x: 0, y: 0, w: 1600, h: 740 },
-      { x: 0, y: 740, w: 1600, h: 740 },
-      { x: 0, y: 1480, w: 1600, h: 740 },
+      { x: 0, y: 0, w: 1600, h: 760 },
+      { x: 0, y: 760, w: 1600, h: 760 },
+      { x: 0, y: 1520, w: 1600, h: 760 },
     ],
   },
   {
-    id: "p50-topheavy",
-    label: "TOP-HEAVY",
+    id: "p50-body-hero",
+    label: "BODY HERO",
     package: 50,
     slots: [
-      { x: 0, y: 0, w: 1600, h: 1110 },
-      { x: 0, y: 1110, w: 800, h: 1110 },
-      { x: 800, y: 1110, w: 800, h: 1110 },
+      { x: 0, y: 0, w: 800, h: 2280 },
+      { x: 800, y: 0, w: 800, h: 1140 },
+      { x: 800, y: 1140, w: 800, h: 1140 },
     ],
   },
   {
-    id: "p50-side-hero",
-    label: "SIDE HERO",
+    id: "p50-balanced",
+    label: "BALANCED",
     package: 50,
     slots: [
-      { x: 0, y: 0, w: 800, h: 2220 },
-      { x: 800, y: 0, w: 800, h: 1110 },
-      { x: 800, y: 1110, w: 800, h: 1110 },
+      { x: 0, y: 0, w: 1600, h: 1140 },
+      { x: 0, y: 1140, w: 800, h: 1140 },
+      { x: 800, y: 1140, w: 800, h: 1140 },
     ],
   },
 
-  // ₱100 PACKAGE (6 SHOTS) - Diverse Grid & Hero Options
+  // ₱100 PACKAGE (6 SHOTS) - Diverse, body-safe grids
   {
     id: "p100-classic",
     label: "CLASSIC 2X3",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 800, h: 740 }, { x: 800, y: 0, w: 800, h: 740 },
-      { x: 0, y: 740, w: 800, h: 740 }, { x: 800, y: 740, w: 800, h: 740 },
-      { x: 0, y: 1480, w: 800, h: 740 }, { x: 800, y: 1480, w: 800, h: 740 },
+      { x: 0, y: 0, w: 800, h: 760 }, { x: 800, y: 0, w: 800, h: 760 },
+      { x: 0, y: 760, w: 800, h: 760 }, { x: 800, y: 760, w: 800, h: 760 },
+      { x: 0, y: 1520, w: 800, h: 760 }, { x: 800, y: 1520, w: 800, h: 760 },
     ],
   },
   {
-    id: "p100-vertical",
-    label: "VERTICAL 3X2",
+    id: "p100-vertical-hero",
+    label: "VERTICAL HERO",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 533, h: 1110 }, { x: 533, y: 0, w: 534, h: 1110 }, { x: 1067, y: 0, w: 533, h: 1110 },
-      { x: 0, y: 1110, w: 533, h: 1110 }, { x: 533, y: 1110, w: 534, h: 1110 }, { x: 1067, y: 1110, w: 533, h: 1110 },
+      { x: 0, y: 0, w: 533, h: 1140 }, { x: 533, y: 0, w: 534, h: 1140 }, { x: 1067, y: 0, w: 533, h: 1140 },
+      { x: 0, y: 1140, w: 533, h: 1140 }, { x: 533, y: 1140, w: 534, h: 1140 }, { x: 1067, y: 1140, w: 533, h: 1140 },
     ],
   },
   {
     id: "p100-mosaic",
-    label: "MOSAIC HERO",
+    label: "MOSAIC 1+5",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 1067, h: 1480 },
-      { x: 1067, y: 0, w: 533, h: 740 },
-      { x: 1067, y: 740, w: 533, h: 740 },
-      { x: 0, y: 1480, w: 533, h: 740 },
-      { x: 533, y: 1480, w: 534, h: 740 },
-      { x: 1067, y: 1480, w: 533, h: 740 },
+      { x: 0, y: 0, w: 1067, h: 1520 },
+      { x: 1067, y: 0, w: 533, h: 760 },
+      { x: 1067, y: 760, w: 533, h: 760 },
+      { x: 0, y: 1520, w: 533, h: 760 },
+      { x: 533, y: 1520, w: 534, h: 760 },
+      { x: 1067, y: 1520, w: 533, h: 760 },
     ],
   },
   {
-    id: "p100-staggered",
-    label: "STAGGERED",
+    id: "p100-cinema",
+    label: "CINEMA 6",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 800, h: 1110 },
-      { x: 800, y: 0, w: 800, h: 740 },
-      { x: 800, y: 740, w: 800, h: 740 },
-      { x: 0, y: 1110, w: 800, h: 1110 },
-      { x: 800, y: 1480, w: 400, h: 740 },
-      { x: 1200, y: 1480, w: 400, h: 740 },
+      { x: 0, y: 0, w: 1600, h: 380 },
+      { x: 0, y: 380, w: 800, h: 760 }, { x: 800, y: 380, w: 800, h: 760 },
+      { x: 0, y: 1140, w: 1600, h: 760 },
+      { x: 0, y: 1900, w: 800, h: 380 }, { x: 800, y: 1900, w: 800, h: 380 },
     ],
   },
   {
-    id: "p100-triple-split",
-    label: "TRIPLE SPLIT",
+    id: "p100-split-hero",
+    label: "SPLIT HERO",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 533, h: 740 }, { x: 533, y: 0, w: 534, h: 740 }, { x: 1067, y: 0, w: 533, h: 740 },
-      { x: 0, y: 740, w: 1600, h: 740 },
-      { x: 0, y: 1480, w: 800, h: 740 }, { x: 800, y: 1480, w: 800, h: 740 },
+      { x: 0, y: 0, w: 800, h: 1520 }, { x: 800, y: 0, w: 800, h: 1520 },
+      { x: 0, y: 1520, w: 400, h: 760 }, { x: 400, y: 1520, w: 400, h: 760 },
+      { x: 800, y: 1520, w: 400, h: 760 }, { x: 1200, y: 1520, w: 400, h: 760 },
     ],
   },
   {
-    id: "p100-portrait-focus",
-    label: "PORTRAIT FOCUS",
+    id: "p100-edge-grid",
+    label: "EDGE GRID",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 1600, h: 1110 },
-      { x: 0, y: 1110, w: 400, h: 1110 },
-      { x: 400, y: 1110, w: 400, h: 1110 },
-      { x: 800, y: 1110, w: 400, h: 1110 },
-      { x: 1200, y: 1110, w: 400, h: 1110 },
-      { x: 0, y: 0, w: 0, h: 0 }, // Unused slot for design symmetry
+      { x: 0, y: 0, w: 533, h: 760 }, { x: 533, y: 0, w: 534, h: 760 }, { x: 1067, y: 0, w: 533, h: 760 },
+      { x: 0, y: 760, w: 533, h: 760 }, { x: 533, y: 760, w: 534, h: 760 }, { x: 1067, y: 760, w: 533, h: 760 },
+      { x: 0, y: 1520, w: 533, h: 760 }, { x: 533, y: 1520, w: 534, h: 760 }, { x: 1067, y: 1520, w: 533, h: 760 },
     ],
   }
 ];

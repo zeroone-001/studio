@@ -377,7 +377,7 @@ export default function KioskPage() {
       initiatePrint(blob); 
       const printEnd = performance.now();
 
-      // Step 5: Background Cloud Sync - Verified Readiness Workflow
+      // Step 5: Background Cloud Sync
       setUploadStatus("uploading");
       const cloudSyncStart = performance.now();
       (async () => {

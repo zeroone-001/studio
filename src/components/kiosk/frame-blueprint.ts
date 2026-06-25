@@ -35,7 +35,7 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "BODY HERO",
     package: 50,
     slots: [
-      { x: 0, y: 0, w: 1067, h: 2220 }, // Hero Body Slot
+      { x: 0, y: 0, w: 1067, h: 2220 }, // Hero Body Slot (Portrait aspect)
       { x: 1067, y: 0, w: 533, h: 1110 },
       { x: 1067, y: 1110, w: 533, h: 1110 },
     ],
@@ -51,7 +51,7 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     ],
   },
 
-  // ₱100 PACKAGE (6 SHOTS)
+  // ₱100 PACKAGE (6 SHOTS) - RESTORED 6-FRAME LAYOUTS
   {
     id: "p100-vertical-six",
     label: "PORTRAIT SIX",

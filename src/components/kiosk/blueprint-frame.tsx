@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo, useRef, useState, useEffect } from "react";
@@ -153,15 +154,15 @@ export const BlueprintFrame = React.memo(({
       {/* Spacious Branding Footer - 8% Height (192px at 2400px height) */}
       <div 
         className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-center items-center px-6"
-        style={{ height: '8%' }}
+        style={{ height: '7.5%' }}
       >
         {/* Inspirational Quote Sentence - Added Padding for Space */}
         {quoteText && (
-          <p className="font-bold text-black italic text-center leading-relaxed mb-4" style={{ fontSize: isStrip ? '10px' : '16px' }}>
+          <p className="font-bold text-black italic text-center leading-relaxed mb-6 mt-2" style={{ fontSize: isStrip ? '10px' : '16px' }}>
             "{quoteText}"
           </p>
         )}
-        <div className="w-full flex justify-between items-center border-t border-black/5 pt-3">
+        <div className="w-full flex justify-between items-center border-t border-black/5 pt-3 mb-2">
           <div className="flex flex-col items-start leading-none gap-0">
              <span className="font-headline font-black italic uppercase text-black flex items-center gap-1" style={{ fontSize: isStrip ? '11px' : '18px' }}>
                <span>JNL</span>

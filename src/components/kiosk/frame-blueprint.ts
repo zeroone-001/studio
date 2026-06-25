@@ -25,7 +25,7 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "BALANCED TRIO",
     package: 50,
     slots: [
-      { x: 0, y: 0, w: 1600, h: 1200 }, // Slot 1: Taller (1.33 aspect) to prevent face crop
+      { x: 0, y: 0, w: 1600, h: 1200 }, 
       { x: 0, y: 1200, w: 800, h: 1020 },
       { x: 800, y: 1200, w: 800, h: 1020 },
     ],
@@ -35,9 +35,9 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "BODY HERO",
     package: 50,
     slots: [
-      { x: 0, y: 0, w: 1067, h: 2220 }, // Hero Body Slot (Portrait aspect)
-      { x: 1067, y: 0, w: 533, h: 1110 },
-      { x: 1067, y: 1110, w: 533, h: 1110 },
+      { x: 0, y: 0, w: 800, h: 2220 }, // Hero Side (Portrait aspect - Safe for full body)
+      { x: 800, y: 0, w: 800, h: 1110 }, // Top Square-ish Portrait
+      { x: 800, y: 1110, w: 800, h: 1110 }, // Bottom Square-ish Portrait
     ],
   },
   {

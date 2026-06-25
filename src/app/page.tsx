@@ -821,6 +821,16 @@ export default function KioskPage() {
                        {uploadStatus === "uploading" && <div className="text-[7px] text-primary/60 font-black uppercase animate-pulse">Syncing Cloud...</div>}
                        {uploadStatus === "complete" && <div className="text-[7px] text-green-500 font-black uppercase">HD Ready</div>}
                      </div>
+
+                     {/* Instant Photo Verification Thumbnail */}
+                     {capturedPhotos.length > 0 && (
+                       <div className="w-full pt-4 border-t border-white/5 flex flex-col items-center gap-2">
+                         <div className="w-20 aspect-[3/4] border-2 border-white/20 rounded-lg overflow-hidden relative shadow-lg">
+                           <img src={capturedPhotos[0]} alt="Verification" className={cn("w-full h-full object-cover", selectedFilter.class)} />
+                         </div>
+                         <span className="text-[7px] font-black uppercase text-zinc-500">Soft Copy Preview</span>
+                       </div>
+                     )}
                    </div>
                    
                    {printProgress >= 90 && (

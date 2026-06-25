@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useMemo, useRef, useState, useEffect } from "react";
@@ -56,7 +55,6 @@ export const BlueprintFrame = React.memo(({
 
   const isStrip = blueprint.package === 50;
   const STRIP_W = isStrip ? 800 : CANVAS_W;
-  const STRIP_H = CANVAS_H;
 
   const displayDate = useMemo(() => {
     if (dateText) return dateText;
@@ -76,14 +74,19 @@ export const BlueprintFrame = React.memo(({
       <div className="absolute inset-0 z-0 bg-white">
         {blueprint.slots.map((slot, index) => {
           if (slot.w === 0 || slot.h === 0) return null;
+          
+          // Adjust coordinates for Strip if rendering Twin Copies
+          const sX = isStrip ? slot.x / 2 : slot.x;
+          const sW = isStrip ? slot.w / 2 : slot.w;
+
           return (
             <div
               key={index}
               className="absolute bg-zinc-100 overflow-hidden"
               style={{
-                left: `${((isStrip ? slot.x / 2 : slot.x) / STRIP_W) * 100}%`,
+                left: `${(sX / STRIP_W) * 100}%`,
                 top: `${(slot.y / 2400) * 100}%`, 
-                width: `${((isStrip ? slot.w / 2 : slot.w) / STRIP_W) * 100}%`,
+                width: `${(sW / STRIP_W) * 100}%`,
                 height: `${(slot.h / 2400) * 100}%`,
               }}
             >

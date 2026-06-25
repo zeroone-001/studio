@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -26,7 +25,7 @@ import { initializeFirebase } from "@/firebase";
 import { ref, uploadBytes } from "firebase/storage";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
-// COMMERCIAL PRODUCTION ROUTING - FIXED DOMAIN
+// COMMERCIAL PRODUCTION ROUTING
 const PUBLIC_KIOSK_URL = "https://jnl-studio-booth.web.app";
 
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "thankyou" | "test-camera";
@@ -39,7 +38,7 @@ export const FILTERS = [
   { id: "bwpro", label: "B&W PRO", sub: "CINEMATIC", class: "grayscale contrast-[1.6] brightness-[1.1]" },
   { id: "candy", label: "CANDY", sub: "POP VIBE", class: "saturate-[1.8] contrast-[1.25] brightness-[1.1] hue-rotate-[5deg]" },
   { id: "velvet", label: "VELVET", sub: "WARM PINK", class: "sepia-[0.1] saturate-[1.4] contrast-[1.1] hue-rotate-[-10deg] brightness-[1.05]" },
-  { id: "sunset", label: "SUNSET", sub: "GOLDEN HOUR", class: "sepia-[0.4] saturate-[1.7] brightness-[1.1] contrast-[1.1] hue-rotate-[-15deg]" },
+  { id: "sunset", label: "SUNSET", sub: "GOLDEN HOUR", class: "sepia-[0.4] saturate-[1.7] brightness-[1.1] contrast!-[1.1] hue-rotate-[-15deg]" },
   { id: "dream", label: "DREAM", sub: "SOFT GLOW", class: "brightness-[1.2] contrast-[0.9] saturate-[1.1] blur-[0.5px]" },
   { id: "film", label: "FILM", sub: "VINTAGE", class: "grayscale-[0.2] sepia-[0.15] contrast-[1.3] brightness-[0.95] saturate-[1.2]" },
 ];
@@ -364,9 +363,6 @@ export default function KioskPage() {
         img.src = photo;
         await new Promise(resolve => img.onload = resolve);
         
-        const sX = isStrip ? slot.x / 2 : slot.x;
-        const sW = isStrip ? slot.w / 2 : slot.w;
-        
         ctx.save();
         if (filterClass.includes('brightness')) ctx.filter += ' brightness(1.1)';
         if (filterClass.includes('contrast')) ctx.filter += ' contrast(1.1)';
@@ -374,7 +370,7 @@ export default function KioskPage() {
         if (filterClass.includes('grayscale')) ctx.filter += ' grayscale(1)';
         if (filterClass.includes('saturate')) ctx.filter += ' saturate(1.3)';
         
-        ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
+        ctx.drawImage(img, slot.x + offsetX, slot.y, slot.w, slot.h);
         ctx.restore();
       }
 
@@ -382,12 +378,12 @@ export default function KioskPage() {
       const footerY = 2304;
       const footerH = 96;
       ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(offsetX, footerY, isStrip ? 800 : 1600, footerH);
+      ctx.fillRect(offsetX, footerY, 1600, footerH);
 
       ctx.fillStyle = '#000000';
       ctx.font = 'italic 24px Inter, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(selectedQuote.text, offsetX + (isStrip ? 400 : 800), footerY + 40);
+      ctx.fillText(selectedQuote.text, offsetX + 800, footerY + 40);
 
       ctx.fillStyle = '#000000';
       ctx.font = '900 italic 20px Inter, sans-serif';
@@ -398,8 +394,15 @@ export default function KioskPage() {
     };
 
     if (isStrip) {
+      // Photobooth Strip Rendering (Twin Copies)
+      const stripBlueprint = { ...selectedBlueprint, slots: selectedBlueprint.slots.map(s => ({ ...s, x: s.x / 2, w: s.w / 2 })) };
+      const originalSlots = selectedBlueprint.slots;
+      // @ts-ignore
+      selectedBlueprint.slots = stripBlueprint.slots;
       await drawContent(0);
       await drawContent(800);
+      // @ts-ignore
+      selectedBlueprint.slots = originalSlots;
     } else {
       await drawContent(0);
     }

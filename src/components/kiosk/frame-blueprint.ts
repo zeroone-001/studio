@@ -1,4 +1,3 @@
-
 export type PhotoSlot = {
   x: number;
   y: number;
@@ -20,7 +19,7 @@ export type FrameBlueprint = {
  * JNL Studio Blueprints - Zero Gap & Portrait Visibility Optimization
  * Internal Coordinate System: 1600 (W) x 2400 (H)
  * Footer begins at Y=2220 (7.5% height)
- * All slots calibrated to end exactly at Y=2220.
+ * All slots calibrated to end exactly at Y=2220 to remove free space.
  */
 export const BLUEPRINTS: FrameBlueprint[] = [
   // ₱50 PACKAGE (3 SHOTS) - Vertical Optimized
@@ -103,7 +102,7 @@ export const BLUEPRINTS: FrameBlueprint[] = [
   },
   {
     id: "p100-l5",
-    label: "SYMMETRY",
+    label: "EQUAL 2X3",
     package: 100,
     slots: [
       { x: 0, y: 0, w: 800, h: 740 }, { x: 800, y: 0, w: 800, h: 740 },
@@ -113,7 +112,7 @@ export const BLUEPRINTS: FrameBlueprint[] = [
   },
   {
     id: "p100-l6",
-    label: "ULTIMATE",
+    label: "EQUAL 3X2",
     package: 100,
     slots: [
       { x: 0, y: 0, w: 533, h: 1110 }, { x: 533, y: 0, w: 534, h: 1110 }, { x: 1067, y: 0, w: 533, h: 1110 },

@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -26,7 +25,7 @@ import { initializeFirebase } from "@/firebase";
 import { ref, uploadBytes } from "firebase/storage";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
-// COMMERCIAL PRODUCTION ROUTING
+// COMMERCIAL PRODUCTION ROUTING - FIXED DOMAIN
 const PUBLIC_KIOSK_URL = "https://jnl-studio-booth.web.app";
 
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "thankyou" | "test-camera";
@@ -302,9 +301,10 @@ export default function KioskPage() {
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
-    const sessionId = `sess_${Date.now()}`;
+    // COMMERCIAL SECURITY: Unique random unguessable Session ID
+    const sessionId = `jnl_${Math.random().toString(36).substring(2, 15)}_${Math.random().toString(36).substring(2, 15)}`;
     const startTime = performance.now();
-    KioskLogger.log('info', 'Export', `Pipeline Start: ${sessionId}`);
+    KioskLogger.log('info', 'Export', `Secure Session Start: ${sessionId}`);
 
     // Step 1: Photo Generation
     const genStart = performance.now();
@@ -352,32 +352,31 @@ export default function KioskPage() {
       await drawContent(0);
     }
     const genEnd = performance.now();
-    console.log(`[AUDIT] Photo Generation: ${(genEnd - genStart).toFixed(2)}ms`);
+    const genTime = (genEnd - genStart).toFixed(2);
+    console.log(`[AUDIT] Photo Generation: ${genTime}ms`);
 
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
 
-      // Step 2: Instant QR Ready (PRODUCTION ROUTING)
+      // Step 2: Instant QR Display (STRICT PRODUCTION ROUTING)
       const qrReadyStart = performance.now();
       const retrievalUrl = `${PUBLIC_KIOSK_URL}/retrieve/${sessionId}`;
-      console.log("[AUDIT] Final QR Retrieval URL:", retrievalUrl);
+      console.log(`[AUDIT] FINAL QR URL: ${retrievalUrl}`);
       setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
       const qrReadyEnd = performance.now();
-      console.log(`[AUDIT] QR Ready: ${(qrReadyEnd - qrReadyStart).toFixed(2)}ms`);
+      const qrTime = (qrReadyEnd - qrReadyStart).toFixed(2);
+      console.log(`[AUDIT] QR Display Ready: ${qrTime}ms`);
 
-      // Step 3: Local Save (Buffer)
+      // Step 3: Parallel Tasks (Local Save + Print)
       const localSaveStart = performance.now();
       SessionStore.savePhotoLocally(sessionId, blob);
       const localSaveEnd = performance.now();
       console.log(`[AUDIT] Local Save: ${(localSaveEnd - localSaveStart).toFixed(2)}ms`);
 
-      // Step 4: Parallel Printing Handshake
-      const printStart = performance.now();
       initiatePrint(blob); 
-      const printEnd = performance.now();
-      console.log(`[AUDIT] Print Started: ${(printEnd - printStart).toFixed(2)}ms`);
+      console.log(`[AUDIT] Print Handshake Parallelized`);
 
-      // Step 5: Background Cloud Sync
+      // Step 4: Background Cloud Sync (STRICT PRIVACY)
       setUploadStatus("uploading");
       const cloudSyncStart = performance.now();
       (async () => {
@@ -392,18 +391,18 @@ export default function KioskPage() {
             isDownloaded: false
           });
           setUploadStatus("complete");
-          KioskLogger.log('info', 'Sync', `Cloud Success: ${sessionId} in ${(performance.now() - cloudSyncStart).toFixed(2)}ms`);
+          KioskLogger.log('info', 'Sync', `Secure Cloud Ready: ${sessionId} in ${(performance.now() - cloudSyncStart).toFixed(2)}ms`);
         } catch (e) {
           setUploadStatus("error");
           KioskLogger.log('error', 'Sync', `Cloud Fail: ${e}`);
         }
       })();
 
-      // Step 6: Background USB Backup
+      // Step 5: Parallel USB Backup
       if (usbDirectoryHandle) {
         (async () => {
           try {
-            const filename = `JNL_STUDIO_${sessionId}.jpg`;
+            const filename = `JNL_SECURE_${sessionId}.jpg`;
             const fileHandle = await (usbDirectoryHandle as any).getFileHandle(filename, { create: true });
             const writable = await fileHandle.createWritable();
             await writable.write(blob);

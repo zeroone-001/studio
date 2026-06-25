@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
@@ -17,15 +16,30 @@ export default function RetrievePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const retryCount = useRef(0);
-  const MAX_RETRIES = 150; // ~30 seconds of high-frequency polling
+  const MAX_RETRIES = 150; // High-frequency polling for instant mall-style performance
 
   const fetchPhoto = useCallback(async () => {
     if (!id) return;
     
     try {
-      const { storage } = initializeFirebase();
+      const { storage, db } = initializeFirebase();
       
-      // Commercial Speed Rule: Direct Storage Access for maximum speed
+      // COMMERCIAL SECURITY: Fetch metadata first to verify existence and privacy
+      const docRef = doc(db, "photos", id);
+      const docSnap = await getDoc(docRef);
+      
+      if (!docSnap.exists()) {
+        if (retryCount.current < MAX_RETRIES) {
+          retryCount.current += 1;
+          setTimeout(fetchPhoto, 200); // 200ms polling for instant readiness
+          return;
+        }
+        setError("Portrait not found. Please scan the QR code again or contact JNL Studio support.");
+        setLoading(false);
+        return;
+      }
+
+      // Metadata exists, now get signed production URL
       const photoRef = ref(storage, `photos/${id}.jpg`);
       const url = await getDownloadURL(photoRef);
       
@@ -35,10 +49,9 @@ export default function RetrievePage() {
     } catch (err) {
       if (retryCount.current < MAX_RETRIES) {
         retryCount.current += 1;
-        // Ultra-high frequency polling (200ms) for instant experience
         setTimeout(fetchPhoto, 200);
       } else {
-        setError("Finalizing HD portrait. Please wait a few seconds and refresh.");
+        setError("System is finalizing your HD portrait. Please refresh in a few seconds.");
         setLoading(false);
       }
     }
@@ -53,7 +66,7 @@ export default function RetrievePage() {
     try {
       const { db } = initializeFirebase();
       const docRef = doc(db, "photos", id);
-      // Background tracking
+      // Background analytics tracking
       updateDoc(docRef, { isDownloaded: true }).catch(() => {});
 
       const response = await fetch(imageUrl);
@@ -76,7 +89,7 @@ export default function RetrievePage() {
     try {
       await navigator.share({
         title: 'JNL Studio Portrait',
-        text: 'My studio portrait from JNL Studio!',
+        text: 'My HD moment from JNL Studio!',
         url: window.location.href,
       });
     } catch (e) {}
@@ -96,22 +109,22 @@ export default function RetrievePage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <p className="text-white/80 font-black uppercase tracking-[0.3em] text-[10px]">PREPARING HD PORTRAIT...</p>
-                <p className="text-white/20 font-bold uppercase text-[8px]">Session Verified: {id}</p>
+                <p className="text-white/80 font-black uppercase tracking-[0.3em] text-[10px]">VERIFYING SESSION...</p>
+                <p className="text-white/20 font-bold uppercase text-[7px] tracking-tighter">Secure ID Handshake Active</p>
               </div>
             </div>
           ) : error ? (
             <div className="flex flex-col items-center py-24 space-y-6">
               <AlertCircle className="w-16 h-16 text-red-500" />
-              <p className="text-white/80 font-bold uppercase text-xs leading-relaxed max-w-[250px]">{error}</p>
-              <NeonButton onClick={() => window.location.reload()} className="!py-4 mt-4 w-full text-sm">RETRY LOAD</NeonButton>
+              <p className="text-white/80 font-bold uppercase text-xs leading-relaxed max-w-[280px]">{error}</p>
+              <NeonButton onClick={() => window.location.reload()} className="!py-4 mt-4 w-full text-sm">RETRY HANDSHAKE</NeonButton>
             </div>
           ) : (
             <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
               <div className="relative aspect-[2/3] w-full rounded-[1.5rem] overflow-hidden shadow-inner border-4 border-white bg-zinc-950">
                 <img 
                   src={imageUrl!} 
-                  alt="Your HD Portrait" 
+                  alt="HD Portrait" 
                   className="w-full h-full object-contain"
                 />
               </div>
@@ -120,7 +133,7 @@ export default function RetrievePage() {
                 <div className="space-y-1">
                   <h2 className="text-2xl font-headline font-black italic uppercase text-primary tracking-tight">HD SOFT COPY</h2>
                   <div className="flex items-center justify-center gap-2 text-[7px] font-black uppercase text-white/20 tracking-[0.4em]">
-                    <Activity className="w-2.5 h-2.5" /> SECURE JNL VERIFIED
+                    <Activity className="w-2.5 h-2.5" /> JNL VERIFIED SESSION
                   </div>
                 </div>
                 

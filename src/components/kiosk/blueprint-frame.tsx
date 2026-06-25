@@ -69,7 +69,6 @@ export const BlueprintFrame = React.memo(({
       style={{ 
         width: isStrip && !isPreview ? '50%' : '100%', 
         left: isStrip && !isPreview ? `${(offsetX / CANVAS_W) * 100}%` : '0',
-        borderRight: isStrip && !isSecondCopy && !isPreview ? '1px dashed #e5e7eb' : 'none',
         zIndex: 0
       }}
     >
@@ -148,20 +147,19 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* Compact Branding Footer - Reduced to 5% area */}
+      {/* Compact Branding Footer - Reduced to 4% area */}
       <div 
         className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-center items-center"
-        style={{ height: '5%' }}
+        style={{ height: '4%' }}
       >
         <div className="w-[96%] flex justify-between items-center px-1">
           <div className="flex flex-col items-start leading-none gap-0">
-             <span className="font-headline font-black italic uppercase text-black flex items-center gap-0.5" style={{ fontSize: isStrip ? '10px' : '14px' }}>
+             <span className="font-headline font-black italic uppercase text-black flex items-center gap-0.5" style={{ fontSize: isStrip ? '9px' : '12px' }}>
                <span>JNL</span>
                <span className="text-[#FF3399]">STUDIO</span>
              </span>
-             <span className="font-bold uppercase tracking-[0.2em] text-black/20" style={{ fontSize: isStrip ? '3px' : '4px' }}>PHOTOBOOTH</span>
           </div>
-          <span className="font-bold uppercase tracking-[0.1em] text-black/20 leading-none" style={{ fontSize: isStrip ? '5px' : '7px' }}>{displayDate}</span>
+          <span className="font-bold uppercase tracking-[0.1em] text-black/20 leading-none" style={{ fontSize: isStrip ? '4px' : '6px' }}>{displayDate}</span>
         </div>
       </div>
     </div>

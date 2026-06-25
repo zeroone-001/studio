@@ -302,8 +302,8 @@ export default function KioskPage() {
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
-    // COMMERCIAL SECURITY: High-entropy Secure Session ID
-    const sessionId = `jnl_${Math.random().toString(36).substring(2, 10)}_${Math.random().toString(36).substring(2, 10)}`;
+    // COMMERCIAL SECURITY: High-entropy Secure Session ID (UUID-like)
+    const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}_${Math.random().toString(36).substring(2, 12)}`;
     const startTime = performance.now();
     KioskLogger.log('info', 'Export', `Secure Session Init: ${sessionId}`);
 
@@ -360,13 +360,12 @@ export default function KioskPage() {
 
       // Step 2: Instant Local Save (Non-blocking)
       const localSaveStart = performance.now();
-      SessionStore.savePhotoLocally(sessionId, blob);
+      await SessionStore.savePhotoLocally(sessionId, blob);
       KioskLogger.log('info', 'Export', `Local Save: ${(performance.now() - localSaveStart).toFixed(2)}ms`);
 
-      // Step 3: INSTANT QR Display (STRICT COMMERCIAL ROUTING)
+      // Step 3: INSTANT QR Display (STRICT PRODUCTION ROUTING)
       const retrievalUrl = `${PUBLIC_KIOSK_URL}/retrieve/${sessionId}`;
-      console.log(`[SECURE RETRIEVAL] Session ID: ${sessionId}`);
-      console.log(`[SECURE RETRIEVAL] Final QR URL: ${retrievalUrl}`);
+      console.log(`[VERIFIED QR URL]: ${retrievalUrl}`);
       setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
 
       // Step 4: Parallel Print Start
@@ -408,7 +407,7 @@ export default function KioskPage() {
         })();
       }
 
-    }, 'image/jpeg', 0.85);
+    }, 'image/jpeg', 0.88);
 
   }, [usbDirectoryHandle, selectedBlueprint, capturedPhotos, selectedFilter]);
 

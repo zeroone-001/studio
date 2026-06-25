@@ -334,12 +334,17 @@ export default function KioskPage() {
     
     // SECURE SESSION ID: High-entropy, unguessable ID for isolated retrieval
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}_${Math.random().toString(36).substring(2, 12)}`;
-    const startTime = performance.now();
-    KioskLogger.log('info', 'Export', `Secure Session Init: ${sessionId}`);
+    
+    // IMMEDIATE QR GENERATION: constructing URL and setting QR code right away
+    const retrievalUrl = `${PUBLIC_KIOSK_URL}/retrieve/${sessionId}`;
+    setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
+    
+    // VERIFICATION LOGS
+    KioskLogger.log('info', 'Export', `Session ID: ${sessionId}`);
+    KioskLogger.log('info', 'Export', `QR URL: ${retrievalUrl}`);
     console.log(`[VERIFIED SESSION ID]: ${sessionId}`);
+    console.log(`[VERIFIED QR URL]: ${retrievalUrl}`);
 
-    // Step 1: Photo Generation
-    const genStart = performance.now();
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1600;
     exportCanvas.height = 2400;
@@ -402,27 +407,19 @@ export default function KioskPage() {
     } else {
       await drawContent(0);
     }
-    const genEnd = performance.now();
-    KioskLogger.log('info', 'Export', `Gen: ${(genEnd - genStart).toFixed(2)}ms`);
 
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
 
-      // Step 2: Instant Local Save
-      const localSaveStart = performance.now();
+      // INSTANT LOCAL SAVE
       await SessionStore.savePhotoLocally(sessionId, blob);
-      KioskLogger.log('info', 'Export', `Local Save: ${(performance.now() - localSaveStart).toFixed(2)}ms`);
+      KioskLogger.log('info', 'Export', `Image Saved Locally: ${sessionId}`);
       console.log(`[VERIFIED LOCAL SAVE]: Success for ${sessionId}`);
 
-      // Step 3: INSTANT QR Display (Hardcoded Production Routing)
-      const retrievalUrl = `${PUBLIC_KIOSK_URL}/retrieve/${sessionId}`;
-      console.log(`[VERIFIED QR URL]: ${retrievalUrl}`);
-      setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-
-      // Step 4: Parallel Print Start
+      // PARALLEL PRINT START
       initiatePrint(blob); 
 
-      // Step 5: Background Cloud Sync
+      // BACKGROUND CLOUD SYNC
       setUploadStatus("uploading");
       (async () => {
         try {

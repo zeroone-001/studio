@@ -17,11 +17,10 @@ export default function RetrievePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const retryCount = useRef(0);
-  const MAX_RETRIES = 100; // High-frequency polling for instant mall-style performance
+  const MAX_RETRIES = 120; // 1 minute of polling (500ms * 120)
 
   const fetchPhoto = useCallback(async () => {
     if (!id) return;
-    console.log(`[VERIFIED RETRIEVAL ATTEMPT]: ${id}`);
     
     try {
       const { storage, db } = initializeFirebase();
@@ -31,19 +30,16 @@ export default function RetrievePage() {
       const docSnap = await getDoc(docRef);
       
       if (!docSnap.exists()) {
-        console.log(`[VERIFIED RETRIEVAL]: Doc not found for ${id}, polling (Attempt ${retryCount.current})...`);
         // High-frequency retry logic to handle background upload latency
         if (retryCount.current < MAX_RETRIES) {
           retryCount.current += 1;
           setTimeout(fetchPhoto, 500); // Poll every 500ms
           return;
         }
-        setError("Portrait not found. Please scan the QR code again or contact support.");
+        setError("Photo not found. Please scan the QR code again.");
         setLoading(false);
         return;
       }
-
-      console.log(`[VERIFIED RETRIEVAL]: Doc found for ${id}`);
 
       // Step 2: Get signed production URL from Storage
       const photoRef = ref(storage, `photos/${id}.jpg`);
@@ -53,7 +49,6 @@ export default function RetrievePage() {
       setLoading(false);
       setError(null);
     } catch (err: any) {
-      console.warn(`[VERIFIED RETRIEVAL]: Storage path not ready for ${id}`, err);
       if (retryCount.current < MAX_RETRIES) {
         retryCount.current += 1;
         setTimeout(fetchPhoto, 500);
@@ -73,7 +68,7 @@ export default function RetrievePage() {
     try {
       const { db } = initializeFirebase();
       const docRef = doc(db, "photos", id);
-      // Track download for analytics
+      // Track download
       updateDoc(docRef, { isDownloaded: true }).catch(() => {});
 
       const response = await fetch(imageUrl);
@@ -86,10 +81,8 @@ export default function RetrievePage() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      console.log(`[VERIFIED DOWNLOAD]: Success for ${id}`);
     } catch (e) {
       window.open(imageUrl, '_blank');
-      console.warn(`[VERIFIED DOWNLOAD]: Fallback used for ${id}`, e);
     }
   };
 

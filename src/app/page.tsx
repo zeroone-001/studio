@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -24,6 +25,9 @@ import { KioskLogger } from "@/lib/kiosk/logger";
 import { initializeFirebase } from "@/firebase";
 import { ref, uploadBytes } from "firebase/storage";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+
+// COMMERCIAL PRODUCTION SETTINGS
+const PUBLIC_KIOSK_URL = "https://jnl-studio-booth.web.app";
 
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "thankyou" | "test-camera";
 
@@ -357,25 +361,30 @@ export default function KioskPage() {
       await drawContent(0);
     }
     const genEnd = performance.now();
+    console.log(`[PERF] Photo Generation: ${(genEnd - genStart).toFixed(2)}ms`);
 
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
 
-      // Step 2: Instant QR Ready (Predictive ID)
+      // Step 2: Instant QR Ready (Predictive ID - PRODUCTION ROUTING)
       const qrReadyStart = performance.now();
-      const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
+      const retrievalUrl = `${PUBLIC_KIOSK_URL}/retrieve/${sessionId}`;
+      console.log("CRITICAL: Final QR Retrieval URL:", retrievalUrl);
       setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
       const qrReadyEnd = performance.now();
+      console.log(`[PERF] QR Ready: ${(qrReadyEnd - qrReadyStart).toFixed(2)}ms`);
 
       // Step 3: Local Save & Buffer
       const localSaveStart = performance.now();
       SessionStore.savePhotoLocally(sessionId, blob);
       const localSaveEnd = performance.now();
+      console.log(`[PERF] Local Save: ${(localSaveEnd - localSaveStart).toFixed(2)}ms`);
 
       // Step 4: Parallel Printing
       const printStart = performance.now();
       initiatePrint(blob); 
       const printEnd = performance.now();
+      console.log(`[PERF] Print Started: ${(printEnd - printStart).toFixed(2)}ms`);
 
       // Step 5: Background Cloud Sync
       setUploadStatus("uploading");
@@ -411,17 +420,6 @@ export default function KioskPage() {
           } catch (e) {}
         })();
       }
-
-      // Performance Audit
-      const audit = {
-        "Photo Generated": `${(genEnd - genStart).toFixed(2)}ms`,
-        "QR Ready": `${(qrReadyEnd - qrReadyStart).toFixed(2)}ms`,
-        "Local Save": `${(localSaveEnd - localSaveStart).toFixed(2)}ms`,
-        "Print Handshake": `${(printEnd - printStart).toFixed(2)}ms`,
-        "Total Pipeline Latency": `${(performance.now() - startTime).toFixed(2)}ms`
-      };
-      console.table(audit);
-      KioskLogger.log('info', 'Performance', `High-Speed Ready: ${audit["Total Pipeline Latency"]}`);
 
     }, 'image/jpeg', 0.85);
 

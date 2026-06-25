@@ -151,14 +151,14 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* Spacious Branding Footer - 8% Height (192px at 2400px height) */}
+      {/* Spacious Branding Footer - 7.5% Height (180px at 2400px height) */}
       <div 
-        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-center items-center px-6"
+        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-center items-center px-6 pt-4"
         style={{ height: '7.5%' }}
       >
-        {/* Inspirational Quote Sentence - Added Padding for Space */}
+        {/* Inspirational Quote Sentence - Increased Spacing from Photo Edge */}
         {quoteText && (
-          <p className="font-bold text-black italic text-center leading-relaxed mb-6 mt-2" style={{ fontSize: isStrip ? '10px' : '16px' }}>
+          <p className="font-bold text-black italic text-center leading-relaxed mb-4 mt-6" style={{ fontSize: isStrip ? '10px' : '16px' }}>
             "{quoteText}"
           </p>
         )}

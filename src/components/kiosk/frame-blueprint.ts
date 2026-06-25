@@ -51,7 +51,7 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     ],
   },
 
-  // ₱100 PACKAGE (6 SHOTS) - RESTORED 6-FRAME LAYOUTS
+  // ₱100 PACKAGE (6 SHOTS) - 6 DIVERSE FACE-SAFE LAYOUTS
   {
     id: "p100-vertical-six",
     label: "PORTRAIT SIX",
@@ -75,13 +75,43 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     ],
   },
   {
-    id: "p100-staggered",
-    label: "STAGGERED",
+    id: "p100-staggered-zip",
+    label: "STAGGERED ZIP",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 800, h: 740 }, { x: 800, y: 370, w: 800, h: 740 },
-      { x: 0, y: 740, w: 800, h: 740 }, { x: 800, y: 1110, w: 800, h: 740 },
-      { x: 0, y: 1480, w: 800, h: 740 }, { x: 800, y: 1850, w: 800, h: 370 },
+      { x: 0, y: 0, w: 1067, h: 740 }, { x: 1067, y: 0, w: 533, h: 740 },
+      { x: 0, y: 740, w: 533, h: 740 }, { x: 533, y: 740, w: 1067, h: 740 },
+      { x: 0, y: 1480, w: 1067, h: 740 }, { x: 1067, y: 1480, w: 533, h: 740 },
+    ],
+  },
+  {
+    id: "p100-classic-grid",
+    label: "CLASSIC GRID",
+    package: 100,
+    slots: [
+      { x: 0, y: 0, w: 800, h: 740 }, { x: 800, y: 0, w: 800, h: 740 },
+      { x: 0, y: 740, w: 800, h: 740 }, { x: 800, y: 740, w: 800, h: 740 },
+      { x: 0, y: 1480, w: 800, h: 740 }, { x: 800, y: 1480, w: 800, h: 740 },
+    ],
+  },
+  {
+    id: "p100-modern-mix",
+    label: "MODERN MIX",
+    package: 100,
+    slots: [
+      { x: 0, y: 0, w: 800, h: 1110 }, { x: 800, y: 0, w: 800, h: 1110 },
+      { x: 0, y: 1110, w: 800, h: 555 }, { x: 800, y: 1110, w: 800, h: 555 },
+      { x: 0, y: 1665, w: 800, h: 555 }, { x: 800, y: 1665, w: 800, h: 555 },
+    ],
+  },
+  {
+    id: "p100-asymmetric-vibe",
+    label: "ASYMMETRIC VIBE",
+    package: 100,
+    slots: [
+      { x: 0, y: 0, w: 533, h: 740 }, { x: 533, y: 0, w: 1067, h: 740 },
+      { x: 0, y: 740, w: 1067, h: 740 }, { x: 1067, y: 740, w: 533, h: 740 },
+      { x: 0, y: 1480, w: 533, h: 740 }, { x: 533, y: 1480, w: 534, h: 740 }, { x: 1067, y: 1480, w: 533, h: 740 },
     ],
   }
 ];

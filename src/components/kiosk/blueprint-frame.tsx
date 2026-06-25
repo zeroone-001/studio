@@ -147,12 +147,18 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* Compact Branding Footer - Reduced to 4% area */}
+      {/* Compact Branding Footer - Exactly 4% (96px at 2400px height) */}
       <div 
-        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-center items-center"
+        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-center items-center px-4"
         style={{ height: '4%' }}
       >
-        <div className="w-[96%] flex justify-between items-center px-1">
+        {/* Inspirational Quote Sentence */}
+        {quoteText && (
+          <p className="font-medium text-black italic text-center leading-tight mb-0.5" style={{ fontSize: isStrip ? '8px' : '12px' }}>
+            "{quoteText}"
+          </p>
+        )}
+        <div className="w-full flex justify-between items-center">
           <div className="flex flex-col items-start leading-none gap-0">
              <span className="font-headline font-black italic uppercase text-black flex items-center gap-0.5" style={{ fontSize: isStrip ? '9px' : '12px' }}>
                <span>JNL</span>

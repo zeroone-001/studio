@@ -8,7 +8,7 @@ service cloud.firestore {
       // allow list: False. Prevents collection browsing.
       allow get: if true;
       allow list: if false;
-      allow write: if true; // Kiosk write access
+      allow write: if true;
     }
   }
 }

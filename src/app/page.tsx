@@ -76,28 +76,58 @@ export const STICKER_DEFS = [
   { id: "besties", icon: Kawaii.BestiesText, color: "", category: "TEXT" },
 ];
 
-export const QUOTES = Array.from({ length: 50 }, (_, i) => ({
-  id: `q-${i}`,
-  label: [
-    "POSITIVE", "MAGIC", "ICONIC", "BEST DAY", "GOLD", "SHINE", "HUMBLE", "LOVE", 
-    "KIND", "DREAM", "LOUD", "JOY", "LIGHT", "GOT THIS", "BRAVE", "VIBES", "TRUE", 
-    "FEARLESS", "MAKE", "BLISS", "SOUL", "AUTHENTIC", "LIMIT", "CURIOUS", "OWN VIBE",
-    "BRIGHT", "HEART", "GOING", "SMILE", "TODAY", "INSIDE", "WILD", "BORN", "HEART",
-    "DREAMER", "STRONG", "ENERGY", "LOVE LIFE", "UNSTOP", "INSPIRED", "BLOOM", "RADIANT",
-    "BOLD", "FULLY", "SWEET", "ENOUGH", "COUNT", "GRATEFUL", "HAPPY", "BEYOND"
-  ][i] || `QUOTE ${i}`,
-  text: [
-    "STAY POSITIVE", "JNL MAGIC", "PURE ICONIC", "BEST DAY EVER", "YOU ARE GOLD", 
-    "KEEP SHINING", "STAY HUMBLE", "RADIATE LOVE", "BE KIND", "DREAM BIG", "LIVE LOUD",
-    "CHOOSE JOY", "BE THE LIGHT", "YOU GOT THIS", "BOLD & BRAVE", "GOOD VIBES", "STAY TRUE",
-    "FEARLESS", "MAKE MAGIC", "PURE BLISS", "ICONIC SOUL", "BE AUTHENTIC", "LIMITLESS",
-    "STAY CURIOUS", "OWN YOUR VIBE", "SHINE BRIGHT", "HEART OF GOLD", "KEEP GOING",
-    "JUST SMILE", "TODAY IS GOOD", "MAGIC INSIDE", "STAY WILD", "BORN TO SHINE",
-    "BRAVE HEART", "DREAMER", "STAY STRONG", "PURE ENERGY", "LOVE LIFE", "BE UNSTOPPABLE",
-    "STAY INSPIRED", "KEEP BLOOMING", "RADIANT VIBE", "BE BOLD", "LIVE FULLY",
-    "STAY SWEET", "YOU ARE ENOUGH", "MAKE IT COUNT", "STAY GRATEFUL", "PURE HAPPINESS", "BEYOND LIMITS"
-  ][i] || `INSPIRATION ${i}`
-}));
+export const QUOTES = [
+  { id: "q1", label: "LIMITLESS", text: "Your potential is truly limitless." },
+  { id: "q2", label: "STAR", text: "Shine bright like the star you are." },
+  { id: "q3", label: "MAGIC", text: "Create magic in every single moment." },
+  { id: "q4", label: "KINDNESS", text: "Kindness is the ultimate superpower." },
+  { id: "q5", label: "DREAMER", text: "Dreaming big is the first step to success." },
+  { id: "q6", label: "STAY TRUE", text: "Always stay true to your beautiful soul." },
+  { id: "q7", label: "GOOD VIBES", text: "Radiate good vibes and attract the best." },
+  { id: "q8", label: "BRAVE", text: "Be brave enough to start your journey." },
+  { id: "q9", label: "JOY", text: "Choose joy every single day of your life." },
+  { id: "q10", label: "SHINE", text: "Keep shining through every dark moment." },
+  { id: "q11", label: "WILD", text: "Stay wild and free like the ocean." },
+  { id: "q12", label: "ICONIC", text: "You were born to be absolutely iconic." },
+  { id: "q13", label: "STRONG", text: "You are much stronger than you think." },
+  { id: "q14", label: "BLOOM", text: "Keep blooming even when it feels hard." },
+  { id: "q15", label: "ENERGY", text: "Protect your energy and stay positive." },
+  { id: "q16", label: "TODAY", text: "Make today the best day of your life." },
+  { id: "q17", label: "BELIEVE", text: "Believe in yourself and you will soar." },
+  { id: "q18", label: "UNIQUE", text: "Your uniqueness is your greatest strength." },
+  { id: "q19", label: "GRATEFUL", text: "Stay grateful for all the small things." },
+  { id: "q20", label: "RADIANT", text: "Be radiant from the inside out today." },
+  { id: "q21", label: "JOURNEY", text: "The journey is just as beautiful as the goal." },
+  { id: "q22", label: "POWER", text: "The power to change is within you." },
+  { id: "q23", label: "INSPIRED", text: "Stay inspired by the world around you." },
+  { id: "q24", label: "BOLD", text: "Be bold enough to live on your terms." },
+  { id: "q25", label: "SWEET", text: "Life is sweet when you find balance." },
+  { id: "q26", label: "ENOUGH", text: "Remember that you are more than enough." },
+  { id: "q27", label: "HEART", text: "Follow your heart and find your truth." },
+  { id: "q28", label: "SMILE", text: "A simple smile can change the whole day." },
+  { id: "q29", label: "LIGHT", text: "Be the light that others want to follow." },
+  { id: "q30", label: "FEARLESS", text: "Live fearlessly and embrace every challenge." },
+  { id: "q31", label: "SOUL", text: "Feed your soul with love and laughter." },
+  { id: "q32", label: "MOMENT", text: "Every moment is a fresh new beginning." },
+  { id: "q33", label: "VIBRANT", text: "Stay vibrant and full of creative life." },
+  { id: "q34", label: "AUTHENTIC", text: "Authenticity is the most attractive trait." },
+  { id: "q35", label: "HAPPY", text: "Happiness starts with a grateful heart." },
+  { id: "q36", label: "BRIGHT", text: "The future is bright because you're in it." },
+  { id: "q37", label: "TRUST", text: "Trust the timing of your amazing life." },
+  { id: "q38", label: "CURIOUS", text: "Stay curious and keep exploring the world." },
+  { id: "q39", label: "GLOW", text: "Your inner glow is your secret weapon." },
+  { id: "q40", label: "UNSTOP", text: "You are completely unstoppable right now." },
+  { id: "q41", label: "PRESENT", text: "Be present and enjoy the here and now." },
+  { id: "q42", label: "PEACE", text: "Find peace in the quiet little moments." },
+  { id: "q43", label: "CHANCE", text: "Take every single chance that comes your way." },
+  { id: "q44", label: "INSIDE", text: "Beauty starts deep from within the soul." },
+  { id: "q45", label: "GOLD", text: "You have a heart made of pure gold." },
+  { id: "q46", label: "BORN", text: "You were born to stand out today." },
+  { id: "q47", label: "WONDER", text: "Never lose your sense of child-like wonder." },
+  { id: "q48", label: "VIBE", text: "High vibes attract a high quality of life." },
+  { id: "q49", label: "BEYOND", text: "Go beyond what you thought was possible." },
+  { id: "q50", label: "DONE", text: "Small steps every day lead to big results." }
+];
 
 export interface PlacedSticker {
   id: string;
@@ -302,7 +332,7 @@ export default function KioskPage() {
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
-    // COMMERCIAL SECURITY: High-entropy Secure Session ID (UUID-like)
+    // COMMERCIAL SECURITY: High-entropy Secure Session ID
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}_${Math.random().toString(36).substring(2, 12)}`;
     const startTime = performance.now();
     KioskLogger.log('info', 'Export', `Secure Session Init: ${sessionId}`);
@@ -322,6 +352,7 @@ export default function KioskPage() {
     const isStrip = selectedBlueprint.package === 50;
     
     const drawContent = async (offsetX: number) => {
+      // Background Slots
       for (let i = 0; i < selectedBlueprint.slots.length; i++) {
         const slot = selectedBlueprint.slots[i];
         const photo = capturedPhotos[i];
@@ -344,6 +375,24 @@ export default function KioskPage() {
         ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
         ctx.restore();
       }
+
+      // Branding Footer & Quote
+      const footerY = 2304;
+      const footerH = 96;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(offsetX, footerY, isStrip ? 800 : 1600, footerH);
+
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 24px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(selectedQuote.text, offsetX + (isStrip ? 400 : 800), footerY + 40);
+
+      ctx.fillStyle = '#000000';
+      ctx.font = '900 italic 20px Inter, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('JNL', offsetX + 40, footerY + 80);
+      ctx.fillStyle = '#FF3399';
+      ctx.fillText('STUDIO', offsetX + 85, footerY + 80);
     };
 
     if (isStrip) {
@@ -358,23 +407,21 @@ export default function KioskPage() {
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
 
-      // Step 2: Instant Local Save (Non-blocking)
+      // Step 2: Instant Local Save
       const localSaveStart = performance.now();
       await SessionStore.savePhotoLocally(sessionId, blob);
       KioskLogger.log('info', 'Export', `Local Save: ${(performance.now() - localSaveStart).toFixed(2)}ms`);
 
-      // Step 3: INSTANT QR Display (STRICT PRODUCTION ROUTING)
+      // Step 3: INSTANT QR Display
       const retrievalUrl = `${PUBLIC_KIOSK_URL}/retrieve/${sessionId}`;
       console.log(`[VERIFIED QR URL]: ${retrievalUrl}`);
       setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
 
       // Step 4: Parallel Print Start
       initiatePrint(blob); 
-      KioskLogger.log('info', 'Export', `Print Started in Parallel`);
 
-      // Step 5: Background Cloud Sync (STRICT PRIVACY)
+      // Step 5: Background Cloud Sync
       setUploadStatus("uploading");
-      const cloudSyncStart = performance.now();
       (async () => {
         try {
           const { storage, db } = initializeFirebase();
@@ -387,29 +434,13 @@ export default function KioskPage() {
             isDownloaded: false
           });
           setUploadStatus("complete");
-          KioskLogger.log('info', 'Sync', `Cloud Ready: ${sessionId} in ${(performance.now() - cloudSyncStart).toFixed(2)}ms`);
         } catch (e) {
           setUploadStatus("error");
-          KioskLogger.log('error', 'Sync', `Cloud Fail: ${e}`);
         }
       })();
-
-      // Step 6: Parallel USB Backup
-      if (usbDirectoryHandle) {
-        (async () => {
-          try {
-            const filename = `JNL_SESSION_${sessionId}.jpg`;
-            const fileHandle = await (usbDirectoryHandle as any).getFileHandle(filename, { create: true });
-            const writable = await fileHandle.createWritable();
-            await writable.write(blob);
-            await writable.close();
-          } catch (e) {}
-        })();
-      }
-
     }, 'image/jpeg', 0.88);
 
-  }, [usbDirectoryHandle, selectedBlueprint, capturedPhotos, selectedFilter]);
+  }, [selectedBlueprint, capturedPhotos, selectedFilter, selectedQuote]);
 
   useEffect(() => {
     if (appState === "printing" && !exportTriggeredRef.current) {

@@ -22,9 +22,9 @@ export type FrameBlueprint = {
  * All slots calibrated to end exactly at Y=2220 to remove free space.
  */
 export const BLUEPRINTS: FrameBlueprint[] = [
-  // ₱50 PACKAGE (3 SHOTS) - Vertical Optimized
+  // ₱50 PACKAGE (3 SHOTS) - Distinct Designs
   {
-    id: "p50-l1",
+    id: "p50-stacked",
     label: "STACKED",
     package: 50,
     slots: [
@@ -34,7 +34,7 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     ],
   },
   {
-    id: "p50-l2",
+    id: "p50-topheavy",
     label: "TOP-HEAVY",
     package: 50,
     slots: [
@@ -44,19 +44,19 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     ],
   },
   {
-    id: "p50-l3",
-    label: "TRIO",
+    id: "p50-collage",
+    label: "COLLAGE",
     package: 50,
     slots: [
       { x: 0, y: 0, w: 1067, h: 1480 },
-      { x: 1067, y: 0, w: 533, h: 740 },
-      { x: 1067, y: 740, w: 533, h: 1480 },
+      { x: 1067, y: 0, w: 533, h: 1110 },
+      { x: 1067, y: 1110, w: 533, h: 1110 },
     ],
   },
 
-  // ₱100 PACKAGE (6 SHOTS) - Balanced Portrait Grids
+  // ₱100 PACKAGE (6 SHOTS) - Diverse Grid Options
   {
-    id: "p100-l1",
+    id: "p100-classic",
     label: "CLASSIC 2X3",
     package: 100,
     slots: [
@@ -66,7 +66,7 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     ],
   },
   {
-    id: "p100-l2",
+    id: "p100-grid32",
     label: "GRID 3X2",
     package: 100,
     slots: [
@@ -75,7 +75,7 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     ],
   },
   {
-    id: "p100-l3",
+    id: "p100-mosaic",
     label: "MOSAIC",
     package: 100,
     slots: [
@@ -88,7 +88,31 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     ],
   },
   {
-    id: "p100-l4",
+    id: "p100-staggered",
+    label: "STAGGERED",
+    package: 100,
+    slots: [
+      { x: 0, y: 0, w: 800, h: 1110 },
+      { x: 800, y: 0, w: 800, h: 740 },
+      { x: 800, y: 740, w: 800, h: 740 },
+      { x: 0, y: 1110, w: 800, h: 1110 },
+      { x: 800, y: 1480, w: 400, h: 740 },
+      { x: 1200, y: 1480, w: 400, h: 740 },
+    ],
+  },
+  {
+    id: "p100-compact",
+    label: "COMPACT",
+    package: 100,
+    slots: [
+      { x: 0, y: 0, w: 1600, h: 370 },
+      { x: 0, y: 370, w: 1600, h: 370 },
+      { x: 0, y: 740, w: 800, h: 740 }, { x: 800, y: 740, w: 800, h: 740 },
+      { x: 0, y: 1480, w: 800, h: 740 }, { x: 800, y: 1480, w: 800, h: 740 },
+    ],
+  },
+  {
+    id: "p100-sidebar",
     label: "SIDEBAR",
     package: 100,
     slots: [
@@ -98,25 +122,6 @@ export const BLUEPRINTS: FrameBlueprint[] = [
       { x: 400, y: 1480, w: 400, h: 740 },
       { x: 800, y: 1480, w: 400, h: 740 },
       { x: 1200, y: 1480, w: 400, h: 740 },
-    ],
-  },
-  {
-    id: "p100-l5",
-    label: "EQUAL 2X3",
-    package: 100,
-    slots: [
-      { x: 0, y: 0, w: 800, h: 740 }, { x: 800, y: 0, w: 800, h: 740 },
-      { x: 0, y: 740, w: 800, h: 740 }, { x: 800, y: 740, w: 800, h: 740 },
-      { x: 0, y: 1480, w: 800, h: 740 }, { x: 800, y: 1480, w: 800, h: 740 },
-    ],
-  },
-  {
-    id: "p100-l6",
-    label: "EQUAL 3X2",
-    package: 100,
-    slots: [
-      { x: 0, y: 0, w: 533, h: 1110 }, { x: 533, y: 0, w: 534, h: 1110 }, { x: 1067, y: 0, w: 533, h: 1110 },
-      { x: 0, y: 1110, w: 533, h: 1110 }, { x: 533, y: 1110, w: 534, h: 1110 }, { x: 1067, y: 1110, w: 533, h: 1110 },
     ],
   }
 ];

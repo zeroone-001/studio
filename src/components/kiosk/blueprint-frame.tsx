@@ -150,25 +150,25 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* Compact Branding Footer - Exactly 4% (96px at 2400px height) */}
+      {/* Spacious Branding Footer - 8% Height (192px at 2400px height) */}
       <div 
-        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-center items-center px-4"
-        style={{ height: '4%' }}
+        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-center items-center px-6"
+        style={{ height: '8%' }}
       >
-        {/* Inspirational Quote Sentence */}
+        {/* Inspirational Quote Sentence - Added Padding for Space */}
         {quoteText && (
-          <p className="font-medium text-black italic text-center leading-tight mb-0.5" style={{ fontSize: isStrip ? '8px' : '12px' }}>
+          <p className="font-bold text-black italic text-center leading-relaxed mb-4" style={{ fontSize: isStrip ? '10px' : '16px' }}>
             "{quoteText}"
           </p>
         )}
-        <div className="w-full flex justify-between items-center">
+        <div className="w-full flex justify-between items-center border-t border-black/5 pt-3">
           <div className="flex flex-col items-start leading-none gap-0">
-             <span className="font-headline font-black italic uppercase text-black flex items-center gap-0.5" style={{ fontSize: isStrip ? '9px' : '12px' }}>
+             <span className="font-headline font-black italic uppercase text-black flex items-center gap-1" style={{ fontSize: isStrip ? '11px' : '18px' }}>
                <span>JNL</span>
                <span className="text-[#FF3399]">STUDIO</span>
              </span>
           </div>
-          <span className="font-bold uppercase tracking-[0.1em] text-black/20 leading-none" style={{ fontSize: isStrip ? '4px' : '6px' }}>{displayDate}</span>
+          <span className="font-bold uppercase tracking-[0.15em] text-black/30 leading-none" style={{ fontSize: isStrip ? '6px' : '10px' }}>{displayDate}</span>
         </div>
       </div>
     </div>

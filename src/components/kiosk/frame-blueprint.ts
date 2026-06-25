@@ -15,41 +15,41 @@ export type FrameBlueprint = {
 /**
  * JNL Studio Blueprints - BODY-SAFE & ZERO-GAP CALIBRATION
  * Internal Coordinate System: 1600 (W) x 2400 (H)
- * Footer begins at Y=2304 (exactly 4% height)
+ * Footer begins at Y=2208 (exactly 8% height for quote space)
  * 
  * Optimized for 3:4 Portrait Camera (Aspect Ratio 0.75):
- * Slots with Aspect Ratio <= 0.75 ensure NO cutting of the face or body sides.
+ * Every slot is designed with a width-to-height ratio that preserves the face and body.
  */
 export const BLUEPRINTS: FrameBlueprint[] = [
-  // ₱50 PACKAGE (3 SHOTS)
+  // ₱50 PACKAGE (3 SHOTS) - REDESIGNED FOR BODY & FACE SAFETY
   {
-    id: "p50-vertical-trio",
-    label: "VERTICAL TRIO",
+    id: "p50-balanced-trio",
+    label: "BALANCED TRIO",
     package: 50,
     slots: [
-      { x: 0, y: 0, w: 533, h: 2304 },
-      { x: 533, y: 0, w: 534, h: 2304 },
-      { x: 1067, y: 0, w: 533, h: 2304 },
+      { x: 0, y: 0, w: 1600, h: 1000 },
+      { x: 0, y: 1000, w: 800, h: 1208 },
+      { x: 800, y: 1000, w: 800, h: 1208 },
     ],
   },
   {
-    id: "p50-hero-body",
-    label: "HERO BODY",
+    id: "p50-body-hero",
+    label: "BODY HERO",
     package: 50,
     slots: [
-      { x: 0, y: 0, w: 1067, h: 2304 },
-      { x: 1067, y: 0, w: 533, h: 1152 },
-      { x: 1067, y: 1152, w: 533, h: 1152 },
+      { x: 0, y: 0, w: 1000, h: 2208 },
+      { x: 1000, y: 0, w: 600, h: 1104 },
+      { x: 1000, y: 1104, w: 600, h: 1104 },
     ],
   },
   {
-    id: "p50-modern-split",
-    label: "MODERN SPLIT",
+    id: "p50-portrait-stack",
+    label: "PORTRAIT STACK",
     package: 50,
     slots: [
-      { x: 0, y: 0, w: 800, h: 1536 },
-      { x: 800, y: 0, w: 800, h: 1536 },
-      { x: 0, y: 1536, w: 1600, h: 768 },
+      { x: 0, y: 0, w: 800, h: 1104 },
+      { x: 800, y: 0, w: 800, h: 1104 },
+      { x: 0, y: 1104, w: 1600, h: 1104 },
     ],
   },
 
@@ -59,8 +59,8 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "PORTRAIT SIX",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 533, h: 1152 }, { x: 533, y: 0, w: 534, h: 1152 }, { x: 1067, y: 0, w: 533, h: 1152 },
-      { x: 0, y: 1152, w: 533, h: 1152 }, { x: 533, y: 1152, w: 534, h: 1152 }, { x: 1067, y: 1152, w: 533, h: 1152 },
+      { x: 0, y: 0, w: 533, h: 1104 }, { x: 533, y: 0, w: 534, h: 1104 }, { x: 1067, y: 0, w: 533, h: 1104 },
+      { x: 0, y: 1104, w: 533, h: 1104 }, { x: 533, y: 1104, w: 534, h: 1104 }, { x: 1067, y: 1104, w: 533, h: 1104 },
     ],
   },
   {
@@ -68,9 +68,9 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "CLASSIC 2X3",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 800, h: 768 }, { x: 800, y: 0, w: 800, h: 768 },
-      { x: 0, y: 768, w: 800, h: 768 }, { x: 800, y: 768, w: 800, h: 768 },
-      { x: 0, y: 1536, w: 800, h: 768 }, { x: 800, y: 1536, w: 800, h: 768 },
+      { x: 0, y: 0, w: 800, h: 736 }, { x: 800, y: 0, w: 800, h: 736 },
+      { x: 0, y: 736, w: 800, h: 736 }, { x: 800, y: 736, w: 800, h: 736 },
+      { x: 0, y: 1472, w: 800, h: 736 }, { x: 800, y: 1472, w: 800, h: 736 },
     ],
   },
   {
@@ -78,43 +78,12 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "MOSAIC HERO",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 1067, h: 1536 },
-      { x: 1067, y: 0, w: 533, h: 768 },
-      { x: 1067, y: 768, w: 533, h: 768 },
-      { x: 0, y: 1536, w: 533, h: 768 },
-      { x: 533, y: 1536, w: 534, h: 768 },
-      { x: 1067, y: 1536, w: 533, h: 768 },
-    ],
-  },
-  {
-    id: "p100-staggered",
-    label: "STAGGERED",
-    package: 100,
-    slots: [
-      { x: 0, y: 0, w: 800, h: 1152 }, { x: 800, y: 0, w: 800, h: 576 },
-      { x: 800, y: 576, w: 800, h: 576 },
-      { x: 0, y: 1152, w: 800, h: 576 }, { x: 0, y: 1728, w: 800, h: 576 },
-      { x: 800, y: 1152, w: 800, h: 1152 },
-    ],
-  },
-  {
-    id: "p100-strip-pair",
-    label: "DUAL STRIPS",
-    package: 100,
-    slots: [
-      { x: 0, y: 0, w: 400, h: 1152 }, { x: 400, y: 0, w: 400, h: 1152 },
-      { x: 800, y: 0, w: 400, h: 1152 }, { x: 1200, y: 0, w: 400, h: 1152 },
-      { x: 0, y: 1152, w: 800, h: 1152 }, { x: 800, y: 1152, w: 800, h: 1152 },
-    ],
-  },
-  {
-    id: "p100-cinema",
-    label: "CINEMA STACK",
-    package: 100,
-    slots: [
-      { x: 0, y: 0, w: 1600, h: 600 },
-      { x: 0, y: 600, w: 533, h: 852 }, { x: 533, y: 600, w: 534, h: 852 }, { x: 1067, y: 600, w: 533, h: 852 },
-      { x: 0, y: 1452, w: 800, h: 852 }, { x: 800, y: 1452, w: 800, h: 852 },
+      { x: 0, y: 0, w: 1067, h: 1472 },
+      { x: 1067, y: 0, w: 533, h: 736 },
+      { x: 1067, y: 736, w: 533, h: 736 },
+      { x: 0, y: 1472, w: 533, h: 736 },
+      { x: 533, y: 1472, w: 534, h: 736 },
+      { x: 1067, y: 1472, w: 533, h: 736 },
     ],
   }
 ];

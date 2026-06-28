@@ -84,46 +84,6 @@ export const QUOTES = [
   { id: "q8", label: "BRAVE", text: "Be brave enough to start your journey." },
   { id: "q9", label: "JOY", text: "Choose joy every single day of your life." },
   { id: "q10", label: "SHINE", text: "Keep shining through every dark moment." },
-  { id: "q11", label: "WILD", text: "Stay wild and free like the ocean." },
-  { id: "q12", label: "ICONIC", text: "You were born to be absolutely iconic." },
-  { id: "q13", label: "STRONG", text: "You are much stronger than you think." },
-  { id: "q14", label: "BLOOM", text: "Keep blooming even when it feels hard." },
-  { id: "q15", label: "ENERGY", text: "Protect your energy and stay positive." },
-  { id: "q16", label: "TODAY", text: "Make today the best day of your life." },
-  { id: "q17", label: "BELIEVE", text: "Believe in yourself and you will soar." },
-  { id: "q18", label: "UNIQUE", text: "Your uniqueness is your greatest strength." },
-  { id: "q19", label: "GRATEFUL", text: "Stay grateful for all the small things." },
-  { id: "q20", label: "RADIANT", text: "Be radiant from the inside out today." },
-  { id: "q21", label: "JOURNEY", text: "The journey is just as beautiful as the goal." },
-  { id: "q22", label: "POWER", text: "The power to change is within you." },
-  { id: "q23", label: "INSPIRED", text: "Stay inspired by the world around you." },
-  { id: "q24", label: "BOLD", text: "Be bold enough to live on your terms." },
-  { id: "q25", label: "SWEET", text: "Life is sweet when you find balance." },
-  { id: "q26", label: "ENOUGH", text: "Remember that you are more than enough." },
-  { id: "q27", label: "HEART", text: "Follow your heart and find your truth." },
-  { id: "q28", label: "SMILE", text: "A simple smile can change the whole day." },
-  { id: "q29", label: "LIGHT", text: "Be the light that others want to follow." },
-  { id: "q30", label: "FEARLESS", text: "Live fearlessly and embrace every challenge." },
-  { id: "q31", label: "SOUL", text: "Feed your soul with love and laughter." },
-  { id: "q32", label: "MOMENT", text: "Every moment is a fresh new beginning." },
-  { id: "q33", label: "VIBRANT", text: "Stay vibrant and full of creative life." },
-  { id: "q34", label: "AUTHENTIC", text: "Authenticity is the most attractive trait." },
-  { id: "q35", label: "HAPPY", text: "Happiness starts with a grateful heart." },
-  { id: "q36", label: "BRIGHT", text: "The future is bright because you're in it." },
-  { id: "q37", label: "TRUST", text: "Trust the timing of your amazing life." },
-  { id: "q38", label: "CURIOUS", text: "Stay curious and keep exploring the world." },
-  { id: "q39", label: "GLOW", text: "Your inner glow is your secret weapon." },
-  { id: "q40", label: "UNSTOP", text: "You are completely unstoppable right now." },
-  { id: "q41", label: "PRESENT", text: "Be present and enjoy the here and now." },
-  { id: "q42", label: "PEACE", text: "Find peace in the quiet little moments." },
-  { id: "q43", label: "CHANCE", text: "Take every single chance that comes your way." },
-  { id: "q44", label: "INSIDE", text: "Beauty starts deep from within the soul." },
-  { id: "q45", label: "GOLD", text: "You have a heart made of gold." },
-  { id: "q46", label: "BORN", text: "You were born to stand out today." },
-  { id: "q47", label: "WONDER", text: "Never lose your sense of wonder." },
-  { id: "q48", label: "VIBE", text: "High vibes attract a high quality of life." },
-  { id: "q49", label: "BEYOND", text: "Go beyond what you thought was possible." },
-  { id: "q50", label: "DONE", text: "Small steps lead to big results." }
 ];
 
 export interface PlacedSticker {
@@ -352,10 +312,8 @@ export default function KioskPage() {
     `);
     doc.close();
     
-    // Automatic Print Handshake
     KioskLogger.log('info', 'Hardware', 'Thermal print signal sent to system service.');
     
-    // Bridge to NokoPrint or system printer service automatically
     setTimeout(() => {
       iframe.contentWindow?.print();
       URL.revokeObjectURL(dataUrl);
@@ -365,16 +323,13 @@ export default function KioskPage() {
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
-    // 1. SECURE SESSION ID (HIGH ENTROPY)
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
 
-    // 2. IMMEDIATE QR GENERATION (Dynamic Routing)
     const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
     KioskLogger.log('info', 'Export', `Secure ID Linked: ${sessionId}`);
 
-    // 3. INSTANT FIRESTORE METADATA (HANDSHAKE)
     const { storage, db } = initializeFirebase();
     setDoc(doc(db, "photos", sessionId), {
       id: sessionId,
@@ -384,7 +339,6 @@ export default function KioskPage() {
       status: 'uploading'
     });
 
-    // 4. CANVAS RENDERING
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1600;
     exportCanvas.height = 2400;

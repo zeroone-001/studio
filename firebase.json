@@ -1,3 +1,4 @@
+
 {
   "hosting": {
     "public": "public",
@@ -7,10 +8,6 @@
       "**/node_modules/**"
     ],
     "rewrites": [
-      {
-        "source": "/retrieve/**",
-        "destination": "/retrieve/[id]/index.html"
-      },
       {
         "source": "**",
         "destination": "/index.html"

@@ -13,6 +13,7 @@ import { Download, Loader2, AlertCircle, Share2, Activity, Clock } from "lucide-
 /**
  * Retrieval Page for Secure HD Soft Copy Downloads.
  * Isolated by high-entropy SessionId. No login required.
+ * Works on Android, iPhone, iPad, and Tablets.
  */
 export default function RetrievePage() {
   const params = useParams();
@@ -22,7 +23,7 @@ export default function RetrievePage() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<'verifying' | 'found' | 'syncing' | 'complete'>('verifying');
   const retryCount = useRef(0);
-  const MAX_RETRIES = 240; // ~1 minute of polling at 250ms
+  const MAX_RETRIES = 240; // ~60 seconds of polling at 250ms
 
   const fetchPhoto = useCallback(async () => {
     if (!id) return;
@@ -48,21 +49,26 @@ export default function RetrievePage() {
       setStatus('syncing');
 
       // 2. HD FETCH
+      // Polling for the storage object to be available
       const photoRef = ref(storage, `photos/${id}.jpg`);
-      const url = await getDownloadURL(photoRef);
-      
-      setImageUrl(url);
-      setLoading(false);
-      setError(null);
-      setStatus('complete');
-    } catch (err: any) {
-      if (retryCount.current < MAX_RETRIES) {
-        retryCount.current += 1;
-        setTimeout(fetchPhoto, 250); 
-      } else {
-        setError("Photo syncing. Please refresh in a moment.");
+      try {
+        const url = await getDownloadURL(photoRef);
+        setImageUrl(url);
         setLoading(false);
+        setError(null);
+        setStatus('complete');
+      } catch (e) {
+        if (retryCount.current < MAX_RETRIES) {
+          retryCount.current += 1;
+          setTimeout(fetchPhoto, 500); // Storage might take longer than Firestore
+        } else {
+          setError("Photo syncing. Please refresh in a moment.");
+          setLoading(false);
+        }
       }
+    } catch (err: any) {
+      setError("Unable to connect to service.");
+      setLoading(false);
     }
   }, [id]);
 
@@ -74,10 +80,12 @@ export default function RetrievePage() {
     if (!imageUrl || !id) return;
     try {
       const { db } = initializeFirebase();
+      // Track download for auto-purge logic on kiosk
       await updateDoc(doc(db, "photos", id), {
         isDownloaded: true
       });
 
+      // Browser-friendly download trigger
       const response = await fetch(imageUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -89,6 +97,7 @@ export default function RetrievePage() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (e) {
+      // Fallback for mobile devices that block blob downloads
       window.open(imageUrl, '_blank');
     }
   };

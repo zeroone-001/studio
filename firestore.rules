@@ -6,6 +6,7 @@ service cloud.firestore {
       // SECURE ISOLATED RETRIEVAL:
       // allow get: Public access allowed for specific ID via QR scan.
       // allow list: False. Prevents collection browsing/guessing.
+      // allow write: Allows kiosk to create session metadata.
       allow get: if true;
       allow list: if false;
       allow write: if true;

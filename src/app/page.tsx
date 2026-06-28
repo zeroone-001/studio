@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -374,7 +375,6 @@ export default function KioskPage() {
     KioskLogger.log('info', 'Export', `Secure ID Linked: ${sessionId}`);
 
     // 3. INSTANT FIRESTORE METADATA (HANDSHAKE)
-    // We write this BEFORE upload so scanning mobile phone finds the doc immediately
     const { storage, db } = initializeFirebase();
     setDoc(doc(db, "photos", sessionId), {
       id: sessionId,
@@ -398,7 +398,6 @@ export default function KioskPage() {
     const isStrip = selectedBlueprint.package === 50;
     
     const drawContent = async (offsetX: number) => {
-      // Photo Slots (Calibrated to stop at Y=2200)
       for (let i = 0; i < selectedBlueprint.slots.length; i++) {
         const slot = selectedBlueprint.slots[i];
         const photo = capturedPhotos[i];
@@ -419,21 +418,16 @@ export default function KioskPage() {
         ctx.restore();
       }
 
-      // BRANDING FOOTER RECALIBRATED (Y=2200, H=200)
       const footerY = 2200;
       const footerH = 200;
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(offsetX, footerY, 1600, footerH);
 
-      // Quote Center (Refined spacing and wrapping)
       ctx.fillStyle = '#000000';
       ctx.font = 'bold italic 26px Inter, sans-serif';
       ctx.textAlign = 'center';
-      
-      // Draw centered quote text
       ctx.fillText(selectedQuote.text, offsetX + 800, footerY + 80);
 
-      // Branding Bottom
       ctx.fillStyle = '#000000';
       ctx.font = '900 italic 32px Inter, sans-serif';
       ctx.textAlign = 'left';
@@ -441,7 +435,6 @@ export default function KioskPage() {
       ctx.fillStyle = '#FF3399';
       ctx.fillText('STUDIO', offsetX + 165, footerY + 160);
 
-      // Date Bottom Right
       ctx.fillStyle = '#000000';
       ctx.font = 'bold 22px Inter, sans-serif';
       ctx.textAlign = 'right';
@@ -461,14 +454,11 @@ export default function KioskPage() {
       await drawContent(0);
     }
 
-    // 5. SAVE & PARALLEL SYNC
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
 
-      // Local Persistence (Honor Pad Gallery)
       await SessionStore.savePhotoLocally(sessionId, blob);
       
-      // DEFERRED USB BACKUP (Consent: YES)
       if (promoConsent === true && usbDirectoryHandle) {
         setTimeout(async () => {
           await SessionStore.saveToUsb(usbDirectoryHandle, sessionId, blob);
@@ -476,10 +466,8 @@ export default function KioskPage() {
         }, 2 * 60 * 1000); 
       }
 
-      // Parallel Print Start
       initiatePrint(blob); 
 
-      // Background Cloud Sync
       setUploadStatus("uploading");
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       uploadBytes(photoRef, blob).then(() => {
@@ -948,7 +936,6 @@ export default function KioskPage() {
                        {uploadStatus === "complete" && <div className="text-[7px] text-green-500 font-black uppercase">HD Ready</div>}
                      </div>
 
-                     {/* Instant Verification Thumbnail */}
                      {capturedPhotos.length > 0 && (
                        <div className="w-full pt-4 border-t border-white/5 flex flex-col items-center gap-2">
                          <div className="w-24 aspect-[3/4] border-2 border-white/20 rounded-lg overflow-hidden relative shadow-lg">

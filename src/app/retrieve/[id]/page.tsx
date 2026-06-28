@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
@@ -9,6 +10,10 @@ import { KioskLayout } from "@/components/kiosk/kiosk-layout";
 import { NeonButton } from "@/components/kiosk/neon-button";
 import { Download, Loader2, AlertCircle, Share2, Activity, Clock } from "lucide-react";
 
+/**
+ * Retrieval Page for Secure HD Soft Copy Downloads.
+ * Isolated by high-entropy SessionId. No login required.
+ */
 export default function RetrievePage() {
   const params = useParams();
   const id = params?.id as string;
@@ -17,7 +22,7 @@ export default function RetrievePage() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<'verifying' | 'found' | 'syncing' | 'complete'>('verifying');
   const retryCount = useRef(0);
-  const MAX_RETRIES = 240; // ~1 minute of aggressive polling at 250ms
+  const MAX_RETRIES = 240; // ~1 minute of polling at 250ms
 
   const fetchPhoto = useCallback(async () => {
     if (!id) return;
@@ -25,25 +30,24 @@ export default function RetrievePage() {
     try {
       const { storage, db } = initializeFirebase();
       
-      // 1. FAST HANDSHAKE: Check if session ID is registered in Firestore
+      // 1. SESSION VERIFICATION (Isolated by high-entropy ID)
       const docRef = doc(db, "photos", id);
       const docSnap = await getDoc(docRef);
       
       if (!docSnap.exists()) {
         if (retryCount.current < MAX_RETRIES) {
           retryCount.current += 1;
-          setTimeout(fetchPhoto, 250); // Aggressive poll every 250ms for instant start
+          setTimeout(fetchPhoto, 250); 
           return;
         }
-        setError("Photo not found. Please scan the QR code again.");
+        setError("Photo not found.");
         setLoading(false);
         return;
       }
 
       setStatus('syncing');
 
-      // 2. HD FETCH: Get the actual Storage URL
-      // If the file is still uploading, getDownloadURL will throw 404, which we catch and retry
+      // 2. HD FETCH
       const photoRef = ref(storage, `photos/${id}.jpg`);
       const url = await getDownloadURL(photoRef);
       
@@ -52,12 +56,11 @@ export default function RetrievePage() {
       setError(null);
       setStatus('complete');
     } catch (err: any) {
-      // If getDownloadURL fails, it's likely still uploading. Retry aggressively.
       if (retryCount.current < MAX_RETRIES) {
         retryCount.current += 1;
         setTimeout(fetchPhoto, 250); 
       } else {
-        setError("HD Portrait is still syncing. Please refresh in a few seconds.");
+        setError("Photo syncing. Please refresh in a moment.");
         setLoading(false);
       }
     }
@@ -70,7 +73,6 @@ export default function RetrievePage() {
   const handleDownload = async () => {
     if (!imageUrl || !id) return;
     try {
-      // Signal to Kiosk that download was triggered (for auto-purge logic)
       const { db } = initializeFirebase();
       await updateDoc(doc(db, "photos", id), {
         isDownloaded: true
@@ -118,12 +120,11 @@ export default function RetrievePage() {
               <p className="text-white/80 font-black uppercase tracking-[0.3em] text-[10px]">
                 {status === 'verifying' ? 'VERIFYING SESSION...' : 'HD VERSION SYNCING...'}
               </p>
-              <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest">DO NOT CLOSE THIS PAGE</span>
             </div>
           ) : error ? (
             <div className="flex flex-col items-center py-24 space-y-6">
               <AlertCircle className="w-16 h-16 text-red-500" />
-              <p className="text-white/80 font-bold uppercase text-xs leading-relaxed max-w-[280px]">{error}</p>
+              <p className="text-white/80 font-bold uppercase text-xs">{error}</p>
               <NeonButton onClick={() => window.location.reload()} className="!py-4 mt-4 w-full text-sm">RETRY</NeonButton>
             </div>
           ) : (
@@ -146,13 +147,13 @@ export default function RetrievePage() {
                 
                 <div className="grid grid-cols-1 gap-4">
                   <NeonButton onClick={handleDownload} className="w-full flex items-center justify-center gap-3 !py-5 text-lg">
-                    <Download className="w-6 h-6" /> SAVE TO GALLERY
+                    <Download className="w-6 h-6" /> DOWNLOAD
                   </NeonButton>
                   <button 
                     onClick={handleShare}
                     className="w-full border-2 border-white/20 font-headline font-black text-xs py-4 italic uppercase text-white/60 hover:text-white transition-all flex items-center justify-center gap-2"
                   >
-                    <Share2 className="w-4 h-4" /> SHARE MOMENT
+                    <Share2 className="w-4 h-4" /> SHARE
                   </button>
                 </div>
               </div>

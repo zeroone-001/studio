@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -57,7 +58,8 @@ export default function KioskPage() {
   const [logoTapCount, setLogoTapCount] = useState(0);
   const [currentSessionId, setCurrentSessionId] = useState("");
   const [softCopyQrUrl, setSoftCopyQrUrl] = useState("");
-  const [fbQrUrl] = useState(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent("https://www.facebook.com/share/1GjRMiCVe3/")}`);
+  // UPDATED FB LINK TO https://www.facebook.com/share/1UUtaRzzMB/
+  const [fbQrUrl] = useState(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent("https://www.facebook.com/share/1UUtaRzzMB/")}`);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "complete" | "error">("idle");
   const [promoConsent, setPromoConsent] = useState<boolean | null>(null);
   const [usbHandle, setUsbHandle] = useState<FileSystemDirectoryHandle | null>(null);
@@ -176,7 +178,6 @@ export default function KioskPage() {
         updateDoc(doc(db, "photos", sessionId), { status: 'complete' });
         setUploadStatus("complete");
         
-        // AUTO-SAVE TO USB (YES CONSENT)
         if (promoConsent && usbHandle) {
           setTimeout(() => {
             SessionStore.saveToUsb(usbHandle, sessionId, blob).then(success => {
@@ -185,7 +186,6 @@ export default function KioskPage() {
           }, 60000); 
         }
 
-        // AUTO-DELETE (NO CONSENT)
         if (promoConsent === false) {
           setTimeout(() => {
             SessionStore.cleanupSession(sessionId).then(() => {
@@ -328,7 +328,6 @@ export default function KioskPage() {
     }
   }, [appState, selectedCameraId]);
 
-  // STRICT PACKAGE LIMITS
   const currentFilters = packageSelected === 50 ? FILTERS.slice(0, 5) : FILTERS.slice(0, 10);
   const currentBlueprints = BLUEPRINTS.filter(b => b.package === packageSelected);
 
@@ -627,6 +626,17 @@ export default function KioskPage() {
              <JnlLogo variant="hero" color="light" className="mb-12" />
              <h2 className="font-headline font-black text-7xl italic uppercase">THANK <span className="text-primary">YOU!</span></h2>
              <p className="text-xl font-black uppercase text-white/40 italic tracking-[0.3em] mt-4">VISIT US AGAIN SOON</p>
+             
+             {/* FB FOLLOW QR CODE FOR THANK YOU PAGE */}
+             <div className="mt-12 flex flex-col items-center gap-4 bg-white/5 p-8 border border-white/10 rounded-[3rem]">
+                <p className="text-2xl font-black italic uppercase text-primary flex items-center gap-3">
+                   FOLLOW US <span className="animate-bounce">👇</span>
+                </p>
+                <div className="w-48 h-48 bg-white p-3 rounded-2xl shadow-2xl">
+                   <img src={fbQrUrl} alt="FB Follow" className="w-full h-full" />
+                </div>
+             </div>
+
              <NeonButton onClick={resetSession} className="px-20 py-8 text-2xl mt-16">BACK TO START</NeonButton>
           </div>
         )}

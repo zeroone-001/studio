@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
@@ -15,8 +16,9 @@ export default function RetrievePage() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<'verifying' | 'found' | 'syncing' | 'complete'>('verifying');
   const retryCount = useRef(0);
-  const MAX_RETRIES = 120; // 1 minute of polling
+  const MAX_RETRIES = 240; // ~1 minute of aggressive polling at 250ms
 
   const fetchPhoto = useCallback(async () => {
     if (!id) return;
@@ -31,13 +33,15 @@ export default function RetrievePage() {
       if (!docSnap.exists()) {
         if (retryCount.current < MAX_RETRIES) {
           retryCount.current += 1;
-          setTimeout(fetchPhoto, 500); 
+          setTimeout(fetchPhoto, 250); // Aggressive poll every 250ms
           return;
         }
         setError("Photo not found. Please scan the QR code again.");
         setLoading(false);
         return;
       }
+
+      setStatus('syncing');
 
       // Get production Storage URL
       const photoRef = ref(storage, `photos/${id}.jpg`);
@@ -46,10 +50,11 @@ export default function RetrievePage() {
       setImageUrl(url);
       setLoading(false);
       setError(null);
+      setStatus('complete');
     } catch (err: any) {
       if (retryCount.current < MAX_RETRIES) {
         retryCount.current += 1;
-        setTimeout(fetchPhoto, 500);
+        setTimeout(fetchPhoto, 250); // Aggressive poll every 250ms
       } else {
         setError("HD Portrait is still syncing. Please refresh in a few seconds.");
         setLoading(false);
@@ -109,7 +114,10 @@ export default function RetrievePage() {
                    <Clock className="w-6 h-6 text-primary/40 animate-pulse" />
                 </div>
               </div>
-              <p className="text-white/80 font-black uppercase tracking-[0.3em] text-[10px]">VERIFYING SESSION...</p>
+              <p className="text-white/80 font-black uppercase tracking-[0.3em] text-[10px]">
+                {status === 'verifying' ? 'VERIFYING SESSION...' : 'HD VERSION SYNCING...'}
+              </p>
+              <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest">DO NOT CLOSE THIS PAGE</span>
             </div>
           ) : error ? (
             <div className="flex flex-col items-center py-24 space-y-6">

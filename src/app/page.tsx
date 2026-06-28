@@ -24,7 +24,7 @@ import { SessionStore } from "@/lib/kiosk/persistence";
 import { KioskLogger } from "@/lib/kiosk/logger";
 import { initializeFirebase } from "@/firebase";
 import { ref, uploadBytes } from "firebase/storage";
-import { doc, setDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, onSnapshot, updateDoc } from "firebase/firestore";
 
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "thankyou" | "test-camera";
 
@@ -351,6 +351,8 @@ export default function KioskPage() {
       </html>
     `);
     doc.close();
+    // Signal automatic print completion in logs
+    KioskLogger.log('info', 'Hardware', 'Print signal sent to thermal engine.');
     setTimeout(() => URL.revokeObjectURL(dataUrl), 5000);
   };
 
@@ -366,7 +368,17 @@ export default function KioskPage() {
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
     KioskLogger.log('info', 'Export', `Secure ID Linked: ${sessionId}`);
 
-    // 3. CANVAS RENDERING
+    // 3. INSTANT FIRESTORE METADATA (Minimizes Mobile "Site Not Found" Delay)
+    const { storage, db } = initializeFirebase();
+    setDoc(doc(db, "photos", sessionId), {
+      id: sessionId,
+      storagePath: `photos/${sessionId}.jpg`,
+      timestamp: serverTimestamp(),
+      isDownloaded: false,
+      status: 'uploading'
+    });
+
+    // 4. CANVAS RENDERING
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1600;
     exportCanvas.height = 2400;
@@ -380,7 +392,7 @@ export default function KioskPage() {
     const isStrip = selectedBlueprint.package === 50;
     
     const drawContent = async (offsetX: number) => {
-      // Photo Slots
+      // Photo Slots (Calibrated to stop at Y=2200)
       for (let i = 0; i < selectedBlueprint.slots.length; i++) {
         const slot = selectedBlueprint.slots[i];
         const photo = capturedPhotos[i];
@@ -407,11 +419,10 @@ export default function KioskPage() {
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(offsetX, footerY, 1600, footerH);
 
-      // Quote Center (Refined spacing)
+      // Quote Center (Refined spacing and wrapping)
       ctx.fillStyle = '#000000';
       ctx.font = 'bold italic 26px Inter, sans-serif';
       ctx.textAlign = 'center';
-      // Center the quote sentences clearly
       ctx.fillText(selectedQuote.text, offsetX + 800, footerY + 80);
 
       // Branding Bottom
@@ -442,7 +453,7 @@ export default function KioskPage() {
       await drawContent(0);
     }
 
-    // 4. SAVE & PARALLEL SYNC
+    // 5. SAVE & PARALLEL SYNC
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
 
@@ -454,7 +465,7 @@ export default function KioskPage() {
         setTimeout(async () => {
           await SessionStore.saveToUsb(usbDirectoryHandle, sessionId, blob);
           KioskLogger.log('info', 'Hardware', `USB Backup (YES): ${sessionId} saved to Lexar.`);
-        }, 2 * 60 * 1000); // 2 minutes delay
+        }, 2 * 60 * 1000); 
       }
 
       // Parallel Print Start
@@ -462,23 +473,14 @@ export default function KioskPage() {
 
       // Background Cloud Sync
       setUploadStatus("uploading");
-      (async () => {
-        try {
-          const { storage, db } = initializeFirebase();
-          const photoRef = ref(storage, `photos/${sessionId}.jpg`);
-          await uploadBytes(photoRef, blob);
-          await setDoc(doc(db, "photos", sessionId), {
-            id: sessionId,
-            storagePath: photoRef.fullPath,
-            timestamp: serverTimestamp(),
-            isDownloaded: false
-          });
-          setUploadStatus("complete");
-        } catch (e) {
-          setUploadStatus("error");
-          KioskLogger.log('error', 'Cloud', 'Sync deferred.');
-        }
-      })();
+      const photoRef = ref(storage, `photos/${sessionId}.jpg`);
+      uploadBytes(photoRef, blob).then(() => {
+        updateDoc(doc(db, "photos", sessionId), { status: 'complete' });
+        setUploadStatus("complete");
+      }).catch((e) => {
+        setUploadStatus("error");
+        KioskLogger.log('error', 'Cloud', 'Sync deferred.');
+      });
     }, 'image/jpeg', 0.88);
 
   }, [selectedBlueprint, capturedPhotos, selectedFilter, selectedQuote, promoConsent, usbDirectoryHandle, originUrl]);

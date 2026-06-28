@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -39,38 +40,6 @@ export const FILTERS = [
   { id: "film", label: "FILM", sub: "VINTAGE", class: "grayscale-[0.2] sepia-[0.15] contrast-[1.3] brightness-[0.95] saturate-[1.2]" },
 ];
 
-export const STICKER_DEFS = [
-  { id: "puffy-heart", icon: Kawaii.PuffyHeart, color: "", category: "HEARTS" },
-  { id: "ribbon-heart", icon: Kawaii.RibbonHeart, color: "", category: "HEARTS" },
-  { id: "sparkle-heart", icon: HeartIcon, color: "text-pink-300", category: "HEARTS" },
-  { id: "bunny", icon: Kawaii.KawaiiBunny, color: "", category: "CUTE" },
-  { id: "bear", icon: Kawaii.TeddyBear, color: "", category: "CUTE" },
-  { id: "panda", icon: Kawaii.KawaiiPanda, color: "", category: "CUTE" },
-  { id: "cat-face", icon: Cat, color: "text-orange-200", category: "CUTE" },
-  { id: "pizza", icon: Pizza, color: "text-yellow-600", category: "CUTE" },
-  { id: "cookie", icon: CookieIcon, color: "text-amber-700", category: "CUTE" },
-  { id: "coffee", icon: Coffee, color: "text-amber-900", category: "CUTE" },
-  { id: "ice-cream", icon: Kawaii.IceCreamSticker, color: "", category: "CUTE" },
-  { id: "sushi", icon: Kawaii.SushiSticker, color: "", category: "CUTE" },
-  { id: "mini-camera", icon: CameraIcon, color: "text-zinc-400", category: "PHOTO" },
-  { id: "film", icon: Layers, color: "text-zinc-500", category: "PHOTO" },
-  { id: "flash", icon: Flashlight, color: "text-yellow-400", category: "PHOTO" },
-  { id: "selfie", icon: User, color: "text-blue-300", category: "PHOTO" },
-  { id: "cloud", icon: Kawaii.KawaiiCloud, color: "", category: "AESTHETIC" },
-  { id: "sparkle", icon: Kawaii.PastelSparkle, color: "", category: "AESTHETIC" },
-  { id: "rainbow", icon: Kawaii.RainbowSticker, color: "", category: "AESTHETIC" },
-  { id: "moon", icon: Moon, color: "text-indigo-200", category: "AESTHETIC" },
-  { id: "sun", icon: Sun, color: "text-yellow-300", category: "AESTHETIC" },
-  { id: "crown", icon: Crown, color: "text-yellow-400", category: "AESTHETIC" },
-  { id: "flower", icon: Flower2, color: "text-pink-400", category: "AESTHETIC" },
-  { id: "star", icon: Star, color: "text-yellow-400", category: "AESTHETIC" },
-  { id: "ghost", icon: Ghost, color: "text-zinc-200", category: "AESTHETIC" },
-  { id: "party", icon: PartyPopper, color: "text-orange-400", category: "AESTHETIC" },
-  { id: "slay", icon: Kawaii.SlayText, color: "", category: "TEXT" },
-  { id: "cutie", icon: Kawaii.CutieText, color: "", category: "TEXT" },
-  { id: "besties", icon: Kawaii.BestiesText, color: "", category: "TEXT" },
-];
-
 export const QUOTES = [
   { id: "q1", label: "LIMITLESS", text: "Your potential is truly limitless." },
   { id: "q2", label: "STAR", text: "Shine bright like the star you are." },
@@ -82,6 +51,22 @@ export const QUOTES = [
   { id: "q8", label: "BRAVE", text: "Be brave enough to start your journey." },
   { id: "q9", label: "JOY", text: "Choose joy every single day of your life." },
   { id: "q10", label: "SHINE", text: "Keep shining through every dark moment." },
+];
+
+export const STICKER_DEFS = [
+  { id: "heart1", label: "Puffy Heart", icon: Kawaii.PuffyHeart, color: "text-pink-400" },
+  { id: "heart2", label: "Ribbon Heart", icon: Kawaii.RibbonHeart, color: "text-pink-300" },
+  { id: "bunny", label: "Bunny", icon: Kawaii.KawaiiBunny, color: "text-zinc-400" },
+  { id: "bear", label: "Teddy", icon: Kawaii.TeddyBear, color: "text-amber-700" },
+  { id: "panda", label: "Panda", icon: Kawaii.KawaiiPanda, color: "text-zinc-800" },
+  { id: "sushi", label: "Sushi", icon: Kawaii.SushiSticker, color: "text-zinc-800" },
+  { id: "icecream", label: "Ice Cream", icon: Kawaii.IceCreamSticker, color: "text-pink-200" },
+  { id: "cloud", label: "Cloud", icon: Kawaii.KawaiiCloud, color: "text-blue-100" },
+  { id: "sparkle", label: "Sparkle", icon: Kawaii.PastelSparkle, color: "text-yellow-400" },
+  { id: "rainbow", label: "Rainbow", icon: Kawaii.RainbowSticker, color: "" },
+  { id: "slay", label: "Slay", icon: Kawaii.SlayText, color: "" },
+  { id: "cutie", label: "Cutie", icon: Kawaii.CutieText, color: "" },
+  { id: "besties", label: "Besties", icon: Kawaii.BestiesText, color: "" },
 ];
 
 export interface PlacedSticker {
@@ -144,9 +129,9 @@ export default function KioskPage() {
     }
     
     const iframe = printIframeRef.current;
-    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    const docObj = iframe.contentDocument || iframe.contentWindow?.document;
     
-    if (!doc) {
+    if (!docObj) {
       KioskLogger.log('error', 'PRINT', 'Print job creation aborted.', 'FAILED', 'Iframe document inaccessible');
       return;
     }
@@ -154,8 +139,8 @@ export default function KioskPage() {
     const dataUrl = URL.createObjectURL(blob);
     KioskLogger.log('info', 'PRINT', 'Photo generated.', 'SUCCESS');
 
-    doc.open();
-    doc.write(`
+    docObj.open();
+    docObj.write(`
       <html>
         <head>
           <style>
@@ -169,7 +154,7 @@ export default function KioskPage() {
         </body>
       </html>
     `);
-    doc.close();
+    docObj.close();
     KioskLogger.log('info', 'PRINT', 'Print intent created.', 'SUCCESS');
     
     setTimeout(() => {
@@ -192,19 +177,16 @@ export default function KioskPage() {
       return;
     }
     
-    // Feature 1: Unique Session ID with High Entropy
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
     KioskLogger.log('info', 'QR', `Session ID created: ${sessionId}`, 'SUCCESS');
 
-    // Feature 1: Immediate QR URL generation
     const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
     KioskLogger.log('info', 'QR', 'QR URL generated.', 'SUCCESS');
     
     const { storage, db } = initializeFirebase();
     
-    // Feature 1: Immediate Handshake to ensure public access is ready
     setDoc(doc(db, "photos", sessionId), {
       id: sessionId,
       storagePath: `photos/${sessionId}.jpg`,
@@ -221,7 +203,10 @@ export default function KioskPage() {
     exportCanvas.width = 1600;
     exportCanvas.height = 2400;
     const ctx = exportCanvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      KioskLogger.log('error', 'SESSION', 'Canvas context failed.', 'FAILED');
+      return;
+    }
 
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, 1600, 2400);
@@ -240,14 +225,15 @@ export default function KioskPage() {
         ctx.drawImage(img, slot.x + offsetX, slot.y, slot.w, slot.h);
       }
       
-      // Branding Area Calibration
       const footerY = 2200;
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(offsetX, footerY, 1600, 200);
+      
       ctx.fillStyle = '#000000';
       ctx.font = 'bold 36px Inter, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(selectedQuote.text, offsetX + 800, footerY + 80);
+      
       ctx.textAlign = 'left';
       ctx.font = 'black 48px Inter, sans-serif';
       ctx.fillText('JNL STUDIO', offsetX + 80, footerY + 160);
@@ -320,6 +306,12 @@ export default function KioskPage() {
   const startShotSequence = async () => {
     const totalShots = packageSelected === 50 ? 3 : 6;
     const photos: string[] = [];
+    
+    if (!selectedBlueprint) {
+      const defaultBp = BLUEPRINTS.find(b => b.package === packageSelected);
+      if (defaultBp) setSelectedBlueprint(defaultBp);
+    }
+
     setAppState("capturing");
     setCapturedPhotos([]); 
     await new Promise(r => setTimeout(r, 2000)); 
@@ -342,6 +334,7 @@ export default function KioskPage() {
   };
 
   const startSingleShotSequence = async (index: number) => {
+    KioskLogger.log('info', 'SESSION', `Partial Retake initiated for slot ${index + 1}.`);
     setAppState("capturing");
     await new Promise(r => setTimeout(r, 1000)); 
     for (let c = 3; c > 0; c--) {
@@ -355,9 +348,9 @@ export default function KioskPage() {
       setCapturedPhotos(prev => {
         const newPhotos = [...prev];
         newPhotos[index] = shot;
-        KioskLogger.log('info', 'SESSION', `Retake Selected replaced slot ${index + 1}.`, 'SUCCESS');
         return newPhotos;
       });
+      KioskLogger.log('info', 'SESSION', `Partial Retake success for slot ${index + 1}.`, 'SUCCESS');
     }
     await new Promise(r => setTimeout(r, 600)); 
     setIsProcessing(false);
@@ -393,7 +386,9 @@ export default function KioskPage() {
           });
           setCameraStream(stream);
           if (videoRef.current) videoRef.current.srcObject = stream;
-        } catch (e) {}
+        } catch (e) {
+          KioskLogger.log('error', 'HARDWARE', 'Camera stream failed.', 'FAILED', e.message);
+        }
       };
       start();
     }
@@ -404,7 +399,13 @@ export default function KioskPage() {
       <canvas ref={canvasRef} className="hidden" />
       <iframe ref={printIframeRef} className="hidden" title="print-frame" />
       <div className="flex-1 w-full h-full flex flex-col items-center overflow-hidden kiosk-container safe-area-spacing landscape-container">
-        <AdminAuthDialog isOpen={isAdminDialogOpen} onClose={() => setIsAdminDialogOpen(false)} onAuthSuccess={() => setIsOwnerMode(true)} />
+        
+        <AdminAuthDialog 
+          isOpen={isAdminDialogOpen} 
+          onClose={() => setIsAdminDialogOpen(false)} 
+          onAuthSuccess={() => setIsOwnerMode(true)} 
+        />
+        
         {isOwnerMode && (
           <AdminControls 
             currentStatus={appState}
@@ -431,10 +432,18 @@ export default function KioskPage() {
         {appState === "welcome" && (
           <div className="flex flex-col items-center w-full h-full animate-in fade-in duration-1000 safe-area-spacing">
             <div className="flex-1 flex flex-col items-center justify-center">
-              <div className="flex flex-col items-center cursor-pointer" onClick={() => {
-                setLogoTapCount(p => p + 1);
-                if (logoTapCount >= 4) { setIsAdminDialogOpen(true); setLogoTapCount(0); }
-              }}>
+              
+              <div 
+                className="flex flex-col items-center cursor-pointer" 
+                onClick={() => {
+                  setLogoTapCount(p => p + 1);
+                  if (logoTapCount >= 4) { 
+                    setIsAdminDialogOpen(true); 
+                    setLogoTapCount(0); 
+                    KioskLogger.log('info', 'SESSION', 'Admin Dialog triggered via Logo tap.');
+                  }
+                }}
+              >
                 <JnlLogo variant="hero" color="light" className="mb-0" />
               </div>
             </div>
@@ -497,7 +506,16 @@ export default function KioskPage() {
               </div>
               <div className="w-full max-w-2xl bg-white/5 border p-4 grid grid-cols-6 gap-2">
                 {capturedPhotos.map((photo, idx) => (
-                  <button key={idx} onClick={() => setSelectedRetakeIndex(idx)} className={cn("aspect-[3/4] border-2 overflow-hidden transition-all", selectedRetakeIndex === idx ? "border-primary scale-110 shadow-[0_0_15px_rgba(255,51,153,0.5)] z-10" : "border-white/10 opacity-60")}>
+                  <button 
+                    key={idx} 
+                    onClick={() => setSelectedRetakeIndex(idx)} 
+                    className={cn(
+                      "aspect-[3/4] border-2 overflow-hidden transition-all", 
+                      selectedRetakeIndex === idx 
+                        ? "border-primary scale-110 shadow-[0_0_15px_rgba(255,51,153,0.5)] z-10" 
+                        : "border-white/10 opacity-60"
+                    )}
+                  >
                     <img src={photo} alt="" className={cn("w-full h-full object-cover", selectedFilter.class)} />
                   </button>
                 ))}
@@ -505,6 +523,7 @@ export default function KioskPage() {
             </div>
             <div className="w-96 space-y-6">
                <NeonButton onClick={() => setAppState("decorating")} className="w-full py-10 text-2xl">USE PHOTO</NeonButton>
+               
                <button 
                 onClick={() => selectedRetakeIndex !== null && startSingleShotSequence(selectedRetakeIndex)} 
                 disabled={selectedRetakeIndex === null} 
@@ -512,6 +531,7 @@ export default function KioskPage() {
                >
                  Retake Selected
                </button>
+               
                <button onClick={() => setAppState("setup")} className="w-full py-4 border-2 border-white/20 font-black uppercase italic text-white/40">Retake All</button>
             </div>
           </div>

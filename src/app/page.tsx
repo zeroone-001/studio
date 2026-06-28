@@ -11,7 +11,7 @@ import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
   Printer, Loader2, Download, CheckCircle2, AlertCircle, 
   RotateCcw, Camera, Target, Trash2, Layers, Maximize2, RotateCw, X,
-  Facebook, HandMetal, Play
+  Facebook, HandMetal, Play, Heart, Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -624,76 +624,69 @@ export default function KioskPage() {
         {appState === "consent" && (
           <div className="w-full max-w-4xl flex flex-col items-center justify-center h-full px-6 space-y-12 animate-in fade-in zoom-in duration-500">
              <div className="text-center space-y-6">
-                <h2 className="font-headline font-black text-6xl italic uppercase leading-tight">
-                  PHOTO CONSENT
+                <h2 className="font-headline font-black text-6xl italic uppercase leading-tight flex items-center justify-center gap-4">
+                  <Camera className="w-12 h-12 text-primary" /> 📸 PHOTO CONSENT
                 </h2>
-                <p className="text-white/80 font-black uppercase italic tracking-widest text-xl">
-                  May we use your photo for JNL Studio Facebook page promotion?
-                </p>
+                <div className="space-y-4">
+                  <p className="text-white/90 font-black uppercase italic tracking-widest text-2xl">
+                    May we feature your photo on JNL Studio's Facebook Page?
+                  </p>
+                  <p className="text-white/60 font-bold italic text-lg">
+                    Maaari ba naming gamitin ang inyong larawan para sa pag-promote ng JNL Studio sa Facebook Page?
+                  </p>
+                </div>
              </div>
              
              <div className="grid grid-cols-2 gap-8 w-full">
                 <button 
                   onClick={() => { setPromoConsent(true); setAppState("printing"); }}
-                  className="group relative flex flex-col items-center justify-center bg-white/5 border-4 border-white/10 p-12 hover:border-green-500 transition-all active:scale-95"
+                  className="group relative flex flex-col items-center justify-center bg-primary border-4 border-primary/20 p-12 hover:bg-primary/90 transition-all active:scale-95 shadow-[0_0_30px_rgba(255,51,153,0.4)]"
                 >
-                  <HandMetal className="w-20 h-20 text-green-500 mb-4 group-hover:scale-110 transition-transform" />
-                  <span className="text-4xl font-black italic uppercase text-white">YES, YOU MAY POST</span>
-                  <span className="text-[10px] font-black uppercase text-white/40 mt-2">SHARE MY MOMENT</span>
+                  <Heart className="w-20 h-20 text-white mb-4 group-hover:scale-110 transition-transform fill-white" />
+                  <span className="text-5xl font-black italic uppercase text-white">🩷 YES / OO</span>
+                  <span className="text-[10px] font-black uppercase text-white/60 mt-2">SHARE MY MOMENT</span>
                 </button>
                 
                 <button 
                   onClick={() => { setPromoConsent(false); setAppState("printing"); }}
-                  className="group relative flex flex-col items-center justify-center bg-white/5 border-4 border-white/10 p-12 hover:border-red-500 transition-all active:scale-95"
+                  className="group relative flex flex-col items-center justify-center bg-black border-4 border-white/10 p-12 hover:bg-zinc-900 transition-all active:scale-95"
                 >
-                  <X className="w-20 h-20 text-red-500 mb-4 group-hover:scale-110 transition-transform" />
-                  <span className="text-4xl font-black italic uppercase text-white">NO, KEEP PRIVATE</span>
-                  <span className="text-[10px] font-black uppercase text-white/40 mt-2">PRIVATE SOFT COPY ONLY</span>
+                  <Shield className="w-20 h-20 text-white/40 mb-4 group-hover:scale-110 transition-transform" />
+                  <span className="text-5xl font-black italic uppercase text-white">⚫ NO / HINDI</span>
+                  <span className="text-[10px] font-black uppercase text-white/40 mt-2">KEEP MY PHOTO PRIVATE</span>
                 </button>
              </div>
           </div>
         )}
 
         {appState === "printing" && (
-          <div className="w-full flex flex-row items-center gap-16 px-10 h-full">
-             <div className="flex-1 space-y-10">
-                <div className="space-y-2">
-                  <h2 className="font-headline font-black text-5xl italic uppercase text-primary">Printing...</h2>
-                  <p className="text-lg font-black uppercase text-white/40 italic tracking-widest">Your portrait is being processed</p>
+          <div className="w-full flex flex-col items-center justify-center gap-12 px-10 h-full">
+             <div className="w-full max-w-4xl space-y-10">
+                <div className="text-center space-y-2">
+                  <h2 className="font-headline font-black text-6xl italic uppercase text-primary">Printing...</h2>
+                  <p className="text-xl font-black uppercase text-white/40 italic tracking-widest">Your portrait is being processed</p>
                 </div>
-                <Progress value={printProgress} className="h-4 bg-white/10" />
-                <div className="flex items-center gap-4 p-6 bg-white/5 border border-white/10 rounded-2xl">
-                  <Printer className="w-8 h-8 text-primary animate-pulse" />
-                  <p className="text-sm font-bold uppercase italic text-white/60">SENDING DATA TO THERMAL PRINTER via NOKOPRINT</p>
-                </div>
-
-                <div className="flex items-center gap-6 p-6 bg-primary/5 border-2 border-primary/20 rounded-[2.5rem]">
-                   <div className="w-32 h-32 bg-white p-2 rounded-xl flex items-center justify-center shadow-lg">
-                      <img src={fbQrUrl} alt="FB QR" className="w-full h-full" />
-                   </div>
-                   <div className="space-y-2">
-                      <h3 className="text-xl font-black italic uppercase text-primary">FOLLOW US 👇</h3>
-                      <p className="text-[10px] font-black uppercase text-white/60 leading-relaxed italic">
-                        Tag us in your photos! <br/> Visit our Facebook Page for news & events.
-                      </p>
-                   </div>
+                <Progress value={printProgress} className="h-6 bg-white/10" />
+                <div className="flex items-center justify-center gap-4 p-8 bg-white/5 border border-white/10 rounded-[2.5rem]">
+                  <Printer className="w-10 h-10 text-primary animate-pulse" />
+                  <p className="text-lg font-bold uppercase italic text-white/60">SENDING DATA TO THERMAL PRINTER via NOKOPRINT</p>
                 </div>
              </div>
              
-             <div className="bg-white/5 border-2 border-white/10 p-8 flex flex-col items-center space-y-6 rounded-[3rem] w-[400px] shadow-[0_0_50px_rgba(255,51,153,0.2)]">
+             <div className="bg-white/5 border-2 border-white/10 p-10 flex flex-col items-center space-y-8 rounded-[4rem] w-[450px] shadow-[0_0_80px_rgba(255,51,153,0.2)]">
                 <div className="text-center space-y-2">
-                  <h3 className="text-2xl font-black italic uppercase text-primary">HD SOFT COPY</h3>
+                  <h3 className="text-3xl font-black italic uppercase text-primary">HD SOFT COPY</h3>
                   <p className="text-[10px] font-black uppercase text-white/40 italic">SCAN TO SAVE TO YOUR PHONE</p>
                 </div>
-                <div className="aspect-square w-full bg-white p-6 rounded-3xl flex items-center justify-center shadow-2xl">
-                  {softCopyQrUrl ? <img src={softCopyQrUrl} alt="Scan to save" className="w-full h-full" /> : <Loader2 className="w-12 h-12 animate-spin text-primary" />}
+                <div className="aspect-square w-full bg-white p-8 rounded-[2.5rem] flex items-center justify-center shadow-2xl">
+                  {softCopyQrUrl ? <img src={softCopyQrUrl} alt="Scan to save" className="w-full h-full" /> : <Loader2 className="w-16 h-16 animate-spin text-primary" />}
                 </div>
                 {uploadStatus === "complete" ? (
-                  <button onClick={() => setAppState("thankyou")} className="w-full bg-primary py-6 text-xl font-black uppercase italic rounded-2xl shadow-xl active:scale-95 transition-transform">COMPLETE SESSION</button>
+                  <button onClick={() => setAppState("thankyou")} className="w-full bg-primary py-8 text-2xl font-black uppercase italic rounded-3xl shadow-xl active:scale-95 transition-transform">COMPLETE SESSION</button>
                 ) : (
                   <div className="flex items-center gap-3 py-6">
-                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                    <span className="text-[10px] font-black uppercase text-white/40 italic">Syncing HD to Cloud...</span>
+                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                    <span className="text-xs font-black uppercase text-white/40 italic">Syncing HD to Cloud...</span>
                   </div>
                 )}
              </div>

@@ -9,8 +9,7 @@ import { AdminControls } from "@/components/kiosk/admin-controls";
 import { HealthMonitor } from "@/components/kiosk/health-monitor";
 import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
-  Wallet, Sparkles, Frame, Quote, Trash2, Cat, Moon, Sun, 
-  Coffee, Pizza, Flower2, Crown, Layers, CameraIcon, Flashlight, User, HeartIcon,
+  Wallet, Sparkles, Frame, Quote, Trash2, CameraIcon, Flashlight, User, HeartIcon,
   QrCode, Facebook, Printer, Usb, AlertCircle, Star, Ghost, PartyPopper,
   CheckCircle2, RotateCcw, Cookie as CookieIcon, Banknote, Loader2, Target, Plus
 } from "lucide-react";
@@ -41,16 +40,14 @@ export const FILTERS = [
 ];
 
 export const QUOTES = [
-  { id: "q1", label: "LIMITLESS", text: "Your potential is truly limitless." },
-  { id: "q2", label: "STAR", text: "Shine bright like the star you are." },
-  { id: "q3", label: "MAGIC", text: "Create magic in every single moment." },
-  { id: "q4", label: "KINDNESS", text: "Kindness is the ultimate superpower." },
-  { id: "q5", label: "DREAMER", text: "Dreaming big is the first step to success." },
-  { id: "q6", label: "STAY TRUE", text: "Always stay true to your beautiful soul." },
-  { id: "q7", label: "GOOD VIBES", text: "Radiate good vibes and attract the best." },
-  { id: "q8", label: "BRAVE", text: "Be brave enough to start your journey." },
-  { id: "q9", label: "JOY", text: "Choose joy every single day of your life." },
-  { id: "q10", label: "SHINE", text: "Keep shining through every dark moment." },
+  { id: "q1", label: "LIMITLESS", text: "Your potential is limitless." },
+  { id: "q2", label: "SHINE", text: "Shine like the star you are." },
+  { id: "q3", label: "MAGIC", text: "Create magic in every moment." },
+  { id: "q4", label: "DREAMER", text: "Dream big, stay focused." },
+  { id: "q5", label: "STAY TRUE", text: "Stay true to your soul." },
+  { id: "q6", label: "GOOD VIBES", text: "Radiate good vibes only." },
+  { id: "q7", label: "BRAVE", text: "Be brave, start now." },
+  { id: "q8", label: "JOY", text: "Choose joy every day." },
 ];
 
 export const STICKER_DEFS = [
@@ -130,133 +127,79 @@ export default function KioskPage() {
 
   const initiatePrint = useCallback((blob: Blob) => {
     KioskLogger.log('info', 'PRINT', 'Automatic print job initiated.', 'PENDING');
-    
-    if (!printIframeRef.current) {
-      KioskLogger.log('error', 'PRINT', 'Print job creation aborted.', 'FAILED', 'Iframe reference missing');
-      return;
-    }
-    
+    if (!printIframeRef.current) return;
     const iframe = printIframeRef.current;
     const docObj = iframe.contentDocument || iframe.contentWindow?.document;
-    
-    if (!docObj) {
-      KioskLogger.log('error', 'PRINT', 'Print job creation aborted.', 'FAILED', 'Iframe document inaccessible');
-      return;
-    }
+    if (!docObj) return;
 
     const dataUrl = URL.createObjectURL(blob);
-    KioskLogger.log('info', 'PRINT', 'Photo generated.', 'SUCCESS');
-
     docObj.open();
     docObj.write(`
       <html>
         <head>
-          <style>
-            @page { size: 4in 6in; margin: 0; }
-            body { margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; background: white; }
-            img { width: 4in; height: 6in; object-fit: contain; }
-          </style>
+          <style>@page { size: 4in 6in; margin: 0; } body { margin: 0; display: flex; align-items: center; justify-content: center; background: white; } img { width: 4in; height: 6in; object-fit: contain; }</style>
         </head>
-        <body>
-          <img src="${dataUrl}" />
-        </body>
+        <body><img src="${dataUrl}" /></body>
       </html>
     `);
     docObj.close();
-    KioskLogger.log('info', 'PRINT', 'Print intent created.', 'SUCCESS');
     
     setTimeout(() => {
       try {
         iframe.contentWindow?.focus();
         iframe.contentWindow?.print();
         URL.revokeObjectURL(dataUrl);
-        KioskLogger.log('info', 'PRINT', 'Android print service reached.', 'SUCCESS');
       } catch (e: any) {
-        KioskLogger.log('error', 'PRINT', 'Handover to Android Print Service failed.', 'FAILED', e.message);
+        KioskLogger.log('error', 'PRINT', 'Print failed.', 'FAILED', e.message);
       }
-    }, 1200);
+    }, 1000);
   }, []);
 
   const handleFinalExport = useCallback(async () => {
-    KioskLogger.log('info', 'SESSION', 'Starting final layout assembly...');
-
-    if (!selectedBlueprint || capturedPhotos.length === 0) {
-      KioskLogger.log('error', 'SESSION', 'Final layout aborted.', 'FAILED', 'Blueprint or photos missing');
-      return;
-    }
-    
-    const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}_${Math.random().toString(36).substring(2, 12)}`;
+    if (!selectedBlueprint || capturedPhotos.length === 0) return;
+    const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
 
     const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
     
     const { storage, db } = initializeFirebase();
-    
     setDoc(doc(db, "photos", sessionId), {
       id: sessionId,
       storagePath: `photos/${sessionId}.jpg`,
       timestamp: serverTimestamp(),
       isDownloaded: false,
       status: 'uploading'
-    }).then(() => {
-      KioskLogger.log('info', 'QR', 'Retrieval record created in cloud.', 'SUCCESS');
-    }).catch(e => {
-      KioskLogger.log('error', 'QR', 'Cloud handshake failed.', 'FAILED', e.message);
     });
 
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1600;
     exportCanvas.height = 2400;
     const ctx = exportCanvas.getContext('2d');
-    if (!ctx) {
-      KioskLogger.log('error', 'SESSION', 'Canvas context failed.', 'FAILED');
-      return;
-    }
+    if (!ctx) return;
 
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, 1600, 2400);
 
     const isStrip = selectedBlueprint.package === 50;
-    
     const drawContent = async (offsetX: number) => {
-      // 1. Draw Photos
       for (let i = 0; i < selectedBlueprint.slots.length; i++) {
         const slot = selectedBlueprint.slots[i];
         const photo = capturedPhotos[i];
         if (!photo) continue;
-        
         const img = new Image();
         img.src = photo;
         await new Promise(resolve => img.onload = resolve);
         ctx.drawImage(img, slot.x + offsetX, slot.y, slot.w, slot.h);
       }
-
-      // 2. Draw Stickers
-      for (const sticker of placedStickers) {
-        const def = STICKER_DEFS.find(d => d.id === sticker.type);
-        if (!def) continue;
-        
-        // This is a simplified sticker render for canvas export
-        // In production, we'd use SVG-to-Canvas or Pre-rendered PNGs
-        ctx.save();
-        ctx.translate(sticker.x * 16 + offsetX, sticker.y * 24);
-        ctx.rotate((sticker.rotation * Math.PI) / 180);
-        ctx.fillStyle = def.color.includes('pink') ? '#FFB7CE' : '#333333';
-        ctx.fillRect(-(sticker.size * 8), -(sticker.size * 8), sticker.size * 16, sticker.size * 16);
-        ctx.restore();
-      }
       
-      // 3. Draw Branding Zone (Y=2200 to 2400)
       const footerY = 2200;
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(offsetX, footerY, 1600, 200);
-      
       ctx.fillStyle = '#000000';
-      ctx.font = 'bold 36px Inter, sans-serif';
+      ctx.font = 'bold 32px Inter, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(selectedQuote.text, offsetX + 800, footerY + 80);
-      
+      ctx.fillText(`"${selectedQuote.text}"`, offsetX + 800, footerY + 80);
       ctx.textAlign = 'left';
       ctx.font = 'black 48px Inter, sans-serif';
       ctx.fillText('JNL STUDIO', offsetX + 80, footerY + 160);
@@ -265,35 +208,20 @@ export default function KioskPage() {
       ctx.fillText(new Date().toLocaleDateString(), offsetX + 1520, footerY + 160);
     };
 
-    if (isStrip) {
-      await drawContent(0);
-      await drawContent(800);
-    } else {
-      await drawContent(0);
-    }
+    if (isStrip) { await drawContent(0); await drawContent(800); } else { await drawContent(0); }
 
     exportCanvas.toBlob(async (blob) => {
-      if (!blob) {
-        KioskLogger.log('error', 'SESSION', 'Final photo assembly failed.', 'FAILED');
-        return;
-      }
-
+      if (!blob) return;
       await SessionStore.savePhotoLocally(sessionId, blob);
       initiatePrint(blob); 
-
       setUploadStatus("uploading");
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       uploadBytes(photoRef, blob).then(() => {
         updateDoc(doc(db, "photos", sessionId), { status: 'complete' });
         setUploadStatus("complete");
-        KioskLogger.log('info', 'QR', 'Final image uploaded to cloud.', 'SUCCESS');
-      }).catch((e) => {
-        setUploadStatus("error");
-        KioskLogger.log('error', 'QR', 'Image upload failed.', 'FAILED', e.message);
       });
     }, 'image/jpeg', 0.9);
-
-  }, [selectedBlueprint, capturedPhotos, selectedQuote, originUrl, initiatePrint, placedStickers]);
+  }, [selectedBlueprint, capturedPhotos, selectedQuote, originUrl, initiatePrint]);
 
   useEffect(() => {
     if (appState === "printing" && !exportTriggeredRef.current) {
@@ -326,12 +254,10 @@ export default function KioskPage() {
   const startShotSequence = async () => {
     const totalShots = packageSelected === 50 ? 3 : 6;
     const photos: string[] = [];
-    
     if (!selectedBlueprint) {
       const defaultBp = BLUEPRINTS.find(b => b.package === packageSelected);
       if (defaultBp) setSelectedBlueprint(defaultBp);
     }
-
     setAppState("capturing");
     setCapturedPhotos([]); 
     await new Promise(r => setTimeout(r, 2000)); 
@@ -343,10 +269,7 @@ export default function KioskPage() {
       setCountdown(null);
       setIsProcessing(true);
       const shot = takePhoto();
-      if (shot) {
-        photos.push(shot);
-        setCapturedPhotos([...photos]); 
-      }
+      if (shot) { photos.push(shot); setCapturedPhotos([...photos]); }
       await new Promise(r => setTimeout(r, 600)); 
       setIsProcessing(false);
     }
@@ -354,7 +277,6 @@ export default function KioskPage() {
   };
 
   const startSingleShotSequence = async (index: number) => {
-    KioskLogger.log('info', 'SESSION', `Partial Retake initiated for slot ${index + 1}.`);
     setAppState("capturing");
     await new Promise(r => setTimeout(r, 1000)); 
     for (let c = 3; c > 0; c--) {
@@ -370,7 +292,6 @@ export default function KioskPage() {
         newPhotos[index] = shot;
         return newPhotos;
       });
-      KioskLogger.log('info', 'SESSION', `Partial Retake success for slot ${index + 1}.`, 'SUCCESS');
     }
     await new Promise(r => setTimeout(r, 600)); 
     setIsProcessing(false);
@@ -404,41 +325,18 @@ export default function KioskPage() {
     setSelectedStickerId(newSticker.id);
   };
 
-  const updateSticker = (id: string, updates: Partial<PlacedSticker>) => {
-    setPlacedStickers(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
-  };
-
-  const removeSticker = (id: string) => {
-    setPlacedStickers(prev => prev.filter(s => s.id !== id));
-    setSelectedStickerId(null);
-  };
-
-  const bringToFront = (id: string) => {
-    setPlacedStickers(prev => {
-      const item = prev.find(s => s.id === id);
-      if (!item) return prev;
-      return [...prev.filter(s => s.id !== id), item];
-    });
-  };
-
   useEffect(() => {
     if (appState === "setup" || appState === "capturing" || appState === "test-camera") {
       const start = async () => {
         if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { 
-              deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined, 
-              width: { ideal: 1280 }, 
-              height: { ideal: 1706 } 
-            }, 
+            video: { deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined, width: { ideal: 1280 }, height: { ideal: 720 } }, 
             audio: false 
           });
           setCameraStream(stream);
           if (videoRef.current) videoRef.current.srcObject = stream;
-        } catch (e: any) {
-          KioskLogger.log('error', 'HARDWARE', 'Camera stream failed.', 'FAILED', e.message);
-        }
+        } catch (e) {}
       };
       start();
     }
@@ -450,12 +348,7 @@ export default function KioskPage() {
       <iframe ref={printIframeRef} className="hidden" title="print-frame" />
       <div className="flex-1 w-full h-full flex flex-col items-center overflow-hidden kiosk-container safe-area-spacing landscape-container">
         
-        <AdminAuthDialog 
-          isOpen={isAdminDialogOpen} 
-          onClose={() => setIsAdminDialogOpen(false)} 
-          onAuthSuccess={() => setIsOwnerMode(true)} 
-        />
-        
+        <AdminAuthDialog isOpen={isAdminDialogOpen} onClose={() => setIsAdminDialogOpen(false)} onAuthSuccess={() => setIsOwnerMode(true)} />
         {isOwnerMode && (
           <AdminControls 
             currentStatus={appState}
@@ -470,8 +363,6 @@ export default function KioskPage() {
             onSetupBillAcceptor={() => {}}
             isDevMode={isDevMode}
             onToggleDevMode={() => setIsDevMode(!isDevMode)}
-            isCameraActive={!!cameraStream}
-            onTestCamera={() => setAppState("test-camera")}
             cameras={availableCameras}
             selectedCameraId={selectedCameraId}
             onSelectCamera={setSelectedCameraId}
@@ -480,25 +371,20 @@ export default function KioskPage() {
         {isOwnerMode && <HealthMonitor />}
 
         {appState === "welcome" && (
-          <div className="flex flex-col items-center w-full h-full animate-in fade-in duration-1000 safe-area-spacing">
+          <div className="flex flex-col items-center w-full h-full animate-in fade-in duration-1000">
             <div className="flex-1 flex flex-col items-center justify-center">
               <div 
                 className="flex flex-col items-center cursor-pointer" 
                 onClick={() => {
                   setLogoTapCount(p => p + 1);
-                  if (logoTapCount >= 4) { 
-                    setIsAdminDialogOpen(true); 
-                    setLogoTapCount(0); 
-                    KioskLogger.log('info', 'SESSION', 'Admin Dialog triggered via Logo tap.');
-                  }
+                  if (logoTapCount >= 4) { setIsAdminDialogOpen(true); setLogoTapCount(0); }
                 }}
               >
-                <JnlLogo variant="hero" color="light" className="mb-0" />
+                <JnlLogo variant="hero" color="light" />
               </div>
             </div>
-            <div className="w-full flex flex-col items-center pb-20 space-y-12">
-              <h2 className="font-headline font-black text-2xl tracking-[0.2em] uppercase italic text-white/90">TOUCH TO START</h2>
-              <NeonButton onClick={() => setAppState("payment")} className="w-[40%] text-3xl py-12">READY?</NeonButton>
+            <div className="w-full flex flex-col items-center pb-20">
+              <NeonButton onClick={() => setAppState("payment")} className="w-[40%] text-3xl py-12">TOUCH TO START</NeonButton>
             </div>
           </div>
         )}
@@ -510,8 +396,11 @@ export default function KioskPage() {
                <div className="text-6xl font-black italic text-primary">{paymentReceived} PHP</div>
             </div>
             <div className="grid grid-cols-1 gap-4 w-full max-w-sm">
-              {paymentReceived >= 50 && (
-                <NeonButton onClick={() => { setPackageSelected(paymentReceived >= 100 ? 100 : 50); setAppState("setup"); }} className="w-full py-6 text-xl">START SESSION</NeonButton>
+              {paymentReceived === 50 && (
+                <NeonButton onClick={() => { setPackageSelected(50); setAppState("setup"); }} className="w-full py-6 text-xl">₱50 PACKAGE</NeonButton>
+              )}
+              {paymentReceived === 100 && (
+                <NeonButton onClick={() => { setPackageSelected(100); setAppState("setup"); }} className="w-full py-6 text-xl">₱100 PACKAGE</NeonButton>
               )}
             </div>
           </div>
@@ -519,7 +408,7 @@ export default function KioskPage() {
 
         {(appState === "setup" || appState === "test-camera") && (
           <div className="w-full h-full max-w-7xl flex flex-row gap-8 items-start py-10 px-8">
-             <div className="relative flex-1 aspect-[3/4] bg-zinc-900 border-4 border-white overflow-hidden">
+             <div className="relative flex-1 aspect-[16/9] bg-zinc-900 border-4 border-white overflow-hidden">
                 <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} />
              </div>
              <div className="w-[450px] space-y-8">
@@ -558,22 +447,6 @@ export default function KioskPage() {
                     />
                  )}
               </div>
-              <div className="w-full max-w-2xl bg-white/5 border p-4 grid grid-cols-6 gap-2">
-                {capturedPhotos.map((photo, idx) => (
-                  <button 
-                    key={idx} 
-                    onClick={() => setSelectedRetakeIndex(idx)} 
-                    className={cn(
-                      "aspect-[3/4] border-2 overflow-hidden transition-all", 
-                      selectedRetakeIndex === idx 
-                        ? "border-primary scale-110 shadow-[0_0_15px_rgba(255,51,153,0.5)] z-10" 
-                        : "border-white/10 opacity-60"
-                    )}
-                  >
-                    <img src={photo} alt="" className={cn("w-full h-full object-cover", selectedFilter.class)} />
-                  </button>
-                ))}
-              </div>
             </div>
             <div className="w-96 space-y-6">
                <NeonButton onClick={() => setAppState("decorating")} className="w-full py-10 text-2xl">USE PHOTO</NeonButton>
@@ -600,10 +473,10 @@ export default function KioskPage() {
                     quoteText={selectedQuote.text} 
                     stickers={placedStickers}
                     selectedStickerId={selectedStickerId}
-                    onUpdateSticker={updateSticker}
-                    onRemoveSticker={removeSticker}
+                    onUpdateSticker={(id, updates) => setPlacedStickers(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))}
+                    onRemoveSticker={(id) => { setPlacedStickers(prev => prev.filter(s => s.id !== id)); setSelectedStickerId(null); }}
                     onSelectSticker={setSelectedStickerId}
-                    onBringToFront={bringToFront}
+                    onBringToFront={(id) => setPlacedStickers(prev => { const item = prev.find(s => s.id === id); return item ? [...prev.filter(s => s.id !== id), item] : prev; })}
                     isPreview 
                   />
                 )}
@@ -611,38 +484,24 @@ export default function KioskPage() {
              <div className="w-[450px] space-y-8 h-[70vh] flex flex-col">
                 <div className="flex-1 space-y-6 overflow-y-auto pr-2 scrollbar-hide">
                    <div className="space-y-4">
-                      <h3 className="text-[10px] font-black uppercase text-white/40 tracking-widest italic">Stickers</h3>
+                      <h3 className="text-[10px] font-black uppercase text-white/40 italic">Stickers</h3>
                       <div className="grid grid-cols-4 gap-2">
                         {STICKER_DEFS.map(s => (
-                          <button key={s.id} onClick={() => addSticker(s.id)} className="aspect-square bg-white/5 border-2 border-white/10 p-2 flex items-center justify-center hover:border-primary">
-                            <s.icon className={cn("w-full h-full", s.color)} />
-                          </button>
+                          <button key={s.id} onClick={() => addSticker(s.id)} className="aspect-square bg-white/5 border-2 border-white/10 p-2 flex items-center justify-center hover:border-primary"><s.icon className={cn("w-full h-full", s.color)} /></button>
                         ))}
                       </div>
                    </div>
                    <div className="space-y-4">
-                      <h3 className="text-[10px] font-black uppercase text-white/40 tracking-widest italic">Inspiration</h3>
+                      <h3 className="text-[10px] font-black uppercase text-white/40 italic">Inspiration</h3>
                       <div className="grid grid-cols-1 gap-2">
                         {QUOTES.map(q => (
-                          <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("p-4 border-2 text-left", selectedQuote.id === q.id ? "border-primary bg-primary/10" : "border-white/10 bg-white/5")}>
-                            <p className="text-xs font-bold italic">"{q.text}"</p>
-                          </button>
+                          <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("p-4 border-2 text-left", selectedQuote.id === q.id ? "border-primary bg-primary/10" : "border-white/10 bg-white/5")}><p className="text-xs font-bold italic">"{q.text}"</p></button>
                         ))}
                       </div>
                    </div>
                 </div>
                 <NeonButton onClick={() => setAppState("consent")} className="w-full py-10 text-2xl">FINISH</NeonButton>
              </div>
-          </div>
-        )}
-
-        {appState === "consent" && (
-          <div className="w-full max-w-3xl text-center flex flex-col items-center justify-center h-full px-12">
-             <h2 className="font-headline font-black text-5xl mb-6 italic uppercase">Help Us Share Happy Memories</h2>
-             <div className="grid grid-cols-2 gap-6 w-full">
-               <NeonButton onClick={() => { setPromoConsent(true); setAppState("printing"); }} className="w-full py-10 text-xl">YES</NeonButton>
-               <button onClick={() => { setPromoConsent(false); setAppState("printing"); }} className="w-full border-4 border-white/20 font-black text-xl py-10 uppercase text-white/40">NO</button>
-            </div>
           </div>
         )}
 
@@ -656,7 +515,6 @@ export default function KioskPage() {
                 <div className="aspect-square w-full bg-white p-4 rounded-2xl flex items-center justify-center shadow-xl">
                   {softCopyQrUrl ? <img src={softCopyQrUrl} alt="Scan to save" className="w-full h-full" /> : <Loader2 className="w-8 h-8 animate-spin text-primary" />}
                 </div>
-                <div className="text-[10px] font-black uppercase text-white/40 tracking-widest">SCAN TO SAVE</div>
                 {uploadStatus === "complete" && <button onClick={() => setAppState("thankyou")} className="w-full bg-primary py-4 font-black uppercase italic rounded-xl">FINISH</button>}
              </div>
           </div>

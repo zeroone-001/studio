@@ -14,13 +14,12 @@ export type FrameBlueprint = {
 };
 
 /**
- * JNL Studio Blueprints - FACE-SAFE & ZERO-GAP CALIBRATION
+ * JNL Studio Blueprints - LANDSCAPE OPTIMIZED
  * Internal Coordinate System: 1600 (W) x 2400 (H)
- * Footer begins at Y=2200 (approx 8.3% height) to provide ample space for quotes and branding.
- * All slots are shortened to fit within Y = [0, 2200].
+ * Footer begins at Y=2200 to provide space for quotes and JNL branding.
  */
 export const BLUEPRINTS: FrameBlueprint[] = [
-  // ₱50 PACKAGE (3 SHOTS) - RECALIBRATED FOR ZERO-CUT PORTRAITS
+  // ₱50 PACKAGE (3 SHOTS)
   {
     id: "p50-balanced-trio",
     label: "BALANCED TRIO",
@@ -29,16 +28,6 @@ export const BLUEPRINTS: FrameBlueprint[] = [
       { x: 0, y: 0, w: 1600, h: 1100 }, 
       { x: 0, y: 1100, w: 800, h: 1100 },
       { x: 800, y: 1100, w: 800, h: 1100 },
-    ],
-  },
-  {
-    id: "p50-body-hero",
-    label: "SPLIT PORTRAIT",
-    package: 50,
-    slots: [
-      { x: 0, y: 0, w: 1600, h: 1100 }, // Large Face-Safe Frame
-      { x: 0, y: 1100, w: 800, h: 1100 }, // Body Safe Left
-      { x: 800, y: 1100, w: 800, h: 1100 }, // Body Safe Right
     ],
   },
   {
@@ -51,8 +40,18 @@ export const BLUEPRINTS: FrameBlueprint[] = [
       { x: 0, y: 1466, w: 1600, h: 734 },
     ],
   },
+  {
+    id: "p50-modern-split",
+    label: "MODERN SPLIT",
+    package: 50,
+    slots: [
+      { x: 0, y: 0, w: 1067, h: 1100 },
+      { x: 1067, y: 0, w: 533, h: 1100 },
+      { x: 0, y: 1100, w: 1600, h: 1100 },
+    ],
+  },
 
-  // ₱100 PACKAGE (6 SHOTS) - DIVERSE FACE-SAFE LAYOUTS
+  // ₱100 PACKAGE (6 SHOTS)
   {
     id: "p100-vertical-six",
     label: "PORTRAIT SIX",
@@ -76,16 +75,6 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     ],
   },
   {
-    id: "p100-staggered-zip",
-    label: "STAGGERED ZIP",
-    package: 100,
-    slots: [
-      { x: 0, y: 0, w: 1067, h: 733 }, { x: 1067, y: 0, w: 533, h: 733 },
-      { x: 0, y: 733, w: 533, h: 733 }, { x: 533, y: 733, w: 1067, h: 733 },
-      { x: 0, y: 1466, w: 1067, h: 734 }, { x: 1067, y: 1466, w: 533, h: 734 },
-    ],
-  },
-  {
     id: "p100-classic-grid",
     label: "CLASSIC GRID",
     package: 100,
@@ -93,6 +82,16 @@ export const BLUEPRINTS: FrameBlueprint[] = [
       { x: 0, y: 0, w: 800, h: 733 }, { x: 800, y: 0, w: 800, h: 733 },
       { x: 0, y: 733, w: 800, h: 733 }, { x: 800, y: 733, w: 800, h: 733 },
       { x: 0, y: 1466, w: 800, h: 734 }, { x: 800, y: 1466, w: 800, h: 734 },
+    ],
+  },
+  {
+    id: "p100-staggered-zip",
+    label: "STAGGERED ZIP",
+    package: 100,
+    slots: [
+      { x: 0, y: 0, w: 1067, h: 733 }, { x: 1067, y: 0, w: 533, h: 733 },
+      { x: 0, y: 733, w: 533, h: 733 }, { x: 533, y: 733, w: 1067, h: 733 },
+      { x: 0, y: 1466, w: 1067, h: 734 }, { x: 1067, y: 1466, w: 533, h: 734 },
     ],
   },
   {

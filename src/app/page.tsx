@@ -118,7 +118,6 @@ export default function KioskPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setOriginUrl(window.location.origin);
-      // Hardware Enumeration for Owner Mode
       navigator.mediaDevices.enumerateDevices().then(devices => {
         const videoDevices = devices.filter(d => d.kind === 'videoinput');
         setAvailableCameras(videoDevices);
@@ -188,11 +187,9 @@ export default function KioskPage() {
     
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
-    KioskLogger.log('info', 'QR', `Session ID created: ${sessionId}`, 'SUCCESS');
 
     const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-    KioskLogger.log('info', 'QR', 'QR URL generated.', 'SUCCESS');
     
     const { storage, db } = initializeFirebase();
     
@@ -260,14 +257,11 @@ export default function KioskPage() {
 
     exportCanvas.toBlob(async (blob) => {
       if (!blob) {
-        KioskLogger.log('error', 'SESSION', 'Final photo assembly failed.', 'FAILED', 'Blob conversion failed');
+        KioskLogger.log('error', 'SESSION', 'Final photo assembly failed.', 'FAILED');
         return;
       }
-      KioskLogger.log('info', 'QR', 'Final image generated.', 'SUCCESS');
 
       await SessionStore.savePhotoLocally(sessionId, blob);
-      KioskLogger.log('info', 'QR', 'Final image saved locally.', 'SUCCESS');
-      
       initiatePrint(blob); 
 
       setUploadStatus("uploading");
@@ -441,7 +435,6 @@ export default function KioskPage() {
         {appState === "welcome" && (
           <div className="flex flex-col items-center w-full h-full animate-in fade-in duration-1000 safe-area-spacing">
             <div className="flex-1 flex flex-col items-center justify-center">
-              
               <div 
                 className="flex flex-col items-center cursor-pointer" 
                 onClick={() => {
@@ -484,9 +477,14 @@ export default function KioskPage() {
              </div>
              <div className="w-[450px] space-y-8">
               <h2 className="font-headline font-black text-4xl italic uppercase text-primary">Styling</h2>
-              <div className="space-y-4">
-                 <button onClick={() => startShotSequence()} className="w-full py-10 text-2xl bg-primary font-black uppercase italic">SHOOT</button>
+              <div className="grid grid-cols-2 gap-2 max-h-[40vh] overflow-y-auto pr-2 scrollbar-hide">
+                {FILTERS.map((f) => (
+                  <button key={f.id} onClick={() => setSelectedFilter(f)} className={cn("p-4 border-2 flex flex-col items-center", selectedFilter.id === f.id ? "border-primary bg-primary/10" : "border-white/10 bg-white/5")}>
+                    <span className="text-[10px] font-black uppercase italic">{f.label}</span>
+                  </button>
+                ))}
               </div>
+              <button onClick={() => startShotSequence()} className="w-full py-10 text-2xl bg-primary font-black uppercase italic">SHOOT</button>
             </div>
           </div>
         )}
@@ -532,7 +530,6 @@ export default function KioskPage() {
             </div>
             <div className="w-96 space-y-6">
                <NeonButton onClick={() => setAppState("decorating")} className="w-full py-10 text-2xl">USE PHOTO</NeonButton>
-               
                <button 
                 onClick={() => selectedRetakeIndex !== null && startSingleShotSequence(selectedRetakeIndex)} 
                 disabled={selectedRetakeIndex === null} 
@@ -540,7 +537,6 @@ export default function KioskPage() {
                >
                  Retake Selected
                </button>
-               
                <button onClick={() => setAppState("setup")} className="w-full py-4 border-2 border-white/20 font-black uppercase italic text-white/40">Retake All</button>
             </div>
           </div>
@@ -551,7 +547,19 @@ export default function KioskPage() {
              <div className="flex-1 h-[70vh] flex items-center justify-center">
                 {selectedBlueprint && <BlueprintFrame blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.class} quoteText={selectedQuote.text} isPreview />}
              </div>
-             <div className="w-[450px] space-y-8">
+             <div className="w-[450px] space-y-8 h-[70vh] flex flex-col">
+                <div className="flex-1 space-y-6 overflow-y-auto pr-2 scrollbar-hide">
+                   <div className="space-y-4">
+                      <h3 className="text-[10px] font-black uppercase text-white/40 tracking-widest italic">Inspiration</h3>
+                      <div className="grid grid-cols-1 gap-2">
+                        {QUOTES.map(q => (
+                          <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("p-4 border-2 text-left", selectedQuote.id === q.id ? "border-primary bg-primary/10" : "border-white/10 bg-white/5")}>
+                            <p className="text-xs font-bold italic">"{q.text}"</p>
+                          </button>
+                        ))}
+                      </div>
+                   </div>
+                </div>
                 <NeonButton onClick={() => setAppState("consent")} className="w-full py-10 text-2xl">FINISH</NeonButton>
              </div>
           </div>

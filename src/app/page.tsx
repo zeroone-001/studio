@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -401,25 +400,30 @@ export default function KioskPage() {
         ctx.restore();
       }
 
-      // Branding Footer (Zero Gap)
+      // Branding Footer CALIBRATED
       const footerY = 2304;
       const footerH = 96;
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(offsetX, footerY, 1600, footerH);
 
-      // Quote Center
+      // Quote Center (Refined spacing)
       ctx.fillStyle = '#000000';
-      ctx.font = 'italic 28px Inter, sans-serif';
+      ctx.font = 'bold italic 24px Inter, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(selectedQuote.text, offsetX + 800, footerY + 40);
+      ctx.fillText(selectedQuote.text, offsetX + 800, footerY + 45);
 
-      // JNL STUDIO Left
+      // Branding Bottom
       ctx.fillStyle = '#000000';
-      ctx.font = '900 italic 24px Inter, sans-serif';
+      ctx.font = '900 italic 28px Inter, sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText('JNL', offsetX + 60, footerY + 80);
+      ctx.fillText('JNL', offsetX + 60, footerY + 85);
       ctx.fillStyle = '#FF3399';
-      ctx.fillText('STUDIO', offsetX + 115, footerY + 80);
+      ctx.fillText('STUDIO', offsetX + 130, footerY + 85);
+
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 18px Inter, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(new Date().toLocaleDateString(), offsetX + 1540, footerY + 85);
     };
 
     if (isStrip) {

@@ -114,11 +114,20 @@ export default function KioskPage() {
   const exportTriggeredRef = useRef(false);
 
   const [originUrl, setOriginUrl] = useState("https://jnl-studio-booth.web.app");
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setOriginUrl(window.location.origin);
+      // Hardware Enumeration for Owner Mode
+      navigator.mediaDevices.enumerateDevices().then(devices => {
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        setAvailableCameras(videoDevices);
+        if (videoDevices.length > 0 && !selectedCameraId) {
+          setSelectedCameraId(videoDevices[0].deviceId);
+        }
+      });
     }
-  }, []);
+  }, [selectedCameraId]);
 
   const initiatePrint = useCallback((blob: Blob) => {
     KioskLogger.log('info', 'PRINT', 'Automatic print job initiated.', 'PENDING');
@@ -386,7 +395,7 @@ export default function KioskPage() {
           });
           setCameraStream(stream);
           if (videoRef.current) videoRef.current.srcObject = stream;
-        } catch (e) {
+        } catch (e: any) {
           KioskLogger.log('error', 'HARDWARE', 'Camera stream failed.', 'FAILED', e.message);
         }
       };

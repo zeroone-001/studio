@@ -12,31 +12,31 @@ export interface PlacedSticker {
 }
 
 /**
- * BEAUTY FILTERS - TIKTOK & KOREAN STYLE
- * Optimized for skin-tone preservation and soft lighting.
+ * SOCIAL MEDIA BEAUTY FILTERS
+ * Optimized for modern social media aesthetics and skin-tone preservation.
  */
 export const FILTERS = [
-  // 50 PESOS PACKAGE BASE (First 5)
+  // 50 PESOS PACKAGE BASE (5 Filters)
   { id: "natural", label: "NATURAL BEAUTY", class: "brightness-105 contrast-[1.02] saturate-[1.05]" },
-  { id: "smooth", label: "SMOOTH SKIN", class: "brightness-110 contrast-[0.98] saturate-[1.05] blur-[0.3px]" },
-  { id: "bright", label: "BRIGHT SKIN", class: "brightness-115 contrast-[1.05] saturate-[1.1]" },
-  { id: "soft", label: "SOFT GLOW", class: "brightness-110 contrast-[0.95] saturate-[1.1] opacity-[0.95] blur-[0.5px]" },
-  { id: "tiktok", label: "TIKTOK STYLE", class: "brightness-112 contrast-[1.1] saturate-[1.2] sepia-[0.05]" },
+  { id: "soft", label: "SOFT SKIN", class: "brightness-110 contrast-[0.98] saturate-[1.05] blur-[0.4px]" },
+  { id: "bright", label: "BRIGHT", class: "brightness-118 contrast-[1.02] saturate-[1.05]" },
+  { id: "warm", label: "WARM", class: "sepia-[0.15] brightness-[1.05] saturate-[1.2] contrast-[1.05]" },
+  { id: "cool", label: "COOL", class: "hue-rotate-[-10deg] saturate-[0.9] brightness-[1.08] contrast-[1.05]" },
   
-  // 100 PESOS PACKAGE ADDITIONAL (Next 5)
-  { id: "cute", label: "CUTE FILTER", class: "saturate-[1.3] contrast-[1.1] hue-rotate-[5deg] brightness-[1.08]" },
-  { id: "korean", label: "KOREAN BEAUTY", class: "brightness-115 contrast-[0.9] saturate-[0.8] blur-[0.2px] sepia-[0.02]" },
-  { id: "fresh", label: "FRESH LOOK", class: "hue-rotate-[10deg] saturate-[0.9] brightness-[1.1] contrast-[1.05]" },
-  { id: "portrait", label: "PORTRAIT ENHANCE", class: "contrast-[1.2] brightness-[1.05] saturate-[1.15]" },
-  { id: "clear", label: "CLEAR SKIN", class: "contrast-[1.1] brightness-[1.08] saturate-[1.02] sharpen-[1.1]" },
+  // 100 PESOS PACKAGE ADDITIONAL (Total 10)
+  { id: "tiktok", label: "TIKTOK BEAUTY", class: "brightness-112 contrast-[1.1] saturate-[1.2] sepia-[0.05]" },
+  { id: "clean", label: "CLEAN LOOK", class: "contrast-[1.1] brightness-[1.1] saturate-[0.95] blur-[0.2px]" },
+  { id: "glow", label: "GLOW", class: "brightness-115 contrast-[1.05] saturate-[1.2] drop-shadow-[0_0_10px_rgba(255,255,255,0.1)]" },
+  { id: "fresh", label: "FRESH", class: "hue-rotate-[5deg] saturate-[1.1] brightness-[1.1] contrast-[1.02]" },
+  { id: "classic", label: "CLASSIC", class: "contrast-[1.15] brightness-[1.05] saturate-[1.05]" },
 ];
 
 export const QUOTES = [
-  { id: "q1", label: "LIMITLESS", text: "Your potential is limitless." },
-  { id: "q2", label: "SHINE", text: "Shine like the star you are." },
-  { id: "q3", label: "MAGIC", text: "Create magic in every moment." },
-  { id: "q4", label: "DREAMER", text: "Dream big, stay focused." },
-  { id: "q5", label: "STAY TRUE", text: "Stay true to your soul." },
+  { id: "q1", label: "STORY", text: "Every Picture Tells A Story" },
+  { id: "q2", label: "MEMORIES", text: "Memories Made Today" },
+  { id: "q3", label: "SMILE", text: "Smile, Create, Remember" },
+  { id: "q4", label: "MAGIC", text: "Magic in Every Moment" },
+  { id: "q5", label: "BLESSED", text: "Blessed and Grateful" },
 ];
 
 export const STICKER_DEFS = [

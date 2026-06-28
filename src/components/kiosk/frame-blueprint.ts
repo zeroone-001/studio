@@ -1,4 +1,3 @@
-
 export type PhotoSlot = {
   x: number;
   y: number;
@@ -14,51 +13,54 @@ export type FrameBlueprint = {
 };
 
 /**
- * JNL Studio Blueprints - LANDSCAPE OPTIMIZED
+ * JNL STUDIO PHOTOBOOTH BLUEPRINTS
+ * Optimized for Honor Pad X10 Landscape Mode
  * Internal Coordinate System: 1600 (W) x 2400 (H)
- * Footer begins at Y=2200 to provide space for quotes and JNL branding.
+ * Branding zone: Footer starts at Y=2200
  */
 export const BLUEPRINTS: FrameBlueprint[] = [
-  // ₱50 PACKAGE (3 SHOTS, 3 Layouts)
+  // ₱50 PACKAGE: 2x6 STRIP (3 SHOTS)
+  // These layouts are mirrored for dual-strip 4x6 printing (800px width per strip)
   {
-    id: "p50-balanced-trio",
-    label: "BALANCED TRIO",
+    id: "p50-strip-classic",
+    label: "CLASSIC STRIP",
     package: 50,
     slots: [
-      { x: 0, y: 0, w: 1600, h: 1100 }, 
-      { x: 0, y: 1100, w: 800, h: 1100 },
-      { x: 800, y: 1100, w: 800, h: 1100 },
+      { x: 0, y: 50, w: 1600, h: 680 },
+      { x: 0, y: 760, w: 1600, h: 680 },
+      { x: 0, y: 1470, w: 1600, h: 680 },
     ],
   },
   {
-    id: "p50-portrait-stack",
-    label: "PORTRAIT STACK",
+    id: "p50-strip-hero",
+    label: "HERO STRIP",
     package: 50,
     slots: [
-      { x: 0, y: 0, w: 1600, h: 733 },
-      { x: 0, y: 733, w: 1600, h: 733 },
-      { x: 0, y: 1466, w: 1600, h: 734 },
+      { x: 0, y: 50, w: 1600, h: 1000 },
+      { x: 0, y: 1080, w: 1600, h: 500 },
+      { x: 0, y: 1610, w: 1600, h: 500 },
     ],
   },
   {
-    id: "p50-modern-split",
-    label: "MODERN SPLIT",
+    id: "p50-strip-modern",
+    label: "MODERN STRIP",
     package: 50,
     slots: [
-      { x: 0, y: 0, w: 1067, h: 1100 },
-      { x: 1067, y: 0, w: 533, h: 1100 },
-      { x: 0, y: 1100, w: 1600, h: 1100 },
+      { x: 0, y: 50, w: 1600, h: 500 },
+      { x: 0, y: 580, w: 1600, h: 1000 },
+      { x: 0, y: 1610, w: 1600, h: 500 },
     ],
   },
 
-  // ₱100 PACKAGE (6 SHOTS, 6 Layouts)
+  // ₱100 PACKAGE: 4x6 PORTRAIT (6 SHOTS)
   {
-    id: "p100-portrait-six",
-    label: "PORTRAIT SIX",
+    id: "p100-grid-standard",
+    label: "GRID STANDARD",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 533, h: 1100 }, { x: 533, y: 0, w: 534, h: 1100 }, { x: 1067, y: 0, w: 533, h: 1100 },
-      { x: 0, y: 1100, w: 533, h: 1100 }, { x: 533, y: 1100, w: 534, h: 1100 }, { x: 1067, y: 1100, w: 533, h: 1100 },
+      { x: 30, y: 30, w: 755, h: 680 }, { x: 815, y: 30, w: 755, h: 680 },
+      { x: 30, y: 740, w: 755, h: 680 }, { x: 815, y: 740, w: 755, h: 680 },
+      { x: 30, y: 1450, w: 755, h: 680 }, { x: 815, y: 1450, w: 755, h: 680 },
     ],
   },
   {
@@ -66,52 +68,51 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "MOSAIC HERO",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 1067, h: 1466 },
-      { x: 1067, y: 0, w: 533, h: 733 },
-      { x: 1067, y: 733, w: 533, h: 733 },
-      { x: 0, y: 1466, w: 533, h: 734 },
-      { x: 533, y: 1466, w: 534, h: 734 },
-      { x: 1067, y: 1466, w: 533, h: 734 },
+      { x: 30, y: 30, w: 1040, h: 1420 },
+      { x: 1100, y: 30, w: 470, h: 695 },
+      { x: 1100, y: 755, w: 470, h: 695 },
+      { x: 30, y: 1480, w: 490, h: 650 },
+      { x: 550, y: 1480, w: 500, h: 650 },
+      { x: 1080, y: 1480, w: 490, h: 650 },
     ],
   },
   {
-    id: "p100-classic-grid",
-    label: "CLASSIC GRID",
+    id: "p100-classic-six",
+    label: "CLASSIC SIX",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 800, h: 733 }, { x: 800, y: 0, w: 800, h: 733 },
-      { x: 0, y: 733, w: 800, h: 733 }, { x: 800, y: 733, w: 800, h: 733 },
-      { x: 0, y: 1466, w: 800, h: 734 }, { x: 800, y: 1466, w: 800, h: 734 },
+      { x: 30, y: 30, w: 500, h: 1040 }, { x: 550, y: 30, w: 500, h: 1040 }, { x: 1070, y: 30, w: 500, h: 1040 },
+      { x: 30, y: 1100, w: 500, h: 1040 }, { x: 550, y: 1100, w: 500, h: 1040 }, { x: 1070, y: 1100, w: 500, h: 1040 },
     ],
   },
   {
-    id: "p100-staggered-zip",
-    label: "STAGGERED ZIP",
+    id: "p100-vertical-split",
+    label: "VERTICAL SPLIT",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 1067, h: 733 }, { x: 1067, y: 0, w: 533, h: 733 },
-      { x: 0, y: 733, w: 533, h: 733 }, { x: 533, y: 733, w: 1067, h: 733 },
-      { x: 0, y: 1466, w: 1067, h: 734 }, { x: 1067, y: 1466, w: 533, h: 734 },
+      { x: 30, y: 30, w: 755, h: 1040 }, { x: 815, y: 30, w: 755, h: 1040 },
+      { x: 30, y: 1100, w: 480, h: 500 }, { x: 550, y: 1100, w: 500, h: 500 }, { x: 1090, y: 1100, w: 480, h: 500 },
+      { x: 30, y: 1640, w: 1540, h: 500 },
     ],
   },
   {
-    id: "p100-modern-mix",
-    label: "MODERN MIX",
+    id: "p100-asym-trio",
+    label: "ASYM TRIO",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 800, h: 1100 }, { x: 800, y: 0, w: 800, h: 1100 },
-      { x: 0, y: 1100, w: 800, h: 550 }, { x: 800, y: 1100, w: 800, h: 550 },
-      { x: 0, y: 1650, w: 800, h: 550 }, { x: 800, y: 1650, w: 800, h: 550 },
+      { x: 30, y: 30, w: 1540, h: 1040 },
+      { x: 30, y: 1100, w: 755, h: 500 }, { x: 815, y: 1100, w: 755, h: 500 },
+      { x: 30, y: 1640, w: 500, h: 500 }, { x: 550, y: 1640, w: 500, h: 500 }, { x: 1070, y: 1640, w: 500, h: 500 },
     ],
   },
   {
-    id: "p100-asymmetric-vibe",
-    label: "ASYMMETRIC VIBE",
+    id: "p100-modern-grid",
+    label: "MODERN GRID",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 533, h: 733 }, { x: 533, y: 0, w: 1067, h: 733 },
-      { x: 0, y: 733, w: 1067, h: 733 }, { x: 1067, y: 733, w: 533, h: 733 },
-      { x: 0, y: 1466, w: 533, h: 734 }, { x: 533, y: 1466, w: 534, h: 734 }, { x: 1067, y: 1466, w: 533, h: 734 },
+      { x: 30, y: 30, w: 1540, h: 680 },
+      { x: 30, y: 740, w: 500, h: 680 }, { x: 550, y: 740, w: 500, h: 680 }, { x: 1070, y: 740, w: 500, h: 680 },
+      { x: 30, y: 1450, w: 755, h: 680 }, { x: 815, y: 1450, w: 755, h: 680 },
     ],
   }
 ];

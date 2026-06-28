@@ -64,7 +64,7 @@ export const SessionStore = {
     }
   },
 
-  // Save specifically to the Lexar USB Drive
+  // Save specifically to the Lexar USB Drive in the "jnl studio photobooth" folder
   saveToUsb: async (handle: FileSystemDirectoryHandle, id: string, blob: Blob) => {
     try {
       // Access or create 'jnl studio photobooth' folder structure
@@ -80,7 +80,7 @@ export const SessionStore = {
     }
   },
 
-  // Cleanup logic: Verify backups before deleting local temporary copy
+  // Cleanup logic: Verify backups before deleting local temporary copy (Consent: NO)
   cleanupSession: async (id: string) => {
     try {
       if (typeof window === 'undefined') return;

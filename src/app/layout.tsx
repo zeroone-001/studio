@@ -1,4 +1,3 @@
-
 import type {Metadata, Viewport} from 'next';
 import './globals.css';
 import { KioskErrorBoundary } from '@/components/kiosk/error-boundary';
@@ -33,6 +32,24 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet" />
+        {/* Kiosk Performance Script: Suppress noisy SDK console logs that might trigger dev overlays */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                const originalError = console.error;
+                console.error = function(...args) {
+                  const msg = args[0] ? args[0].toString() : '';
+                  // Silence "Could not reach Cloud Firestore backend" for non-admin sessions
+                  if (msg.includes('Could not reach Cloud Firestore backend') && !document.body.classList.contains('admin-mode')) {
+                    return;
+                  }
+                  originalError.apply(console, args);
+                };
+              })();
+            `,
+          }}
+        />
       </head>
       <body className="font-body antialiased bg-black text-white selection:bg-primary/30">
         <KioskErrorBoundary>

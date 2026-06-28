@@ -42,21 +42,33 @@
 }
 
 /* 
-  STRICT OWNER-ONLY VISIBILITY 
-  Hides Next.js Framework Dev Overlay (The "N" Button) and debug tools for customers.
+  STRICT KIOSK VISIBILITY CONTROL
+  Aggressively hides Next.js Framework Dev Overlays and runtime error portals
+  to ensure customers only see the JNL Studio interface.
 */
 nextjs-portal, 
 [data-nextjs-toast-wrapper], 
 #nextjs__container_build_error_label,
 #nextjs__container_errors_label,
-#id-nextjs-dev-tools {
+#id-nextjs-dev-tools,
+.nextjs-static-indicator-root,
+[data-nextjs-dialog-overlay],
+[data-nextjs-dialog-content],
+[data-nextjs-error-overlay-default-stack-trace] {
   display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 /* Revealed only when Admin Mode is active */
 body.admin-mode nextjs-portal,
-body.admin-mode [data-nextjs-toast-wrapper] {
+body.admin-mode [data-nextjs-toast-wrapper],
+body.admin-mode [data-nextjs-dialog-overlay] {
   display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
 
 @layer utilities {

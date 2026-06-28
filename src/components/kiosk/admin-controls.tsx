@@ -123,14 +123,14 @@ export function AdminControls({
             </div>
 
             <div className="space-y-2">
-              <label className="text-[8px] font-black uppercase text-white/40">Payment & Bypass</label>
+              <label className="text-[8px] font-black uppercase text-white/40">Payment Simulation</label>
               <div className="grid grid-cols-2 gap-2">
-                 <button onClick={() => onBypassPayment(50)} className="bg-primary/20 border border-primary/40 py-2 text-[9px] font-black uppercase hover:bg-primary/30">P50 Bypass</button>
-                 <button onClick={() => onBypassPayment(100)} className="bg-primary/20 border border-primary/40 py-2 text-[9px] font-black uppercase hover:bg-primary/30">P100 Bypass</button>
+                 <button onClick={() => onBypassPayment(50)} className="bg-primary/20 border border-primary/40 py-2 text-[9px] font-black uppercase hover:bg-primary/30">₱50 Test</button>
+                 <button onClick={() => onBypassPayment(100)} className="bg-primary/20 border border-primary/40 py-2 text-[9px] font-black uppercase hover:bg-primary/30">₱100 Test</button>
               </div>
-              <div className="grid grid-cols-4 gap-1">
-                 {[10, 20, 50, 100].map(amt => (
-                   <button key={amt} onClick={() => onSimulateCash(amt)} className="bg-white/5 border border-white/10 py-2 text-[8px] font-black uppercase">+{amt} PHP</button>
+              <div className="grid grid-cols-2 gap-2">
+                 {[50, 100].map(amt => (
+                   <button key={amt} onClick={() => onSimulateCash(amt)} className="bg-white/5 border border-white/10 py-2 text-[8px] font-black uppercase">Add ₱{amt}</button>
                  ))}
               </div>
             </div>

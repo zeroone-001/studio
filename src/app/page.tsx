@@ -164,6 +164,7 @@ export default function KioskPage() {
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
     
     const { storage, db } = initializeFirebase();
+    // Instant handshake
     setDoc(doc(db, "photos", sessionId), {
       id: sessionId,
       storagePath: `photos/${sessionId}.jpg`,
@@ -392,15 +393,18 @@ export default function KioskPage() {
         {appState === "payment" && (
           <div className="w-full max-w-2xl text-center flex flex-col items-center justify-center h-full px-6">
             <h2 className="font-headline font-black text-4xl mb-2 italic uppercase">INSERT CASH</h2>
-            <div className="bg-white/5 border-2 border-white/10 p-10 mb-8 w-full">
+            <div className="bg-white/5 border-2 border-white/10 p-10 mb-8 w-full flex flex-col items-center justify-center">
+               <div className="text-sm font-black uppercase text-white/40 mb-4 tracking-widest">
+                 {paymentReceived === 0 ? "WAITING FOR CASH..." : "CASH DETECTED"}
+               </div>
                <div className="text-6xl font-black italic text-primary">{paymentReceived} PHP</div>
             </div>
-            <div className="grid grid-cols-1 gap-4 w-full max-w-sm">
-              {paymentReceived === 50 && (
-                <NeonButton onClick={() => { setPackageSelected(50); setAppState("setup"); }} className="w-full py-6 text-xl">₱50 PACKAGE</NeonButton>
+            <div className="grid grid-cols-2 gap-4 w-full">
+              {paymentReceived >= 50 && (
+                <NeonButton onClick={() => { setPackageSelected(50); setAppState("setup"); }} className="w-full py-10 text-xl border-4 border-primary">₱50 PACKAGE</NeonButton>
               )}
-              {paymentReceived === 100 && (
-                <NeonButton onClick={() => { setPackageSelected(100); setAppState("setup"); }} className="w-full py-6 text-xl">₱100 PACKAGE</NeonButton>
+              {paymentReceived >= 100 && (
+                <NeonButton onClick={() => { setPackageSelected(100); setAppState("setup"); }} className="w-full py-10 text-xl border-4 border-primary">₱100 PACKAGE</NeonButton>
               )}
             </div>
           </div>
@@ -410,17 +414,24 @@ export default function KioskPage() {
           <div className="w-full h-full max-w-7xl flex flex-row gap-8 items-start py-10 px-8">
              <div className="relative flex-1 aspect-[16/9] bg-zinc-900 border-4 border-white overflow-hidden">
                 <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} />
+                <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-4 py-2 border border-white/20">
+                  <span className="text-[10px] font-black uppercase italic text-primary">LANDSCAPE PREVIEW</span>
+                </div>
              </div>
              <div className="w-[450px] space-y-8">
-              <h2 className="font-headline font-black text-4xl italic uppercase text-primary">Styling</h2>
+              <div className="space-y-2">
+                <h2 className="font-headline font-black text-4xl italic uppercase text-primary">Styling</h2>
+                <p className="text-[10px] font-black uppercase text-white/40 italic">Select your professional vibe</p>
+              </div>
               <div className="grid grid-cols-2 gap-2 max-h-[40vh] overflow-y-auto pr-2 scrollbar-hide">
                 {FILTERS.map((f) => (
-                  <button key={f.id} onClick={() => setSelectedFilter(f)} className={cn("p-4 border-2 flex flex-col items-center", selectedFilter.id === f.id ? "border-primary bg-primary/10" : "border-white/10 bg-white/5")}>
+                  <button key={f.id} onClick={() => setSelectedFilter(f)} className={cn("p-4 border-2 flex flex-col items-center transition-all", selectedFilter.id === f.id ? "border-primary bg-primary/10 scale-95" : "border-white/10 bg-white/5")}>
                     <span className="text-[10px] font-black uppercase italic">{f.label}</span>
+                    <span className="text-[8px] opacity-40 font-bold">{f.sub}</span>
                   </button>
                 ))}
               </div>
-              <button onClick={() => startShotSequence()} className="w-full py-10 text-2xl bg-primary font-black uppercase italic">SHOOT</button>
+              <button onClick={() => startShotSequence()} className="w-full py-10 text-2xl bg-primary font-black uppercase italic shadow-[0_0_20px_rgba(255,51,153,0.4)] active:scale-95 transition-transform">SHOOT</button>
             </div>
           </div>
         )}
@@ -428,14 +439,21 @@ export default function KioskPage() {
         {appState === "capturing" && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
              <video ref={videoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover", selectedFilter.class)} />
-             {countdown !== null && <span className="absolute text-[25rem] font-black italic text-white animate-bounce">{countdown}</span>}
+             {countdown !== null && (
+               <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                 <span className="text-[25rem] font-black italic text-white animate-bounce drop-shadow-[0_0_50px_rgba(255,51,153,0.8)]">{countdown}</span>
+               </div>
+             )}
+             {isProcessing && (
+               <div className="absolute inset-0 bg-white animate-pulse z-[60]" />
+             )}
           </div>
         )}
 
         {appState === "review" && (
           <div className="w-full h-full flex flex-row items-center justify-center gap-12 py-6 px-8">
             <div className="flex-1 flex flex-col items-center">
-              <div className="h-[70vh] aspect-[1600/2400] shadow-2xl relative border-4 border-white mb-6">
+              <div className="h-[70vh] aspect-[1600/2400] shadow-2xl relative border-4 border-white mb-6 bg-white overflow-hidden">
                  {selectedBlueprint && (
                     <BlueprintFrame 
                       blueprint={selectedBlueprint} 
@@ -447,17 +465,37 @@ export default function KioskPage() {
                     />
                  )}
               </div>
+              <p className="text-[10px] font-black uppercase text-white/40 italic">Tap a photo slot to select for partial retake</p>
             </div>
-            <div className="w-96 space-y-6">
-               <NeonButton onClick={() => setAppState("decorating")} className="w-full py-10 text-2xl">USE PHOTO</NeonButton>
+            <div className="w-96 space-y-4">
+               <div className="space-y-2 mb-6">
+                 <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Review</h2>
+                 <p className="text-[10px] font-black uppercase text-white/40 italic">Final check before decoration</p>
+               </div>
+               
+               <NeonButton onClick={() => setAppState("decorating")} className="w-full py-8 text-xl border-4 border-primary">CONTINUE TO DECORATE</NeonButton>
+               
+               <div className="h-px bg-white/10 w-full my-4" />
+               
                <button 
                 onClick={() => selectedRetakeIndex !== null && startSingleShotSequence(selectedRetakeIndex)} 
                 disabled={selectedRetakeIndex === null} 
-                className="w-full py-8 bg-primary font-black uppercase italic disabled:opacity-20 border-2 border-white/10"
+                className={cn(
+                  "w-full py-8 font-black uppercase italic transition-all border-2",
+                  selectedRetakeIndex !== null 
+                    ? "bg-white text-black border-white hover:bg-white/90 scale-105" 
+                    : "bg-white/5 text-white/20 border-white/10 opacity-50"
+                )}
                >
-                 Retake Selected
+                 {selectedRetakeIndex !== null ? `Retake Photo ${selectedRetakeIndex + 1}` : "Select Photo to Retake"}
                </button>
-               <button onClick={() => setAppState("setup")} className="w-full py-4 border-2 border-white/20 font-black uppercase italic text-white/40">Retake All</button>
+
+               <button 
+                onClick={() => setAppState("setup")} 
+                className="w-full py-4 border-2 border-white/20 font-black uppercase italic text-white/40 hover:text-white hover:border-white transition-colors"
+               >
+                 Retake All Photos
+               </button>
             </div>
           </div>
         )}
@@ -465,65 +503,87 @@ export default function KioskPage() {
         {appState === "decorating" && (
           <div className="w-full flex flex-row gap-12 items-start py-10 px-8">
              <div className="flex-1 h-[70vh] flex items-center justify-center">
-                {selectedBlueprint && (
-                  <BlueprintFrame 
-                    blueprint={selectedBlueprint} 
-                    photos={capturedPhotos} 
-                    filterClass={selectedFilter.class} 
-                    quoteText={selectedQuote.text} 
-                    stickers={placedStickers}
-                    selectedStickerId={selectedStickerId}
-                    onUpdateSticker={(id, updates) => setPlacedStickers(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))}
-                    onRemoveSticker={(id) => { setPlacedStickers(prev => prev.filter(s => s.id !== id)); setSelectedStickerId(null); }}
-                    onSelectSticker={setSelectedStickerId}
-                    onBringToFront={(id) => setPlacedStickers(prev => { const item = prev.find(s => s.id === id); return item ? [...prev.filter(s => s.id !== id), item] : prev; })}
-                    isPreview 
-                  />
-                )}
+                <div className="h-full aspect-[1600/2400] relative border-4 border-white bg-white shadow-2xl overflow-hidden">
+                  {selectedBlueprint && (
+                    <BlueprintFrame 
+                      blueprint={selectedBlueprint} 
+                      photos={capturedPhotos} 
+                      filterClass={selectedFilter.class} 
+                      quoteText={selectedQuote.text} 
+                      stickers={placedStickers}
+                      selectedStickerId={selectedStickerId}
+                      onUpdateSticker={(id, updates) => setPlacedStickers(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))}
+                      onRemoveSticker={(id) => { setPlacedStickers(prev => prev.filter(s => s.id !== id)); setSelectedStickerId(null); }}
+                      onSelectSticker={setSelectedStickerId}
+                      onBringToFront={(id) => setPlacedStickers(prev => { const item = prev.find(s => s.id === id); return item ? [...prev.filter(s => s.id !== id), item] : prev; })}
+                      isPreview 
+                    />
+                  )}
+                </div>
              </div>
              <div className="w-[450px] space-y-8 h-[70vh] flex flex-col">
                 <div className="flex-1 space-y-6 overflow-y-auto pr-2 scrollbar-hide">
                    <div className="space-y-4">
-                      <h3 className="text-[10px] font-black uppercase text-white/40 italic">Stickers</h3>
+                      <h3 className="text-[10px] font-black uppercase text-white/40 italic">Kawaii Stickers</h3>
                       <div className="grid grid-cols-4 gap-2">
                         {STICKER_DEFS.map(s => (
-                          <button key={s.id} onClick={() => addSticker(s.id)} className="aspect-square bg-white/5 border-2 border-white/10 p-2 flex items-center justify-center hover:border-primary"><s.icon className={cn("w-full h-full", s.color)} /></button>
+                          <button key={s.id} onClick={() => addSticker(s.id)} className="aspect-square bg-white/5 border-2 border-white/10 p-2 flex items-center justify-center hover:border-primary transition-colors active:scale-90"><s.icon className={cn("w-full h-full", s.color)} /></button>
                         ))}
                       </div>
                    </div>
                    <div className="space-y-4">
-                      <h3 className="text-[10px] font-black uppercase text-white/40 italic">Inspiration</h3>
+                      <h3 className="text-[10px] font-black uppercase text-white/40 italic">Inspirational Quote</h3>
                       <div className="grid grid-cols-1 gap-2">
                         {QUOTES.map(q => (
-                          <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("p-4 border-2 text-left", selectedQuote.id === q.id ? "border-primary bg-primary/10" : "border-white/10 bg-white/5")}><p className="text-xs font-bold italic">"{q.text}"</p></button>
+                          <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("p-4 border-2 text-left transition-all", selectedQuote.id === q.id ? "border-primary bg-primary/10" : "border-white/10 bg-white/5")}><p className="text-xs font-bold italic">"{q.text}"</p></button>
                         ))}
                       </div>
                    </div>
                 </div>
-                <NeonButton onClick={() => setAppState("consent")} className="w-full py-10 text-2xl">FINISH</NeonButton>
+                <NeonButton onClick={() => setAppState("consent")} className="w-full py-10 text-2xl">FINISH & PRINT</NeonButton>
              </div>
           </div>
         )}
 
         {appState === "printing" && (
-          <div className="w-full flex flex-row items-center gap-16 px-10">
+          <div className="w-full flex flex-row items-center gap-16 px-10 h-full">
              <div className="flex-1 space-y-10">
-                <h2 className="font-headline font-black text-3xl italic uppercase">Printing Portrait...</h2>
-                <Progress value={printProgress} className="h-3" />
-             </div>
-             <div className="bg-white/5 border-2 border-white/10 p-8 flex flex-col items-center space-y-4 rounded-3xl w-80">
-                <div className="aspect-square w-full bg-white p-4 rounded-2xl flex items-center justify-center shadow-xl">
-                  {softCopyQrUrl ? <img src={softCopyQrUrl} alt="Scan to save" className="w-full h-full" /> : <Loader2 className="w-8 h-8 animate-spin text-primary" />}
+                <div className="space-y-2">
+                  <h2 className="font-headline font-black text-5xl italic uppercase text-primary">Printing...</h2>
+                  <p className="text-lg font-black uppercase text-white/40 italic tracking-widest">Your portrait is being processed</p>
                 </div>
-                {uploadStatus === "complete" && <button onClick={() => setAppState("thankyou")} className="w-full bg-primary py-4 font-black uppercase italic rounded-xl">FINISH</button>}
+                <Progress value={printProgress} className="h-4 bg-white/10" />
+                <div className="flex items-center gap-4 p-6 bg-white/5 border border-white/10 rounded-2xl">
+                  <Printer className="w-8 h-8 text-primary animate-pulse" />
+                  <p className="text-sm font-bold uppercase italic text-white/60">HANDING OVER TO THERMAL PRINTER VIA UGREEN HUB</p>
+                </div>
+             </div>
+             <div className="bg-white/5 border-2 border-white/10 p-8 flex flex-col items-center space-y-6 rounded-[3rem] w-[400px] shadow-[0_0_50px_rgba(255,51,153,0.2)]">
+                <div className="text-center space-y-2">
+                  <h3 className="text-2xl font-black italic uppercase text-primary">HD SOFT COPY</h3>
+                  <p className="text-[10px] font-black uppercase text-white/40 italic">SCAN TO SAVE TO YOUR PHONE</p>
+                </div>
+                <div className="aspect-square w-full bg-white p-6 rounded-3xl flex items-center justify-center shadow-2xl">
+                  {softCopyQrUrl ? <img src={softCopyQrUrl} alt="Scan to save" className="w-full h-full" /> : <Loader2 className="w-12 h-12 animate-spin text-primary" />}
+                </div>
+                {uploadStatus === "complete" ? (
+                  <button onClick={() => setAppState("thankyou")} className="w-full bg-primary py-6 text-xl font-black uppercase italic rounded-2xl shadow-xl active:scale-95 transition-transform">COMPLETE SESSION</button>
+                ) : (
+                  <div className="flex items-center gap-3 py-6">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    <span className="text-[10px] font-black uppercase text-white/40 italic">Uploading to Cloud...</span>
+                  </div>
+                )}
              </div>
           </div>
         )}
 
         {appState === "thankyou" && (
-          <div className="fixed inset-0 bg-black flex flex-col items-center justify-center">
-             <h2 className="font-headline font-black text-6xl italic uppercase">THANK <span className="text-primary">YOU!</span></h2>
-             <NeonButton onClick={resetSession} className="px-20 py-8 text-2xl mt-12">DONE</NeonButton>
+          <div className="fixed inset-0 bg-black flex flex-col items-center justify-center animate-in fade-in duration-1000">
+             <JnlLogo variant="hero" color="light" className="mb-12" />
+             <h2 className="font-headline font-black text-7xl italic uppercase">THANK <span className="text-primary">YOU!</span></h2>
+             <p className="text-xl font-black uppercase text-white/40 italic tracking-[0.3em] mt-4">VISIT US AGAIN SOON</p>
+             <NeonButton onClick={resetSession} className="px-20 py-8 text-2xl mt-16">BACK TO START</NeonButton>
           </div>
         )}
       </div>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -42,6 +43,8 @@ export default function KioskPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const printIframeRef = useRef<HTMLIFrameElement>(null);
+  const triggerResolveRef = useRef<(() => void) | null>(null);
+
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>("");
@@ -61,8 +64,11 @@ export default function KioskPage() {
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "complete" | "error">("idle");
   const [promoConsent, setPromoConsent] = useState<boolean | null>(null);
   const [usbHandle, setUsbHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  
+  const [currentShotIndex, setCurrentShotIndex] = useState(0);
+  const [waitingForTrigger, setWaitingForTrigger] = useState(false);
+  
   const exportTriggeredRef = useRef(false);
-
   const [originUrl, setOriginUrl] = useState("https://jnl-studio-booth.web.app");
 
   useEffect(() => {
@@ -218,6 +224,8 @@ export default function KioskPage() {
     setPrintProgress(0);
     setSelectedRetakeIndex(null);
     setPromoConsent(null);
+    setCurrentShotIndex(0);
+    setWaitingForTrigger(false);
   }, []);
 
   const startShotSequence = async () => {
@@ -226,11 +234,20 @@ export default function KioskPage() {
     
     setAppState("capturing");
     
-    // Only capture missing photos or retake a specific one
     const startIdx = selectedRetakeIndex !== null ? selectedRetakeIndex : photos.length;
     const endIdx = selectedRetakeIndex !== null ? selectedRetakeIndex + 1 : totalShots;
 
     for (let i = startIdx; i < endIdx; i++) {
+      setCurrentShotIndex(i);
+      setWaitingForTrigger(true);
+      
+      // Wait for manual trigger
+      await new Promise<void>((resolve) => {
+        triggerResolveRef.current = resolve;
+      });
+      
+      setWaitingForTrigger(false);
+      
       for (let c = 3; c > 0; c--) {
         setCountdown(c);
         await new Promise(r => setTimeout(r, 1000));
@@ -448,6 +465,24 @@ export default function KioskPage() {
         {appState === "capturing" && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
              <video ref={videoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover", selectedFilter.class)} />
+             
+             {waitingForTrigger && (
+               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 animate-in fade-in duration-300">
+                 <div className="text-center space-y-4 mb-8">
+                   <h2 className="text-6xl font-black italic text-white uppercase tracking-tighter drop-shadow-lg">
+                     READY FOR SHOT {currentShotIndex + 1}?
+                   </h2>
+                   <p className="text-white/60 text-xl font-black uppercase italic tracking-widest">Check your pose & group positioning</p>
+                 </div>
+                 <NeonButton 
+                   onClick={() => triggerResolveRef.current?.()} 
+                   className="px-24 py-12 text-4xl shadow-[0_0_50px_rgba(255,51,153,0.5)] active:scale-90"
+                 >
+                   TAKE SHOT
+                 </NeonButton>
+               </div>
+             )}
+
              {countdown !== null && (
                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                  <span className="text-[25rem] font-black italic text-white animate-bounce drop-shadow-[0_0_50px_rgba(255,51,153,0.8)]">{countdown}</span>
@@ -498,7 +533,7 @@ export default function KioskPage() {
                </button>
 
                <button 
-                onClick={() => startShotSequence()} 
+                onClick={() => { setSelectedRetakeIndex(null); setCapturedPhotos([]); startShotSequence(); }} 
                 className="w-full py-4 border-2 border-white/20 font-black uppercase italic text-white/40 hover:text-white transition-colors flex items-center justify-center gap-2"
                >
                  <RotateCcw className="w-4 h-4" /> Retake All Photos

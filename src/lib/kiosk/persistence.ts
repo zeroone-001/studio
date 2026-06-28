@@ -67,8 +67,9 @@ export const SessionStore = {
   // Save specifically to the Lexar USB Drive
   saveToUsb: async (handle: FileSystemDirectoryHandle, id: string, blob: Blob) => {
     try {
-      // Create 'Lexar JNL Photobooth YES' folder structure if needed
-      const fileHandle = await handle.getFileHandle(`${id}.jpg`, { create: true });
+      // Access or create 'jnl studio photobooth' folder structure
+      const studioFolder = await handle.getDirectoryHandle('jnl studio photobooth', { create: true });
+      const fileHandle = await studioFolder.getFileHandle(`${id}.jpg`, { create: true });
       const writable = await fileHandle.createWritable();
       await writable.write(blob);
       await writable.close();

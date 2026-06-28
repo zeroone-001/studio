@@ -75,7 +75,6 @@ export const BlueprintFrame = React.memo(({
         {blueprint.slots.map((slot, index) => {
           if (slot.w === 0 || slot.h === 0) return null;
           
-          // Adjust coordinates for Strip if rendering Twin Copies
           const sX = isStrip ? slot.x / 2 : slot.x;
           const sW = isStrip ? slot.w / 2 : slot.w;
 
@@ -150,25 +149,25 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* Spacious Branding Footer - 4% Height (96px at 2400px height) */}
+      {/* Enhanced Branding Footer - 4% Height with Strategic Spacing */}
       <div 
-        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-center items-center px-6 pt-4 pb-2"
+        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-center items-center px-6"
         style={{ height: '4%' }}
       >
-        {/* Inspirational Quote Sentence - Elegant Spacing from Photo Edge */}
+        <div className="w-full border-t border-black/10 mb-2"></div>
         {quoteText && (
-          <p className="font-bold text-black italic text-center leading-relaxed mb-2 mt-2 px-4" style={{ fontSize: isStrip ? '8px' : '14px' }}>
+          <p className="font-bold text-black italic text-center leading-tight mb-2 px-2" style={{ fontSize: isStrip ? '8px' : '13px' }}>
             "{quoteText}"
           </p>
         )}
-        <div className="w-full flex justify-between items-center border-t border-black/5 pt-1">
-          <div className="flex flex-col items-start leading-none gap-0">
-             <span className="font-headline font-black italic uppercase text-black flex items-center gap-1" style={{ fontSize: isStrip ? '9px' : '16px' }}>
+        <div className="w-full flex justify-between items-center pt-1 border-t border-black/5">
+          <div className="flex flex-col items-start leading-none">
+             <span className="font-headline font-black italic uppercase text-black flex items-center gap-1" style={{ fontSize: isStrip ? '9px' : '15px' }}>
                <span>JNL</span>
                <span className="text-[#FF3399]">STUDIO</span>
              </span>
           </div>
-          <span className="font-bold uppercase tracking-[0.15em] text-black/30 leading-none" style={{ fontSize: isStrip ? '5px' : '8px' }}>{displayDate}</span>
+          <span className="font-bold uppercase tracking-widest text-black/30" style={{ fontSize: isStrip ? '5px' : '8px' }}>{displayDate}</span>
         </div>
       </div>
     </div>

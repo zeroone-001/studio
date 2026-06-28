@@ -18,15 +18,15 @@ export type FrameBlueprint = {
  * Footer begins at Y=2304 (exactly 4% height for sentential quote space)
  */
 export const BLUEPRINTS: FrameBlueprint[] = [
-  // ₱50 PACKAGE (3 SHOTS) - RECALIBRATED FOR ZERO-CUT FACE CAPTURE
+  // ₱50 PACKAGE (3 SHOTS) - RECALIBRATED FOR ZERO-CUT PORTRAITS
   {
     id: "p50-balanced-trio",
     label: "BALANCED TRIO",
     package: 50,
     slots: [
-      { x: 0, y: 0, w: 1600, h: 1200 }, 
-      { x: 0, y: 1200, w: 800, h: 1104 },
-      { x: 800, y: 1200, w: 800, h: 1104 },
+      { x: 0, y: 0, w: 1600, h: 1152 }, 
+      { x: 0, y: 1152, w: 800, h: 1152 },
+      { x: 800, y: 1152, w: 800, h: 1152 },
     ],
   },
   {
@@ -34,9 +34,9 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "SPLIT PORTRAIT",
     package: 50,
     slots: [
-      { x: 0, y: 0, w: 1600, h: 1200 }, // Large Hero Face Frame
-      { x: 0, y: 1200, w: 800, h: 1104 }, // Body Safe Left
-      { x: 800, y: 1200, w: 800, h: 1104 }, // Body Safe Right
+      { x: 0, y: 0, w: 1600, h: 1152 }, // Large Face-Safe Frame
+      { x: 0, y: 1152, w: 800, h: 1152 }, // Body Safe Left
+      { x: 800, y: 1152, w: 800, h: 1152 }, // Body Safe Right
     ],
   },
   {
@@ -50,7 +50,7 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     ],
   },
 
-  // ₱100 PACKAGE (6 SHOTS) - 6 DIVERSE FACE-SAFE LAYOUTS
+  // ₱100 PACKAGE (6 SHOTS) - DIVERSE FACE-SAFE LAYOUTS
   {
     id: "p100-vertical-six",
     label: "PORTRAIT SIX",

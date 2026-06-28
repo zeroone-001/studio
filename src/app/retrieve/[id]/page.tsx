@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
@@ -26,14 +25,14 @@ export default function RetrievePage() {
     try {
       const { storage, db } = initializeFirebase();
       
-      // Check Firestore document existence
+      // 1. FAST HANDSHAKE: Check if session ID is registered in Firestore
       const docRef = doc(db, "photos", id);
       const docSnap = await getDoc(docRef);
       
       if (!docSnap.exists()) {
         if (retryCount.current < MAX_RETRIES) {
           retryCount.current += 1;
-          setTimeout(fetchPhoto, 250); // Aggressive poll every 250ms
+          setTimeout(fetchPhoto, 250); // Aggressive poll every 250ms for instant start
           return;
         }
         setError("Photo not found. Please scan the QR code again.");
@@ -43,7 +42,8 @@ export default function RetrievePage() {
 
       setStatus('syncing');
 
-      // Get production Storage URL
+      // 2. HD FETCH: Get the actual Storage URL
+      // If the file is still uploading, getDownloadURL will throw 404, which we catch and retry
       const photoRef = ref(storage, `photos/${id}.jpg`);
       const url = await getDownloadURL(photoRef);
       
@@ -52,9 +52,10 @@ export default function RetrievePage() {
       setError(null);
       setStatus('complete');
     } catch (err: any) {
+      // If getDownloadURL fails, it's likely still uploading. Retry aggressively.
       if (retryCount.current < MAX_RETRIES) {
         retryCount.current += 1;
-        setTimeout(fetchPhoto, 250); // Aggressive poll every 250ms
+        setTimeout(fetchPhoto, 250); 
       } else {
         setError("HD Portrait is still syncing. Please refresh in a few seconds.");
         setLoading(false);

@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -351,9 +350,15 @@ export default function KioskPage() {
       </html>
     `);
     doc.close();
-    // Signal automatic print completion in logs
-    KioskLogger.log('info', 'Hardware', 'Print signal sent to thermal engine.');
-    setTimeout(() => URL.revokeObjectURL(dataUrl), 5000);
+    
+    // Automatic Print Handshake
+    KioskLogger.log('info', 'Hardware', 'Thermal print signal sent to system service.');
+    
+    // Bridge to NokoPrint or system printer service automatically
+    setTimeout(() => {
+      iframe.contentWindow?.print();
+      URL.revokeObjectURL(dataUrl);
+    }, 500);
   };
 
   const handleFinalExport = useCallback(async () => {
@@ -368,7 +373,8 @@ export default function KioskPage() {
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
     KioskLogger.log('info', 'Export', `Secure ID Linked: ${sessionId}`);
 
-    // 3. INSTANT FIRESTORE METADATA (Minimizes Mobile "Site Not Found" Delay)
+    // 3. INSTANT FIRESTORE METADATA (HANDSHAKE)
+    // We write this BEFORE upload so scanning mobile phone finds the doc immediately
     const { storage, db } = initializeFirebase();
     setDoc(doc(db, "photos", sessionId), {
       id: sessionId,
@@ -423,6 +429,8 @@ export default function KioskPage() {
       ctx.fillStyle = '#000000';
       ctx.font = 'bold italic 26px Inter, sans-serif';
       ctx.textAlign = 'center';
+      
+      // Draw centered quote text
       ctx.fillText(selectedQuote.text, offsetX + 800, footerY + 80);
 
       // Branding Bottom
@@ -457,7 +465,7 @@ export default function KioskPage() {
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
 
-      // Local Persistence
+      // Local Persistence (Honor Pad Gallery)
       await SessionStore.savePhotoLocally(sessionId, blob);
       
       // DEFERRED USB BACKUP (Consent: YES)
@@ -940,13 +948,13 @@ export default function KioskPage() {
                        {uploadStatus === "complete" && <div className="text-[7px] text-green-500 font-black uppercase">HD Ready</div>}
                      </div>
 
-                     {/* Instant Photo Verification Thumbnail */}
+                     {/* Instant Verification Thumbnail */}
                      {capturedPhotos.length > 0 && (
                        <div className="w-full pt-4 border-t border-white/5 flex flex-col items-center gap-2">
                          <div className="w-24 aspect-[3/4] border-2 border-white/20 rounded-lg overflow-hidden relative shadow-lg">
                            <img src={capturedPhotos[0]} alt="Verification" className={cn("w-full h-full object-cover", selectedFilter.class)} />
                          </div>
-                         <span className="text-[7px] font-black uppercase text-zinc-500">Soft Copy Preview</span>
+                         <span className="text-[7px] font-black uppercase text-zinc-500">Captured Soft Copy</span>
                        </div>
                      )}
                    </div>

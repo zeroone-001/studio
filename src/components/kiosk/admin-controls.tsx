@@ -8,12 +8,16 @@ import {
   Activity,
   Trash2,
   CheckCircle2,
-  FolderOpen
+  FolderOpen,
+  Layout as LayoutIcon,
+  Layers
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SessionState } from "@/lib/kiosk/constants";
+import { BLUEPRINTS } from "./frame-blueprint";
+import { BlueprintFrame } from "./blueprint-frame";
 
 interface AdminControlsProps {
   currentStatus: SessionState;
@@ -46,8 +50,11 @@ export function AdminControls({
   selectedCameraId,
   onSelectCamera
 }: AdminControlsProps) {
-  const [view, setView] = useState<'main' | 'logs' | 'diag'>('main');
+  const [view, setView] = useState<'main' | 'logs' | 'diag' | 'previews'>('main');
+  const [previewPackage, setPreviewPackage] = useState<50 | 100>(50);
   const logs = KioskLogger.getLogs();
+
+  const samplePhotos = Array(6).fill("https://picsum.photos/seed/sample/800/1200");
 
   return (
     <div className="fixed bottom-16 right-4 z-[100] flex flex-col items-end gap-2 scale-90 sm:scale-100 origin-bottom-right">
@@ -56,6 +63,7 @@ export function AdminControls({
           <div className="flex items-center gap-3">
              <button onClick={() => setView('main')} className={cn("text-[9px] font-black uppercase tracking-widest", view === 'main' ? "text-primary" : "text-white/40")}>Control</button>
              <button onClick={() => setView('logs')} className={cn("text-[9px] font-black uppercase tracking-widest", view === 'logs' ? "text-primary" : "text-white/40")}>Trace</button>
+             <button onClick={() => setView('previews')} className={cn("text-[9px] font-black uppercase tracking-widest", view === 'previews' ? "text-primary" : "text-white/40")}>Blueprints</button>
              <button onClick={() => setView('diag')} className={cn("text-[9px] font-black uppercase tracking-widest", view === 'diag' ? "text-primary" : "text-white/40")}>Hardware</button>
           </div>
           <button onClick={onExitOwnerMode} className="text-white/40 hover:text-white"><LogOut className="w-4 h-4" /></button>
@@ -66,7 +74,7 @@ export function AdminControls({
             <div className="space-y-2">
               <label className="text-[8px] font-black uppercase text-white/40">State Navigation</label>
               <div className="grid grid-cols-2 gap-2">
-                 {(["welcome", "payment", "setup", "review", "decorating", "printing", "thankyou"] as SessionState[]).map(state => (
+                 {(["welcome", "payment", "setup", "review", "decorating", "consent", "printing", "thankyou"] as SessionState[]).map(state => (
                    <button 
                     key={state}
                     onClick={() => onJumpTo(state)} 
@@ -120,6 +128,31 @@ export function AdminControls({
                   </div>
                 ))}
              </div>
+          </div>
+        )}
+
+        {view === 'previews' && (
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <button onClick={() => setPreviewPackage(50)} className={cn("flex-1 py-2 text-[10px] font-black uppercase border", previewPackage === 50 ? "bg-primary border-primary" : "bg-white/5 border-white/10")}>₱50 Layouts</button>
+              <button onClick={() => setPreviewPackage(100)} className={cn("flex-1 py-2 text-[10px] font-black uppercase border", previewPackage === 100 ? "bg-primary border-primary" : "bg-white/5 border-white/10")}>₱100 Layouts</button>
+            </div>
+            <div className="max-h-96 overflow-y-auto pr-2 scrollbar-hide space-y-4">
+              {BLUEPRINTS.filter(b => b.package === previewPackage).map(bp => (
+                <div key={bp.id} className="space-y-2">
+                  <span className="text-[8px] font-black uppercase text-white/40 italic">{bp.label}</span>
+                  <div className="h-64 bg-white/5 border border-white/10 p-2 overflow-hidden flex items-center justify-center">
+                    <BlueprintFrame 
+                      blueprint={bp} 
+                      photos={samplePhotos} 
+                      isPreview 
+                      className="!h-full !w-auto"
+                      quoteText="Sample Inspiration Quote"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

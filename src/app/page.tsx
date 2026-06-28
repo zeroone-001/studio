@@ -182,7 +182,7 @@ export default function KioskPage() {
             SessionStore.saveToUsb(usbHandle, sessionId, blob).then(success => {
               if (success) KioskLogger.log('info', 'HARDWARE', 'Backup to Lexar USB complete.', 'SUCCESS');
             });
-          }, 60000); // 1 minute delay as requested
+          }, 60000); 
         }
 
         // AUTO-DELETE (NO CONSENT)
@@ -191,7 +191,7 @@ export default function KioskPage() {
             SessionStore.cleanupSession(sessionId).then(() => {
               KioskLogger.log('info', 'SESSION', 'Privacy cleanup: Temporary photo deleted.', 'SUCCESS');
             });
-          }, 60000); // 1 minute delay as requested
+          }, 60000); 
         }
       });
     }, 'image/jpeg', 0.9);
@@ -328,7 +328,8 @@ export default function KioskPage() {
     }
   }, [appState, selectedCameraId]);
 
-  const currentFilters = packageSelected === 50 ? FILTERS.slice(0, 5) : FILTERS;
+  // STRICT PACKAGE LIMITS
+  const currentFilters = packageSelected === 50 ? FILTERS.slice(0, 5) : FILTERS.slice(0, 10);
   const currentBlueprints = BLUEPRINTS.filter(b => b.package === packageSelected);
 
   return (
@@ -380,19 +381,19 @@ export default function KioskPage() {
 
         {appState === "payment" && (
           <div className="w-full max-w-2xl text-center flex flex-col items-center justify-center h-full px-6">
-            <h2 className="font-headline font-black text-4xl mb-2 italic uppercase">INSERT CASH</h2>
+            <h2 className="font-headline font-black text-4xl mb-2 italic uppercase">WAITING ON INSERT OF MONEY</h2>
             <div className="bg-white/5 border-2 border-white/10 p-10 mb-8 w-full flex flex-col items-center justify-center">
                <div className="text-sm font-black uppercase text-white/40 mb-4 tracking-widest">
-                 {paymentReceived === 0 ? "WAITING FOR CASH..." : "CASH DETECTED"}
+                 {paymentReceived === 0 ? "INSERT BILL NOW" : "CASH DETECTED"}
                </div>
                <div className="text-6xl font-black italic text-primary">{paymentReceived} PHP</div>
             </div>
             <div className="grid grid-cols-2 gap-4 w-full">
               {paymentReceived >= 50 && (
-                <NeonButton onClick={() => { setPackageSelected(50); setAppState("setup"); }} className="w-full py-10 text-xl border-4 border-primary">₱50 PACKAGE</NeonButton>
+                <NeonButton onClick={() => { setPackageSelected(50); setAppState("setup"); }} className="w-full py-10 text-xl border-4 border-primary">50 PESOS</NeonButton>
               )}
               {paymentReceived >= 100 && (
-                <NeonButton onClick={() => { setPackageSelected(100); setAppState("setup"); }} className="w-full py-10 text-xl border-4 border-primary">₱100 PACKAGE</NeonButton>
+                <NeonButton onClick={() => { setPackageSelected(100); setAppState("setup"); }} className="w-full py-10 text-xl border-4 border-primary">100 PESOS</NeonButton>
               )}
             </div>
           </div>
@@ -484,14 +485,14 @@ export default function KioskPage() {
                     : "bg-white/5 text-white/20 border-white/10 opacity-50"
                 )}
                >
-                 <Target className="w-5 h-5" /> {selectedRetakeIndex !== null ? `Retake Photo ${selectedRetakeIndex + 1}` : "Select Slot to Retake"}
+                 <Target className="w-5 h-5" /> {selectedRetakeIndex !== null ? `Retake Selected Photo` : "Select Slot to Retake"}
                </button>
 
                <button 
                 onClick={() => setAppState("setup")} 
                 className="w-full py-4 border-2 border-white/20 font-black uppercase italic text-white/40 hover:text-white transition-colors flex items-center justify-center gap-2"
                >
-                 <RotateCcw className="w-4 h-4" /> Retake All
+                 <RotateCcw className="w-4 h-4" /> Retake All Photos
                </button>
             </div>
           </div>
@@ -560,7 +561,7 @@ export default function KioskPage() {
                 >
                   <HandMetal className="w-20 h-20 text-green-500 mb-4 group-hover:scale-110 transition-transform" />
                   <span className="text-4xl font-black italic uppercase text-white">YES, PLEASE!</span>
-                  <span className="text-[10px] font-black uppercase text-white/40 mt-2">BACKUP TO LEXAR USB</span>
+                  <span className="text-[10px] font-black uppercase text-white/40 mt-2">SAVE TO LEXAR USB</span>
                 </button>
                 
                 <button 

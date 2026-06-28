@@ -36,6 +36,7 @@ export default function RetrievePage() {
       const docSnap = await getDoc(docRef);
       
       if (!docSnap.exists()) {
+        // Handshake: If document doesn't exist yet, kiosk might still be generating it
         if (retryCount.current < MAX_RETRIES) {
           retryCount.current += 1;
           setTimeout(fetchPhoto, 250); 
@@ -58,6 +59,7 @@ export default function RetrievePage() {
         setError(null);
         setStatus('complete');
       } catch (e) {
+        // If file not in storage yet, keep polling
         if (retryCount.current < MAX_RETRIES) {
           retryCount.current += 1;
           setTimeout(fetchPhoto, 500); // Storage might take longer than Firestore

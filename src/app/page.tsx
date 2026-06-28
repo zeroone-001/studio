@@ -323,14 +323,18 @@ export default function KioskPage() {
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
+    // 1. UNIQUE SESSION ID (Isolated & Secure)
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
 
+    // 2. INSTANT QR URL GENERATION (Handshake ready immediately)
     const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
     KioskLogger.log('info', 'Export', `Secure ID Linked: ${sessionId}`);
 
     const { storage, db } = initializeFirebase();
+    
+    // 3. IMMEDIATE FIRESTORE HANDSHAKE (Prevents scan delay errors)
     setDoc(doc(db, "photos", sessionId), {
       id: sessionId,
       storagePath: `photos/${sessionId}.jpg`,
@@ -362,6 +366,7 @@ export default function KioskPage() {
         await new Promise(resolve => img.onload = resolve);
         
         ctx.save();
+        // Native filter mapping for canvas export
         if (filterClass.includes('brightness')) ctx.filter += ' brightness(1.1)';
         if (filterClass.includes('contrast')) ctx.filter += ' contrast(1.1)';
         if (filterClass.includes('sepia')) ctx.filter += ' sepia(0.2)';
@@ -372,6 +377,7 @@ export default function KioskPage() {
         ctx.restore();
       }
 
+      // Branding Footer logic
       const footerY = 2200;
       const footerH = 200;
       ctx.fillStyle = '#FFFFFF';
@@ -411,6 +417,7 @@ export default function KioskPage() {
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
 
+      // 4. HYBRID PERSISTENCE
       await SessionStore.savePhotoLocally(sessionId, blob);
       
       if (promoConsent === true && usbDirectoryHandle) {
@@ -420,8 +427,10 @@ export default function KioskPage() {
         }, 2 * 60 * 1000); 
       }
 
+      // 5. AUTOMATIC PRINT SIGNAL
       initiatePrint(blob); 
 
+      // 6. STORAGE SYNC
       setUploadStatus("uploading");
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       uploadBytes(photoRef, blob).then(() => {
@@ -540,6 +549,7 @@ export default function KioskPage() {
     setAppState("review");
   };
 
+  // FEATURE: Partial Selective Retake
   const startSingleShotSequence = async (index: number) => {
     setAppState("capturing");
     setCountdown(null);
@@ -724,6 +734,7 @@ export default function KioskPage() {
                  {selectedBlueprint && capturedPhotos.length > 0 && <BlueprintFrame blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.class} isPreview />}
               </div>
               
+              {/* INTERACTIVE REVIEW GRID for Partial Retake */}
               <div className="w-full max-w-2xl bg-white/5 border border-white/10 p-4 rounded-3xl">
                 <p className="text-[10px] font-black uppercase text-primary mb-3 text-center tracking-widest">Select a photo to retake</p>
                 <div className="grid grid-cols-6 gap-2">
@@ -873,6 +884,7 @@ export default function KioskPage() {
                        <h3 className="font-headline font-black text-xl uppercase italic">SCAN TO SAVE</h3>
                      </div>
                      
+                     {/* SECURE QR & VERIFICATION THUMBNAIL */}
                      <div className="aspect-square w-full bg-white p-4 rounded-2xl shadow-[0_0_30px_rgba(255,51,153,0.3)] relative overflow-hidden flex items-center justify-center">
                         {softCopyQrUrl ? (
                           <img src={softCopyQrUrl} alt="Soft Copy QR" className="w-full h-full object-contain animate-in fade-in duration-300" />

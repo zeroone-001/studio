@@ -83,6 +83,7 @@ export const BlueprintFrame = React.memo(({
           const sX = isStrip ? slot.x / 2 : slot.x;
           const sW = isStrip ? slot.w / 2 : slot.w;
           const isSelected = selectedSlotIndex === index;
+          const hasPhoto = !!photos[index];
 
           return (
             <div
@@ -99,7 +100,7 @@ export const BlueprintFrame = React.memo(({
               }}
               onClick={() => isPreview && onSelectSlot?.(index)}
             >
-              {photos[index] ? (
+              {hasPhoto ? (
                 <Image
                   src={photos[index]}
                   alt={`Portrait ${index + 1}`}
@@ -109,8 +110,9 @@ export const BlueprintFrame = React.memo(({
                   unoptimized
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <span className="text-[10px] text-black/10 font-black uppercase">SLOT {index + 1}</span>
+                <div className="w-full h-full flex flex-col items-center justify-center border-2 border-dashed border-black/10">
+                  <span className="text-[12px] text-black/20 font-black uppercase italic tracking-tighter">PHOTO {index + 1}</span>
+                  <span className="text-[8px] text-black/10 font-bold uppercase mt-1">SLOT</span>
                 </div>
               )}
               {isSelected && isPreview && (

@@ -1,6 +1,17 @@
 import * as Kawaii from "@/components/kiosk/kawaii-stickers";
 
-export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "thankyou" | "test-camera";
+export type SessionState = 
+  | "welcome" 
+  | "payment" 
+  | "setup" 
+  | "test-camera"
+  | "capturing" 
+  | "review" 
+  | "decorating" 
+  | "final-preview"
+  | "consent" 
+  | "printing" 
+  | "thankyou";
 
 export interface PlacedSticker {
   id: string;
@@ -12,23 +23,22 @@ export interface PlacedSticker {
 }
 
 /**
- * SOCIAL MEDIA BEAUTY FILTERS
+ * BEAUTY FILTERS
  * Optimized for modern social media aesthetics and skin-tone preservation.
  */
 export const FILTERS = [
-  // 50 PESOS PACKAGE BASE (5 Filters)
   { id: "natural", label: "NATURAL BEAUTY", class: "brightness-105 contrast-[1.02] saturate-[1.05]" },
   { id: "soft", label: "SOFT SKIN", class: "brightness-110 contrast-[0.98] saturate-[1.05] blur-[0.4px]" },
-  { id: "bright", label: "BRIGHT", class: "brightness-118 contrast-[1.02] saturate-[1.05]" },
-  { id: "warm", label: "WARM", class: "sepia-[0.15] brightness-[1.05] saturate-[1.2] contrast-[1.05]" },
-  { id: "cool", label: "COOL", class: "hue-rotate-[-10deg] saturate-[0.9] brightness-[1.08] contrast-[1.05]" },
+  { id: "bright", label: "BRIGHT SKIN", class: "brightness-118 contrast-[1.02] saturate-[1.05]" },
+  { id: "warm", label: "WARM GLOW", class: "sepia-[0.15] brightness-[1.05] saturate-[1.2] contrast-[1.05]" },
+  { id: "cool", label: "COOL VIBE", class: "hue-rotate-[-10deg] saturate-[0.9] brightness-[1.08] contrast-[1.05]" },
   
-  // 100 PESOS PACKAGE ADDITIONAL (Total 10)
+  // 100 PESOS PACKAGE ADDITIONAL
   { id: "tiktok", label: "TIKTOK BEAUTY", class: "brightness-112 contrast-[1.1] saturate-[1.2] sepia-[0.05]" },
   { id: "clean", label: "CLEAN LOOK", class: "contrast-[1.1] brightness-[1.1] saturate-[0.95] blur-[0.2px]" },
-  { id: "glow", label: "GLOW", class: "brightness-115 contrast-[1.05] saturate-[1.2] drop-shadow-[0_0_10px_rgba(255,255,255,0.1)]" },
-  { id: "fresh", label: "FRESH", class: "hue-rotate-[5deg] saturate-[1.1] brightness-[1.1] contrast-[1.02]" },
-  { id: "classic", label: "CLASSIC", class: "contrast-[1.15] brightness-[1.05] saturate-[1.05]" },
+  { id: "glow", label: "SOFT GLOW", class: "brightness-115 contrast-[1.05] saturate-[1.2] drop-shadow-[0_0_10px_rgba(255,255,255,0.1)]" },
+  { id: "fresh", label: "FRESH LOOK", class: "hue-rotate-[5deg] saturate-[1.1] brightness-[1.1] contrast-[1.02]" },
+  { id: "classic", label: "CLASSIC PORTRAIT", class: "contrast-[1.15] brightness-[1.05] saturate-[1.05]" },
 ];
 
 export const QUOTES = [

@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -11,7 +10,7 @@ import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
   Printer, Loader2, Download, CheckCircle2, AlertCircle, 
   RotateCcw, Camera, Target, Trash2, Layers, Maximize2, RotateCw, X,
-  Facebook, HandMetal
+  Facebook, HandMetal, Play
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -58,7 +57,6 @@ export default function KioskPage() {
   const [logoTapCount, setLogoTapCount] = useState(0);
   const [currentSessionId, setCurrentSessionId] = useState("");
   const [softCopyQrUrl, setSoftCopyQrUrl] = useState("");
-  // UPDATED FB LINK TO https://www.facebook.com/share/1UUtaRzzMB/
   const [fbQrUrl] = useState(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent("https://www.facebook.com/share/1UUtaRzzMB/")}`);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "complete" | "error">("idle");
   const [promoConsent, setPromoConsent] = useState<boolean | null>(null);
@@ -113,7 +111,7 @@ export default function KioskPage() {
 
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
-    const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}_${Math.random().toString(36).substring(2, 12)}`;
+    const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
 
     const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
@@ -179,18 +177,14 @@ export default function KioskPage() {
         setUploadStatus("complete");
         
         if (promoConsent && usbHandle) {
-          setTimeout(() => {
-            SessionStore.saveToUsb(usbHandle, sessionId, blob).then(success => {
-              if (success) KioskLogger.log('info', 'HARDWARE', 'Backup to Lexar USB complete.', 'SUCCESS');
-            });
-          }, 60000); 
+          SessionStore.saveToUsb(usbHandle, sessionId, blob).then(success => {
+            if (success) KioskLogger.log('info', 'HARDWARE', 'Backup to Lexar USB complete.', 'SUCCESS');
+          });
         }
 
         if (promoConsent === false) {
           setTimeout(() => {
-            SessionStore.cleanupSession(sessionId).then(() => {
-              KioskLogger.log('info', 'SESSION', 'Privacy cleanup: Temporary photo deleted.', 'SUCCESS');
-            });
+            SessionStore.cleanupSession(sessionId);
           }, 60000); 
         }
       });
@@ -228,15 +222,15 @@ export default function KioskPage() {
 
   const startShotSequence = async () => {
     const totalShots = packageSelected === 50 ? 3 : 6;
-    const photos: string[] = [];
-    if (!selectedBlueprint) {
-      const defaultBp = BLUEPRINTS.find(b => b.package === packageSelected);
-      if (defaultBp) setSelectedBlueprint(defaultBp);
-    }
+    const photos: string[] = capturedPhotos.length > 0 ? [...capturedPhotos] : [];
+    
     setAppState("capturing");
-    setCapturedPhotos([]); 
-    await new Promise(r => setTimeout(r, 2000)); 
-    for (let i = 0; i < totalShots; i++) {
+    
+    // Only capture missing photos or retake a specific one
+    const startIdx = selectedRetakeIndex !== null ? selectedRetakeIndex : photos.length;
+    const endIdx = selectedRetakeIndex !== null ? selectedRetakeIndex + 1 : totalShots;
+
+    for (let i = startIdx; i < endIdx; i++) {
       for (let c = 3; c > 0; c--) {
         setCountdown(c);
         await new Promise(r => setTimeout(r, 1000));
@@ -244,34 +238,20 @@ export default function KioskPage() {
       setCountdown(null);
       setIsProcessing(true);
       const shot = takePhoto();
-      if (shot) { photos.push(shot); setCapturedPhotos([...photos]); }
+      if (shot) {
+        if (selectedRetakeIndex !== null) {
+          photos[i] = shot;
+        } else {
+          photos.push(shot);
+        }
+        setCapturedPhotos([...photos]);
+      }
       await new Promise(r => setTimeout(r, 600)); 
       setIsProcessing(false);
     }
-    setAppState("review");
-  };
-
-  const startSingleShotSequence = async (index: number) => {
-    setAppState("capturing");
-    await new Promise(r => setTimeout(r, 1000)); 
-    for (let c = 3; c > 0; c--) {
-      setCountdown(c);
-      await new Promise(r => setTimeout(r, 1000));
-    }
-    setCountdown(null);
-    setIsProcessing(true);
-    const shot = takePhoto();
-    if (shot) {
-      setCapturedPhotos(prev => {
-        const newPhotos = [...prev];
-        newPhotos[index] = shot;
-        return newPhotos;
-      });
-    }
-    await new Promise(r => setTimeout(r, 600)); 
-    setIsProcessing(false);
-    setAppState("review");
+    
     setSelectedRetakeIndex(null);
+    setAppState("review");
   };
 
   const takePhoto = (): string | null => {
@@ -312,7 +292,7 @@ export default function KioskPage() {
   };
 
   useEffect(() => {
-    if (appState === "setup" || appState === "capturing" || appState === "test-camera") {
+    if (appState === "setup" || appState === "test-camera" || appState === "capturing") {
       const start = async () => {
         if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
         try {
@@ -399,24 +379,27 @@ export default function KioskPage() {
         )}
 
         {appState === "setup" && (
-          <div className="w-full h-full max-w-7xl flex flex-row gap-8 items-start py-10 px-8">
-             <div className="flex-1 space-y-6 overflow-y-auto pr-4 scrollbar-hide">
+          <div className="w-full h-full max-w-7xl flex flex-row gap-8 items-start py-10 px-8 overflow-hidden">
+             <div className="flex-1 space-y-6 overflow-y-auto pr-4 scrollbar-hide h-full pb-20">
                 <div className="space-y-4">
-                  <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Select Layout</h2>
+                  <h2 className="font-headline font-black text-3xl italic uppercase text-primary">1. Select Layout</h2>
                   <div className="grid grid-cols-2 gap-4">
                     {currentBlueprints.map(bp => (
                       <button 
                         key={bp.id} 
                         onClick={() => setSelectedBlueprint(bp)} 
-                        className={cn("p-4 border-2 flex flex-col items-center bg-white/5 transition-all", selectedBlueprint?.id === bp.id ? "border-primary bg-primary/10 scale-95" : "border-white/10")}
+                        className={cn("p-4 border-2 flex flex-col items-center bg-white/5 transition-all min-h-[300px]", selectedBlueprint?.id === bp.id ? "border-primary bg-primary/10 scale-95" : "border-white/10")}
                       >
+                        <div className="flex-1 w-full relative mb-4">
+                          <BlueprintFrame blueprint={bp} photos={[]} isPreview className="!h-full !w-auto" />
+                        </div>
                         <span className="text-xs font-black uppercase italic">{bp.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
                 <div className="space-y-4">
-                  <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Filters</h2>
+                  <h2 className="font-headline font-black text-3xl italic uppercase text-primary">2. Beauty Filters</h2>
                   <div className="grid grid-cols-2 gap-2">
                     {currentFilters.map(f => (
                       <button key={f.id} onClick={() => setSelectedFilter(f)} className={cn("p-4 border-2 flex flex-col bg-white/5 transition-all", selectedFilter.id === f.id ? "border-primary bg-primary/10" : "border-white/10")}>
@@ -426,12 +409,39 @@ export default function KioskPage() {
                   </div>
                 </div>
              </div>
-             <div className="w-[500px] flex flex-col gap-6">
+             <div className="w-[500px] flex flex-col gap-6 sticky top-0">
                 <div className="relative aspect-[16/9] bg-zinc-900 border-4 border-white overflow-hidden shadow-2xl">
+                   <div className="absolute inset-0 z-10 bg-black/40 flex items-center justify-center p-6 text-center">
+                     <p className="text-sm font-black italic uppercase tracking-widest text-white/80">Select layout & filter to continue</p>
+                   </div>
                    <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} />
                 </div>
-                <NeonButton onClick={() => startShotSequence()} className="w-full py-12 text-3xl">SHOOT</NeonButton>
+                <NeonButton 
+                  disabled={!selectedBlueprint}
+                  onClick={() => setAppState("test-camera")} 
+                  className="w-full py-12 text-3xl"
+                >
+                  NEXT
+                </NeonButton>
              </div>
+          </div>
+        )}
+
+        {appState === "test-camera" && (
+          <div className="w-full h-full max-w-7xl flex flex-col items-center justify-center px-8 py-10 space-y-8">
+             <div className="text-center space-y-2">
+                <h2 className="font-headline font-black text-5xl italic uppercase text-primary">ADJUST YOUR POSE</h2>
+                <p className="text-white/40 font-black uppercase italic tracking-widest">Get ready for your session!</p>
+             </div>
+             
+             <div className="relative w-full max-w-4xl aspect-[16/9] bg-zinc-900 border-8 border-white shadow-[0_0_100px_rgba(255,51,153,0.3)] overflow-hidden">
+                <video ref={videoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover", selectedFilter.class)} />
+                <div className="absolute inset-0 pointer-events-none border-[40px] border-transparent outline outline-4 outline-white/20 outline-offset-[-40px]"></div>
+             </div>
+             
+             <NeonButton onClick={() => startShotSequence()} className="px-24 py-12 text-4xl flex items-center gap-4">
+                <Play className="w-10 h-10" /> START PHOTO SESSION
+             </NeonButton>
           </div>
         )}
 
@@ -475,7 +485,7 @@ export default function KioskPage() {
                <div className="h-px bg-white/10 w-full my-4" />
                
                <button 
-                onClick={() => selectedRetakeIndex !== null && startSingleShotSequence(selectedRetakeIndex)} 
+                onClick={() => selectedRetakeIndex !== null && startShotSequence()} 
                 disabled={selectedRetakeIndex === null} 
                 className={cn(
                   "w-full py-8 font-black uppercase italic transition-all border-2 flex items-center justify-center gap-3",
@@ -488,7 +498,7 @@ export default function KioskPage() {
                </button>
 
                <button 
-                onClick={() => setAppState("setup")} 
+                onClick={() => startShotSequence()} 
                 className="w-full py-4 border-2 border-white/20 font-black uppercase italic text-white/40 hover:text-white transition-colors flex items-center justify-center gap-2"
                >
                  <RotateCcw className="w-4 h-4" /> Retake All Photos
@@ -529,7 +539,7 @@ export default function KioskPage() {
                       </div>
                    </div>
                    <div className="space-y-4">
-                      <h3 className="text-[10px] font-black uppercase text-white/40 italic">Quotes</h3>
+                      <h3 className="text-[10px] font-black uppercase text-white/40 italic">Short Inspirational Quotes</h3>
                       <div className="grid grid-cols-1 gap-2">
                         {QUOTES.map(q => (
                           <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("p-4 border-2 text-left transition-all", selectedQuote.id === q.id ? "border-primary bg-primary/10" : "border-white/10 bg-white/5")}><p className="text-xs font-bold italic">"{q.text}"</p></button>
@@ -537,8 +547,42 @@ export default function KioskPage() {
                       </div>
                    </div>
                 </div>
-                <NeonButton onClick={() => setAppState("consent")} className="w-full py-10 text-2xl">NEXT</NeonButton>
+                <NeonButton onClick={() => setAppState("final-preview")} className="w-full py-10 text-2xl">DONE</NeonButton>
              </div>
+          </div>
+        )}
+
+        {appState === "final-preview" && (
+          <div className="w-full h-full flex flex-col items-center justify-center py-6 px-8 space-y-8">
+            <div className="text-center space-y-2">
+              <h2 className="font-headline font-black text-5xl italic uppercase text-primary">FINAL LAYOUT PREVIEW</h2>
+              <p className="text-white/40 font-black uppercase italic tracking-widest">Ready to print your moment?</p>
+            </div>
+            
+            <div className="flex-1 flex items-center justify-center">
+              <div className="h-[60vh] aspect-[1600/2400] relative border-[12px] border-white bg-white shadow-[0_0_80px_rgba(255,51,153,0.3)] overflow-hidden">
+                {selectedBlueprint && (
+                  <BlueprintFrame 
+                    blueprint={selectedBlueprint} 
+                    photos={capturedPhotos} 
+                    filterClass={selectedFilter.class} 
+                    quoteText={selectedQuote.text} 
+                    stickers={placedStickers}
+                    isPreview={false}
+                  />
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-4 w-full max-w-2xl">
+              <button 
+                onClick={() => setAppState("decorating")} 
+                className="flex-1 py-8 border-2 border-white/20 font-black uppercase italic text-white/60 hover:text-white transition-colors"
+              >
+                BACK TO EDITOR
+              </button>
+              <NeonButton onClick={() => setAppState("consent")} className="flex-[2] py-8 text-2xl">PROCEED TO PRINT</NeonButton>
+            </div>
           </div>
         )}
 
@@ -546,10 +590,10 @@ export default function KioskPage() {
           <div className="w-full max-w-4xl flex flex-col items-center justify-center h-full px-6 space-y-12 animate-in fade-in zoom-in duration-500">
              <div className="text-center space-y-6">
                 <h2 className="font-headline font-black text-6xl italic uppercase leading-tight">
-                  CAN WE SHARE YOUR <br/> <span className="text-primary">MOMENT</span> ON OUR BOOTH?
+                  PHOTO CONSENT
                 </h2>
-                <p className="text-white/40 font-black uppercase italic tracking-widest text-sm">
-                  Your choice helps us showcase the JNL Studio community
+                <p className="text-white/80 font-black uppercase italic tracking-widest text-xl">
+                  May we use your photo for JNL Studio Facebook page promotion?
                 </p>
              </div>
              
@@ -559,8 +603,8 @@ export default function KioskPage() {
                   className="group relative flex flex-col items-center justify-center bg-white/5 border-4 border-white/10 p-12 hover:border-green-500 transition-all active:scale-95"
                 >
                   <HandMetal className="w-20 h-20 text-green-500 mb-4 group-hover:scale-110 transition-transform" />
-                  <span className="text-4xl font-black italic uppercase text-white">YES, PLEASE!</span>
-                  <span className="text-[10px] font-black uppercase text-white/40 mt-2">SAVE TO LEXAR USB</span>
+                  <span className="text-4xl font-black italic uppercase text-white">YES, YOU MAY POST</span>
+                  <span className="text-[10px] font-black uppercase text-white/40 mt-2">SHARE MY MOMENT</span>
                 </button>
                 
                 <button 
@@ -568,7 +612,7 @@ export default function KioskPage() {
                   className="group relative flex flex-col items-center justify-center bg-white/5 border-4 border-white/10 p-12 hover:border-red-500 transition-all active:scale-95"
                 >
                   <X className="w-20 h-20 text-red-500 mb-4 group-hover:scale-110 transition-transform" />
-                  <span className="text-4xl font-black italic uppercase text-white">NO, THANKS</span>
+                  <span className="text-4xl font-black italic uppercase text-white">NO, KEEP PRIVATE</span>
                   <span className="text-[10px] font-black uppercase text-white/40 mt-2">PRIVATE SOFT COPY ONLY</span>
                 </button>
              </div>
@@ -627,12 +671,11 @@ export default function KioskPage() {
              <h2 className="font-headline font-black text-7xl italic uppercase">THANK <span className="text-primary">YOU!</span></h2>
              <p className="text-xl font-black uppercase text-white/40 italic tracking-[0.3em] mt-4">VISIT US AGAIN SOON</p>
              
-             {/* FB FOLLOW QR CODE FOR THANK YOU PAGE */}
-             <div className="mt-12 flex flex-col items-center gap-4 bg-white/5 p-8 border border-white/10 rounded-[3rem]">
-                <p className="text-2xl font-black italic uppercase text-primary flex items-center gap-3">
-                   FOLLOW US <span className="animate-bounce">👇</span>
+             <div className="mt-12 flex flex-col items-center gap-6 bg-white/5 p-8 border border-white/10 rounded-[3rem] animate-bounce">
+                <p className="text-3xl font-black italic uppercase text-primary flex items-center gap-4">
+                   FOLLOW US 👇
                 </p>
-                <div className="w-48 h-48 bg-white p-3 rounded-2xl shadow-2xl">
+                <div className="w-56 h-56 bg-white p-4 rounded-2xl shadow-[0_0_40px_rgba(255,51,153,0.4)]">
                    <img src={fbQrUrl} alt="FB Follow" className="w-full h-full" />
                 </div>
              </div>

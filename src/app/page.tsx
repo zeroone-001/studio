@@ -71,6 +71,21 @@ export default function KioskPage() {
   const exportTriggeredRef = useRef(false);
   const [originUrl, setOriginUrl] = useState("https://jnl-studio-booth.web.app");
 
+  // Payment Auto-Detection Logic
+  useEffect(() => {
+    if (appState === "payment") {
+      if (paymentReceived === 50) {
+        setPackageSelected(50);
+        setAppState("setup");
+        KioskLogger.log('info', 'SESSION', '₱50 Bill Detected. Auto-starting Package 1.', 'SUCCESS');
+      } else if (paymentReceived >= 100) {
+        setPackageSelected(100);
+        setAppState("setup");
+        KioskLogger.log('info', 'SESSION', '₱100 Bill Detected. Auto-starting Package 2.', 'SUCCESS');
+      }
+    }
+  }, [paymentReceived, appState]);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setOriginUrl(window.location.origin);
@@ -85,11 +100,14 @@ export default function KioskPage() {
   }, [selectedCameraId]);
 
   const initiatePrint = useCallback((blob: Blob) => {
-    KioskLogger.log('info', 'PRINT', 'Handing over portrait to printer system.', 'PENDING');
+    KioskLogger.log('info', 'PRINT', 'Preparing print signal for Epson L210.', 'PENDING');
     if (!printIframeRef.current) return;
     const iframe = printIframeRef.current;
     const docObj = iframe.contentDocument || iframe.contentWindow?.document;
-    if (!docObj) return;
+    if (!docObj) {
+      KioskLogger.log('error', 'PRINT', 'Print iframe handshake failed.', 'FAILED');
+      return;
+    }
 
     const dataUrl = URL.createObjectURL(blob);
     docObj.open();
@@ -103,14 +121,17 @@ export default function KioskPage() {
     `);
     docObj.close();
     
+    // Diagnostic log for NokoPrint detection
+    KioskLogger.log('info', 'PRINT', 'Iframe ready. Dispatching browser print signal.', 'SUCCESS');
+
     setTimeout(() => {
       try {
         iframe.contentWindow?.focus();
         iframe.contentWindow?.print();
         URL.revokeObjectURL(dataUrl);
-        KioskLogger.log('info', 'PRINT', 'System print signal sent.', 'SUCCESS');
+        KioskLogger.log('info', 'PRINT', 'System Print Request Sent.', 'SUCCESS');
       } catch (e: any) {
-        KioskLogger.log('error', 'PRINT', 'System print failed.', 'FAILED', e.message);
+        KioskLogger.log('error', 'PRINT', 'Handover to NokoPrint failed.', 'FAILED', e.message);
       }
     }, 1000);
   }, []);
@@ -174,7 +195,10 @@ export default function KioskPage() {
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
       await SessionStore.savePhotoLocally(sessionId, blob);
+      
+      // Auto-Print 2 Copies Handover
       initiatePrint(blob); 
+      
       setUploadStatus("uploading");
       
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
@@ -384,39 +408,32 @@ export default function KioskPage() {
                </div>
                <div className="text-6xl font-black italic text-primary">{paymentReceived} PHP</div>
             </div>
-            <div className="grid grid-cols-2 gap-4 w-full">
-              {paymentReceived >= 50 && (
-                <NeonButton onClick={() => { setPackageSelected(50); setAppState("setup"); }} className="w-full py-10 text-xl border-4 border-primary">50 PESOS</NeonButton>
-              )}
-              {paymentReceived >= 100 && (
-                <NeonButton onClick={() => { setPackageSelected(100); setAppState("setup"); }} className="w-full py-10 text-xl border-4 border-primary">100 PESOS</NeonButton>
-              )}
-            </div>
+            <p className="text-white/40 font-black uppercase italic tracking-widest">Your session will start automatically when money is detected.</p>
           </div>
         )}
 
         {appState === "setup" && (
-          <div className="w-full h-full max-w-7xl flex flex-row gap-8 items-start py-10 px-8 overflow-hidden">
-             <div className="flex-1 space-y-6 overflow-y-auto pr-4 scrollbar-hide h-full pb-20">
+          <div className="w-full h-full max-w-7xl flex flex-row gap-8 items-start py-6 px-8 overflow-hidden">
+             <div className="flex-[0.4] space-y-4 overflow-y-auto pr-4 scrollbar-hide h-full pb-20">
                 <div className="space-y-4">
-                  <h2 className="font-headline font-black text-3xl italic uppercase text-primary">1. Select Layout</h2>
-                  <div className="grid grid-cols-2 gap-4">
+                  <h2 className="font-headline font-black text-2xl italic uppercase text-primary">1. Select Layout</h2>
+                  <div className="grid grid-cols-2 gap-3">
                     {currentBlueprints.map(bp => (
                       <button 
                         key={bp.id} 
                         onClick={() => setSelectedBlueprint(bp)} 
-                        className={cn("p-4 border-2 flex flex-col items-center bg-white/5 transition-all min-h-[300px]", selectedBlueprint?.id === bp.id ? "border-primary bg-primary/10 scale-95" : "border-white/10")}
+                        className={cn("p-4 border-2 flex flex-col items-center bg-white/5 transition-all min-h-[200px]", selectedBlueprint?.id === bp.id ? "border-primary bg-primary/10 scale-95" : "border-white/10")}
                       >
-                        <div className="flex-1 w-full relative mb-4">
+                        <div className="flex-1 w-full relative mb-2">
                           <BlueprintFrame blueprint={bp} photos={[]} isPreview className="!h-full !w-auto" />
                         </div>
-                        <span className="text-xs font-black uppercase italic">{bp.label}</span>
+                        <span className="text-[8px] font-black uppercase italic">{bp.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
                 <div className="space-y-4">
-                  <h2 className="font-headline font-black text-3xl italic uppercase text-primary">2. Beauty Filters</h2>
+                  <h2 className="font-headline font-black text-2xl italic uppercase text-primary">2. Beauty Filters</h2>
                   <div className="grid grid-cols-2 gap-2">
                     {currentFilters.map(f => (
                       <button key={f.id} onClick={() => setSelectedFilter(f)} className={cn("p-4 border-2 flex flex-col bg-white/5 transition-all", selectedFilter.id === f.id ? "border-primary bg-primary/10" : "border-white/10")}>
@@ -426,20 +443,20 @@ export default function KioskPage() {
                   </div>
                 </div>
              </div>
-             <div className="w-[500px] flex flex-col gap-6 sticky top-0">
-                <div className="relative aspect-[16/9] bg-zinc-900 border-4 border-white overflow-hidden shadow-2xl">
-                   <div className="absolute inset-0 z-10 bg-black/40 flex items-center justify-center p-6 text-center">
-                     <p className="text-sm font-black italic uppercase tracking-widest text-white/80">Select layout & filter to continue</p>
-                   </div>
+             <div className="flex-1 flex flex-col gap-6 h-full">
+                <div className="relative flex-1 bg-zinc-900 border-4 border-white overflow-hidden shadow-2xl">
                    <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} />
                 </div>
-                <NeonButton 
-                  disabled={!selectedBlueprint}
-                  onClick={() => setAppState("test-camera")} 
-                  className="w-full py-12 text-3xl"
-                >
-                  NEXT
-                </NeonButton>
+                <div className="flex flex-col items-center gap-4">
+                  <p className="text-[10px] font-black uppercase italic tracking-widest text-white/40">Check your pose & select filters above to continue</p>
+                  <NeonButton 
+                    disabled={!selectedBlueprint}
+                    onClick={() => setAppState("test-camera")} 
+                    className="w-full py-10 text-3xl"
+                  >
+                    NEXT
+                  </NeonButton>
+                </div>
              </div>
           </div>
         )}
@@ -699,7 +716,7 @@ export default function KioskPage() {
              <h2 className="font-headline font-black text-7xl italic uppercase">THANK <span className="text-primary">YOU!</span></h2>
              <p className="text-xl font-black uppercase text-white/40 italic tracking-[0.3em] mt-4">VISIT US AGAIN SOON</p>
              
-             <div className="mt-12 flex flex-col items-center gap-6 bg-white/5 p-8 border border-white/10 rounded-[3rem] animate-bounce">
+             <div className="mt-12 flex flex-col items-center gap-6 bg-white/5 p-8 border border-white/10 rounded-[3rem]">
                 <p className="text-3xl font-black italic uppercase text-primary flex items-center gap-4">
                    FOLLOW US 👇
                 </p>

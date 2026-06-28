@@ -289,12 +289,24 @@ export default function KioskPage() {
   }, [packageSelected, appState, availableBlueprints, selectedBlueprint]);
 
   const initiatePrint = (blob: Blob) => {
-    if (!printIframeRef.current) return;
+    KioskLogger.log('info', 'Hardware', `Print initiated. Image size: ${(blob.size / 1024).toFixed(1)} KB`);
+    
+    if (!printIframeRef.current) {
+      KioskLogger.log('error', 'Hardware', 'Print failure: iframe reference missing');
+      return;
+    }
+    
     const iframe = printIframeRef.current;
     const doc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (!doc) return;
+    
+    if (!doc) {
+      KioskLogger.log('error', 'Hardware', 'Print failure: iframe document inaccessible');
+      return;
+    }
 
     const dataUrl = URL.createObjectURL(blob);
+    KioskLogger.log('info', 'Hardware', 'Temporary print URL generated for iframe injection.');
+
     doc.open();
     doc.write(`
       <html>
@@ -306,32 +318,46 @@ export default function KioskPage() {
           </style>
         </head>
         <body>
-          <img src="${dataUrl}" onload="window.print();" />
+          <img src="${dataUrl}" />
         </body>
       </html>
     `);
     doc.close();
     
-    KioskLogger.log('info', 'Hardware', 'Thermal print signal sent to system service.');
-    
+    // Increased delay for Android rendering and NokoPrint interception
     setTimeout(() => {
-      iframe.contentWindow?.print();
-      URL.revokeObjectURL(dataUrl);
-    }, 500);
+      try {
+        KioskLogger.log('info', 'Hardware', 'Sending window.print() signal to Android System Manager.');
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        URL.revokeObjectURL(dataUrl);
+      } catch (e: any) {
+        KioskLogger.log('error', 'Hardware', `Browser Print Exception: ${e.message}`);
+      }
+    }, 1200);
   };
 
   const handleFinalExport = useCallback(async () => {
-    if (!selectedBlueprint || capturedPhotos.length === 0) return;
+    KioskLogger.log('info', 'Export', 'Starting high-resolution canvas assembly...');
+
+    if (!selectedBlueprint) {
+      KioskLogger.log('error', 'Export', 'Export aborted: No frame blueprint selected.');
+      return;
+    }
+    if (capturedPhotos.length === 0) {
+      KioskLogger.log('error', 'Export', 'Export aborted: No captured photos found.');
+      return;
+    }
     
     // 1. UNIQUE SESSION ID (Isolated & Secure)
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
+    KioskLogger.log('info', 'Export', `New Secure Session ID: ${sessionId}`);
 
     // 2. INSTANT QR URL GENERATION (Handshake ready immediately)
     const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-    KioskLogger.log('info', 'Export', `Secure ID Linked: ${sessionId}`);
-
+    
     const { storage, db } = initializeFirebase();
     
     // 3. IMMEDIATE FIRESTORE HANDSHAKE (Prevents scan delay errors)
@@ -414,13 +440,20 @@ export default function KioskPage() {
       await drawContent(0);
     }
 
+    KioskLogger.log('info', 'Export', 'Canvas assembly complete. Converting to Blob...');
+
     exportCanvas.toBlob(async (blob) => {
-      if (!blob) return;
+      if (!blob) {
+        KioskLogger.log('error', 'Export', 'Blob conversion failed.');
+        return;
+      }
+      KioskLogger.log('info', 'Export', `Blob created successfully. Size: ${(blob.size / 1024).toFixed(1)} KB`);
 
       // 4. HYBRID PERSISTENCE
       await SessionStore.savePhotoLocally(sessionId, blob);
       
       if (promoConsent === true && usbDirectoryHandle) {
+        KioskLogger.log('info', 'Export', 'Scheduling Lexar USB backup (2-min delay)...');
         setTimeout(async () => {
           await SessionStore.saveToUsb(usbDirectoryHandle, sessionId, blob);
           KioskLogger.log('info', 'Hardware', `USB Backup (YES): ${sessionId} saved to Lexar.`);
@@ -436,9 +469,10 @@ export default function KioskPage() {
       uploadBytes(photoRef, blob).then(() => {
         updateDoc(doc(db, "photos", sessionId), { status: 'complete' });
         setUploadStatus("complete");
+        KioskLogger.log('info', 'Cloud', 'High-definition upload verified.');
       }).catch((e) => {
         setUploadStatus("error");
-        KioskLogger.log('error', 'Cloud', 'Sync deferred.');
+        KioskLogger.log('error', 'Cloud', `Sync deferred: ${e.message}`);
       });
     }, 'image/jpeg', 0.88);
 

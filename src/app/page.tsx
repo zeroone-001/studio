@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -11,7 +12,7 @@ import {
   Wallet, Sparkles, Frame, Quote, Trash2, Cat, Moon, Sun, 
   Coffee, Pizza, Flower2, Crown, Layers, CameraIcon, Flashlight, User, HeartIcon,
   QrCode, Facebook, Printer, Usb, AlertCircle, Star, Ghost, PartyPopper,
-  CheckCircle2, RotateCcw, Cookie as CookieIcon, Banknote, Loader2
+  CheckCircle2, RotateCcw, Cookie as CookieIcon, Banknote, Loader2, Target
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -146,6 +147,7 @@ export default function KioskPage() {
   const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
   const [printProgress, setPrintProgress] = useState(0);
   const [promoConsent, setPromoConsent] = useState<boolean | null>(null);
+  const [selectedRetakeIndex, setSelectedRetakeIndex] = useState<number | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -506,6 +508,7 @@ export default function KioskPage() {
     setPrintProgress(0);
     setPromoConsent(null);
     setIsOwnerMode(false); 
+    setSelectedRetakeIndex(null);
   }, []);
 
   const startCamera = async (deviceId?: string) => {
@@ -571,6 +574,33 @@ export default function KioskPage() {
       setIsProcessing(false);
     }
     setAppState("review");
+  };
+
+  const startSingleShotSequence = async (index: number) => {
+    setAppState("capturing");
+    setCountdown(null);
+    setIsProcessing(false);
+    
+    await new Promise(r => setTimeout(r, 1000)); 
+
+    for (let c = 3; c > 0; c--) {
+      setCountdown(c);
+      await new Promise(r => setTimeout(r, 1000));
+    }
+    setCountdown(null);
+    setIsProcessing(true);
+    const shot = takePhoto();
+    if (shot) {
+      setCapturedPhotos(prev => {
+        const newPhotos = [...prev];
+        newPhotos[index] = shot;
+        return newPhotos;
+      });
+    }
+    await new Promise(r => setTimeout(r, 600)); 
+    setIsProcessing(false);
+    setAppState("review");
+    setSelectedRetakeIndex(null);
   };
 
   useEffect(() => {
@@ -725,20 +755,67 @@ export default function KioskPage() {
 
         {appState === "review" && (
           <div className="w-full h-full max-7xl flex flex-col lg:flex-row items-center justify-center gap-12 animate-in fade-in duration-500 py-6 px-8">
-            <div className="relative w-full lg:flex-1 h-full flex items-center justify-center overflow-hidden">
-              <div className="h-full w-auto max-w-full shadow-[0_0_60px_rgba(0,0,0,0.8)] relative border-4 border-white">
+            <div className="relative w-full lg:flex-1 h-full flex flex-col items-center justify-center overflow-hidden">
+              <div className="h-[60vh] lg:h-[70vh] w-auto max-w-full shadow-[0_0_60px_rgba(0,0,0,0.8)] relative border-4 border-white mb-6">
                  {selectedBlueprint && capturedPhotos.length > 0 && <BlueprintFrame blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.class} isPreview />}
               </div>
+              
+              {/* Photo Selector for Selective Retake */}
+              <div className="w-full max-w-2xl bg-white/5 border border-white/10 p-4 rounded-3xl">
+                <p className="text-[10px] font-black uppercase text-primary mb-3 text-center tracking-widest">Select a photo to retake</p>
+                <div className="grid grid-cols-6 gap-2">
+                  {capturedPhotos.map((photo, idx) => (
+                    <button 
+                      key={idx} 
+                      onClick={() => setSelectedRetakeIndex(idx)}
+                      className={cn(
+                        "aspect-[3/4] border-2 transition-all relative overflow-hidden rounded-lg",
+                        selectedRetakeIndex === idx ? "border-primary shadow-[0_0_15px_#FF3399] scale-105 z-10" : "border-white/10 hover:border-white/30"
+                      )}
+                    >
+                      <img src={photo} alt={`Captured ${idx}`} className={cn("w-full h-full object-cover", selectedFilter.class)} />
+                      {selectedRetakeIndex === idx && (
+                        <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                          <CheckCircle2 className="w-6 h-6 text-white drop-shadow-lg" />
+                        </div>
+                      )}
+                      <div className="absolute top-1 left-1 bg-black/60 px-1.5 py-0.5 text-[8px] font-black rounded-sm">{idx + 1}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
+
             <div className="w-full lg:w-96 space-y-6 flex flex-col items-center lg:items-start shrink-0">
                <h2 className="font-headline font-black text-5xl italic uppercase text-primary leading-none">PREVIEW</h2>
                <div className="grid grid-cols-1 gap-4 w-full">
                   <NeonButton onClick={() => setAppState("decorating")} className="w-full !py-10 text-2xl flex items-center justify-center gap-3">
                     <CheckCircle2 className="w-8 h-8" /> USE PHOTO
                   </NeonButton>
-                  <button onClick={() => { setCapturedPhotos([]); setAppState("setup"); }} className="w-full border-4 border-white font-headline font-black text-xl py-8 italic uppercase hover:bg-white hover:text-black flex items-center justify-center gap-3 transition-colors">
-                    <RotateCcw className="w-8 h-8" /> RETAKE
-                  </button>
+                  
+                  <div className="bg-white/5 border border-white/10 p-4 space-y-3 rounded-2xl">
+                    <button 
+                      onClick={() => {
+                        if (selectedRetakeIndex !== null) startSingleShotSequence(selectedRetakeIndex);
+                      }} 
+                      disabled={selectedRetakeIndex === null}
+                      className={cn(
+                        "w-full py-6 font-headline font-black text-lg italic uppercase flex items-center justify-center gap-3 transition-all rounded-xl",
+                        selectedRetakeIndex !== null 
+                          ? "bg-primary text-white shadow-[0_0_15px_rgba(255,51,153,0.5)] active:scale-95" 
+                          : "bg-white/5 text-white/20 cursor-not-allowed"
+                      )}
+                    >
+                      <Target className="w-6 h-6" /> Retake Selected
+                    </button>
+                    
+                    <button 
+                      onClick={() => { setCapturedPhotos([]); setAppState("setup"); }} 
+                      className="w-full border-2 border-white/20 font-headline font-black text-xs py-4 italic uppercase text-white/40 hover:text-white hover:border-white flex items-center justify-center gap-3 transition-colors rounded-xl"
+                    >
+                      <RotateCcw className="w-4 h-4" /> Retake All
+                    </button>
+                  </div>
                </div>
             </div>
           </div>
@@ -853,7 +930,7 @@ export default function KioskPage() {
                      {/* Instant Photo Verification Thumbnail */}
                      {capturedPhotos.length > 0 && (
                        <div className="w-full pt-4 border-t border-white/5 flex flex-col items-center gap-2">
-                         <div className="w-20 aspect-[3/4] border-2 border-white/20 rounded-lg overflow-hidden relative shadow-lg">
+                         <div className="w-24 aspect-[3/4] border-2 border-white/20 rounded-lg overflow-hidden relative shadow-lg">
                            <img src={capturedPhotos[0]} alt="Verification" className={cn("w-full h-full object-cover", selectedFilter.class)} />
                          </div>
                          <span className="text-[7px] font-black uppercase text-zinc-500">Soft Copy Preview</span>

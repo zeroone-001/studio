@@ -21,7 +21,7 @@ import { SessionStore } from "@/lib/kiosk/persistence";
 import { KioskLogger } from "@/lib/kiosk/logger";
 import { initializeFirebase } from "@/firebase";
 import { ref, uploadBytes } from "firebase/storage";
-import { doc, setDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, updateDoc, onSnapshot } from "firebase/firestore";
 import { 
   SessionState, 
   FILTERS, 
@@ -99,6 +99,22 @@ export default function KioskPage() {
     }
   }, [selectedCameraId]);
 
+  // Privacy Auto-Delete Listener: Purge NO consent photos after successful scan/download
+  useEffect(() => {
+    if (currentSessionId && promoConsent === false && uploadStatus === 'complete') {
+      const { db } = initializeFirebase();
+      const unsub = onSnapshot(doc(db, "photos", currentSessionId), (docSnap) => {
+        const data = docSnap.data();
+        if (data?.isDownloaded === true) {
+          KioskLogger.log('info', 'SESSION', `Privacy Purge Triggered for ${currentSessionId}.`, 'SUCCESS');
+          SessionStore.cleanupSession(currentSessionId);
+          unsub();
+        }
+      });
+      return () => unsub();
+    }
+  }, [currentSessionId, promoConsent, uploadStatus]);
+
   const initiatePrint = useCallback((blob: Blob) => {
     KioskLogger.log('info', 'PRINT', 'Preparing print signal for Epson L210.', 'PENDING');
     if (!printIframeRef.current) return;
@@ -121,9 +137,6 @@ export default function KioskPage() {
     `);
     docObj.close();
     
-    // Diagnostic log for NokoPrint detection
-    KioskLogger.log('info', 'PRINT', 'Iframe ready. Dispatching browser print signal.', 'SUCCESS');
-
     setTimeout(() => {
       try {
         iframe.contentWindow?.focus();
@@ -194,9 +207,12 @@ export default function KioskPage() {
 
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
-      await SessionStore.savePhotoLocally(sessionId, blob);
       
-      // Auto-Print 2 Copies Handover
+      // REQUIREMENT: Save photo locally on Honor Pad storage first
+      await SessionStore.savePhotoLocally(sessionId, blob);
+      KioskLogger.log('info', 'SESSION', 'Portrait saved to local gallery.', 'SUCCESS');
+      
+      // Auto-Print 2 Copies
       initiatePrint(blob); 
       
       setUploadStatus("uploading");
@@ -206,16 +222,11 @@ export default function KioskPage() {
         updateDoc(doc(db, "photos", sessionId), { status: 'complete' });
         setUploadStatus("complete");
         
+        // REQUIREMENT: IF Consent = YES, copy to USB "JNL POST" folder
         if (promoConsent && usbHandle) {
           SessionStore.saveToUsb(usbHandle, sessionId, blob).then(success => {
-            if (success) KioskLogger.log('info', 'HARDWARE', 'Backup to Lexar USB complete.', 'SUCCESS');
+            if (success) KioskLogger.log('info', 'HARDWARE', 'Backup to Lexar USB (JNL POST) complete.', 'SUCCESS');
           });
-        }
-
-        if (promoConsent === false) {
-          setTimeout(() => {
-            SessionStore.cleanupSession(sessionId);
-          }, 60000); 
         }
       });
     }, 'image/jpeg', 0.9);
@@ -265,7 +276,6 @@ export default function KioskPage() {
       setCurrentShotIndex(i);
       setWaitingForTrigger(true);
       
-      // Wait for manual trigger
       await new Promise<void>((resolve) => {
         triggerResolveRef.current = resolve;
       });
@@ -660,7 +670,7 @@ export default function KioskPage() {
                   className="group relative flex flex-col items-center justify-center bg-primary border-4 border-primary/20 p-12 hover:bg-primary/90 transition-all active:scale-95 shadow-[0_0_30px_rgba(255,51,153,0.4)]"
                 >
                   <Heart className="w-20 h-20 text-white mb-4 group-hover:scale-110 transition-transform fill-white" />
-                  <span className="text-5xl font-black italic uppercase text-white">🩷 YES / OO</span>
+                  <span className="text-5xl font-black italic uppercase text-white">🩷 YES, I AGREE</span>
                   <span className="text-[10px] font-black uppercase text-white/60 mt-2">SHARE MY MOMENT</span>
                 </button>
                 
@@ -669,7 +679,7 @@ export default function KioskPage() {
                   className="group relative flex flex-col items-center justify-center bg-black border-4 border-white/10 p-12 hover:bg-zinc-900 transition-all active:scale-95"
                 >
                   <Shield className="w-20 h-20 text-white/40 mb-4 group-hover:scale-110 transition-transform" />
-                  <span className="text-5xl font-black italic uppercase text-white">⚫ NO / HINDI</span>
+                  <span className="text-5xl font-black italic uppercase text-white">⚫ NO, KEEP PRIVATE</span>
                   <span className="text-[10px] font-black uppercase text-white/40 mt-2">KEEP MY PHOTO PRIVATE</span>
                 </button>
              </div>

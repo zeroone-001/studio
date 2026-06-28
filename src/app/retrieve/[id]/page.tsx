@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
@@ -77,7 +78,8 @@ export default function RetrievePage() {
     if (!imageUrl || !id) return;
     try {
       const { db } = initializeFirebase();
-      updateDoc(doc(db, "photos", id), { isDownloaded: true });
+      // REQUIREMENT: Update Firestore so the kiosk knows the download was successful
+      await updateDoc(doc(db, "photos", id), { isDownloaded: true });
       
       const response = await fetch(imageUrl);
       const blob = await response.blob();

@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Session persistence and Hybrid Sync Queue for JNL Studio Kiosk.
  * Optimized for Honor Pad X10 local storage and lifecycle management.
@@ -64,11 +65,11 @@ export const SessionStore = {
     }
   },
 
-  // Save specifically to the Lexar USB Drive in the "jnl studio photobooth" folder
+  // Save specifically to the Lexar USB Drive in the "JNL POST" folder for YES consent
   saveToUsb: async (handle: FileSystemDirectoryHandle, id: string, blob: Blob) => {
     try {
-      // Access or create 'jnl studio photobooth' folder structure
-      const studioFolder = await handle.getDirectoryHandle('jnl studio photobooth', { create: true });
+      // Access or create 'JNL POST' folder structure on Lexar USB
+      const studioFolder = await handle.getDirectoryHandle('JNL POST', { create: true });
       const fileHandle = await studioFolder.getFileHandle(`${id}.jpg`, { create: true });
       const writable = await fileHandle.createWritable();
       await writable.write(blob);
@@ -80,7 +81,7 @@ export const SessionStore = {
     }
   },
 
-  // Cleanup logic: Verify backups before deleting local temporary copy (Consent: NO)
+  // Cleanup logic: Automatically delete local temporary copy for NO consent photos
   cleanupSession: async (id: string) => {
     try {
       if (typeof window === 'undefined') return;

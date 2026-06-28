@@ -9,7 +9,8 @@ import { HealthMonitor } from "@/components/kiosk/health-monitor";
 import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
   Printer, Loader2, Download, CheckCircle2, AlertCircle, 
-  RotateCcw, Camera, Target, Trash2, Layers, Maximize2, RotateCw, X
+  RotateCcw, Camera, Target, Trash2, Layers, Maximize2, RotateCw, X,
+  Facebook, HandMetal
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -56,7 +57,10 @@ export default function KioskPage() {
   const [logoTapCount, setLogoTapCount] = useState(0);
   const [currentSessionId, setCurrentSessionId] = useState("");
   const [softCopyQrUrl, setSoftCopyQrUrl] = useState("");
+  const [fbQrUrl] = useState(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent("https://www.facebook.com/share/1GjRMiCVe3/")}`);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "complete" | "error">("idle");
+  const [promoConsent, setPromoConsent] = useState<boolean | null>(null);
+  const [usbHandle, setUsbHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const exportTriggeredRef = useRef(false);
 
   const [originUrl, setOriginUrl] = useState("https://jnl-studio-booth.web.app");
@@ -119,6 +123,7 @@ export default function KioskPage() {
       storagePath: `photos/${sessionId}.jpg`,
       timestamp: serverTimestamp(),
       isDownloaded: false,
+      promoConsent: promoConsent,
       status: 'uploading'
     });
 
@@ -165,13 +170,32 @@ export default function KioskPage() {
       await SessionStore.savePhotoLocally(sessionId, blob);
       initiatePrint(blob); 
       setUploadStatus("uploading");
+      
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       uploadBytes(photoRef, blob).then(() => {
         updateDoc(doc(db, "photos", sessionId), { status: 'complete' });
         setUploadStatus("complete");
+        
+        // AUTO-SAVE TO USB (YES CONSENT)
+        if (promoConsent && usbHandle) {
+          setTimeout(() => {
+            SessionStore.saveToUsb(usbHandle, sessionId, blob).then(success => {
+              if (success) KioskLogger.log('info', 'HARDWARE', 'Backup to Lexar USB complete.', 'SUCCESS');
+            });
+          }, 60000); // 1 minute delay as requested
+        }
+
+        // AUTO-DELETE (NO CONSENT)
+        if (promoConsent === false) {
+          setTimeout(() => {
+            SessionStore.cleanupSession(sessionId).then(() => {
+              KioskLogger.log('info', 'SESSION', 'Privacy cleanup: Temporary photo deleted.', 'SUCCESS');
+            });
+          }, 60000); // 1 minute delay as requested
+        }
       });
     }, 'image/jpeg', 0.9);
-  }, [selectedBlueprint, capturedPhotos, selectedQuote, originUrl, initiatePrint]);
+  }, [selectedBlueprint, capturedPhotos, selectedQuote, originUrl, initiatePrint, promoConsent, usbHandle]);
 
   useEffect(() => {
     if (appState === "printing" && !exportTriggeredRef.current) {
@@ -181,6 +205,7 @@ export default function KioskPage() {
     if (appState === "welcome") {
       exportTriggeredRef.current = false;
       setUploadStatus("idle");
+      setPromoConsent(null);
     }
   }, [appState, handleFinalExport]);
 
@@ -198,6 +223,7 @@ export default function KioskPage() {
     setSelectedStickerId(null);
     setPrintProgress(0);
     setSelectedRetakeIndex(null);
+    setPromoConsent(null);
   }, []);
 
   const startShotSequence = async () => {
@@ -274,6 +300,17 @@ export default function KioskPage() {
     setSelectedStickerId(newSticker.id);
   };
 
+  const setupUsb = async () => {
+    try {
+      // @ts-ignore
+      const handle = await window.showDirectoryPicker();
+      setUsbHandle(handle);
+      KioskLogger.log('info', 'HARDWARE', 'Lexar USB Directory Linked.', 'SUCCESS');
+    } catch (e) {
+      KioskLogger.log('error', 'HARDWARE', 'USB Link Cancelled.', 'FAILED');
+    }
+  };
+
   useEffect(() => {
     if (appState === "setup" || appState === "capturing" || appState === "test-camera") {
       const start = async () => {
@@ -310,8 +347,8 @@ export default function KioskPage() {
             hasPackage={!!packageSelected}
             onSimulateCash={(amount) => setPaymentReceived(prev => prev + amount)}
             onBypassPayment={(pkg) => { setPackageSelected(pkg); setPaymentReceived(pkg); setAppState("setup"); }}
-            usbStatus={"disconnected"}
-            onSetupUsb={() => {}}
+            usbStatus={usbHandle ? "connected" : "disconnected"}
+            onSetupUsb={setupUsb}
             onSetupBillAcceptor={() => {}}
             isDevMode={true}
             onToggleDevMode={() => {}}
@@ -500,7 +537,40 @@ export default function KioskPage() {
                       </div>
                    </div>
                 </div>
-                <NeonButton onClick={() => setAppState("printing")} className="w-full py-10 text-2xl">FINISH & PRINT</NeonButton>
+                <NeonButton onClick={() => setAppState("consent")} className="w-full py-10 text-2xl">NEXT</NeonButton>
+             </div>
+          </div>
+        )}
+
+        {appState === "consent" && (
+          <div className="w-full max-w-4xl flex flex-col items-center justify-center h-full px-6 space-y-12 animate-in fade-in zoom-in duration-500">
+             <div className="text-center space-y-6">
+                <h2 className="font-headline font-black text-6xl italic uppercase leading-tight">
+                  CAN WE SHARE YOUR <br/> <span className="text-primary">MOMENT</span> ON OUR BOOTH?
+                </h2>
+                <p className="text-white/40 font-black uppercase italic tracking-widest text-sm">
+                  Your choice helps us showcase the JNL Studio community
+                </p>
+             </div>
+             
+             <div className="grid grid-cols-2 gap-8 w-full">
+                <button 
+                  onClick={() => { setPromoConsent(true); setAppState("printing"); }}
+                  className="group relative flex flex-col items-center justify-center bg-white/5 border-4 border-white/10 p-12 hover:border-green-500 transition-all active:scale-95"
+                >
+                  <HandMetal className="w-20 h-20 text-green-500 mb-4 group-hover:scale-110 transition-transform" />
+                  <span className="text-4xl font-black italic uppercase text-white">YES, PLEASE!</span>
+                  <span className="text-[10px] font-black uppercase text-white/40 mt-2">BACKUP TO LEXAR USB</span>
+                </button>
+                
+                <button 
+                  onClick={() => { setPromoConsent(false); setAppState("printing"); }}
+                  className="group relative flex flex-col items-center justify-center bg-white/5 border-4 border-white/10 p-12 hover:border-red-500 transition-all active:scale-95"
+                >
+                  <X className="w-20 h-20 text-red-500 mb-4 group-hover:scale-110 transition-transform" />
+                  <span className="text-4xl font-black italic uppercase text-white">NO, THANKS</span>
+                  <span className="text-[10px] font-black uppercase text-white/40 mt-2">PRIVATE SOFT COPY ONLY</span>
+                </button>
              </div>
           </div>
         )}
@@ -517,7 +587,20 @@ export default function KioskPage() {
                   <Printer className="w-8 h-8 text-primary animate-pulse" />
                   <p className="text-sm font-bold uppercase italic text-white/60">SENDING DATA TO THERMAL PRINTER via NOKOPRINT</p>
                 </div>
+
+                <div className="flex items-center gap-6 p-6 bg-primary/5 border-2 border-primary/20 rounded-[2.5rem]">
+                   <div className="w-32 h-32 bg-white p-2 rounded-xl flex items-center justify-center shadow-lg">
+                      <img src={fbQrUrl} alt="FB QR" className="w-full h-full" />
+                   </div>
+                   <div className="space-y-2">
+                      <h3 className="text-xl font-black italic uppercase text-primary">FOLLOW US 👇</h3>
+                      <p className="text-[10px] font-black uppercase text-white/60 leading-relaxed italic">
+                        Tag us in your photos! <br/> Visit our Facebook Page for news & events.
+                      </p>
+                   </div>
+                </div>
              </div>
+             
              <div className="bg-white/5 border-2 border-white/10 p-8 flex flex-col items-center space-y-6 rounded-[3rem] w-[400px] shadow-[0_0_50px_rgba(255,51,153,0.2)]">
                 <div className="text-center space-y-2">
                   <h3 className="text-2xl font-black italic uppercase text-primary">HD SOFT COPY</h3>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -400,30 +401,32 @@ export default function KioskPage() {
         ctx.restore();
       }
 
-      // Branding Footer CALIBRATED
-      const footerY = 2304;
-      const footerH = 96;
+      // BRANDING FOOTER RECALIBRATED (Y=2200, H=200)
+      const footerY = 2200;
+      const footerH = 200;
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(offsetX, footerY, 1600, footerH);
 
       // Quote Center (Refined spacing)
       ctx.fillStyle = '#000000';
-      ctx.font = 'bold italic 24px Inter, sans-serif';
+      ctx.font = 'bold italic 26px Inter, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(selectedQuote.text, offsetX + 800, footerY + 45);
+      // Center the quote sentences clearly
+      ctx.fillText(selectedQuote.text, offsetX + 800, footerY + 80);
 
       // Branding Bottom
       ctx.fillStyle = '#000000';
-      ctx.font = '900 italic 28px Inter, sans-serif';
+      ctx.font = '900 italic 32px Inter, sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText('JNL', offsetX + 60, footerY + 85);
+      ctx.fillText('JNL', offsetX + 80, footerY + 160);
       ctx.fillStyle = '#FF3399';
-      ctx.fillText('STUDIO', offsetX + 130, footerY + 85);
+      ctx.fillText('STUDIO', offsetX + 165, footerY + 160);
 
+      // Date Bottom Right
       ctx.fillStyle = '#000000';
-      ctx.font = 'bold 18px Inter, sans-serif';
+      ctx.font = 'bold 22px Inter, sans-serif';
       ctx.textAlign = 'right';
-      ctx.fillText(new Date().toLocaleDateString(), offsetX + 1540, footerY + 85);
+      ctx.fillText(new Date().toLocaleDateString(), offsetX + 1520, footerY + 160);
     };
 
     if (isStrip) {

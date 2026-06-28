@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useMemo, useRef, useState, useEffect } from "react";
@@ -149,31 +150,31 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* Enhanced Branding Footer - CALIBRATED SPACING */}
+      {/* Enhanced Branding Footer - RECALIBRATED SPACING FOR QUOTE & LOGO */}
       <div 
-        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-between items-center py-2 px-6"
-        style={{ height: '4%' }}
+        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-between items-center py-4 px-6"
+        style={{ height: '8.33%' }} // 200/2400 = 8.33%
       >
-        <div className="w-full border-t border-black/5"></div>
+        <div className="w-full border-t border-black/10 mb-2"></div>
         
-        {/* Centered Long Quote Handling */}
-        <div className="flex-1 flex items-center justify-center w-full px-4">
+        {/* Centered Quote - Center aligned with flexible multi-line support */}
+        <div className="flex-1 flex items-center justify-center w-full px-2 text-center">
           {quoteText && (
-            <p className="font-bold text-black italic text-center leading-none" style={{ fontSize: isStrip ? '7px' : '11px' }}>
+            <p className="font-bold text-black italic text-center leading-tight overflow-hidden" style={{ fontSize: isStrip ? '8px' : '14px' }}>
               "{quoteText}"
             </p>
           )}
         </div>
 
         {/* Branding & Date at absolute bottom */}
-        <div className="w-full flex justify-between items-end pb-1 border-t border-black/5 pt-1">
+        <div className="w-full flex justify-between items-end pb-2 border-t border-black/5 pt-2">
           <div className="flex flex-col items-start leading-none">
-             <span className="font-headline font-black italic uppercase text-black flex items-center gap-1" style={{ fontSize: isStrip ? '10px' : '16px' }}>
+             <span className="font-headline font-black italic uppercase text-black flex items-center gap-1" style={{ fontSize: isStrip ? '12px' : '20px' }}>
                <span>JNL</span>
                <span className="text-[#FF3399]">STUDIO</span>
              </span>
           </div>
-          <span className="font-bold uppercase tracking-widest text-black/40" style={{ fontSize: isStrip ? '6px' : '9px' }}>{displayDate}</span>
+          <span className="font-bold uppercase tracking-widest text-black/40" style={{ fontSize: isStrip ? '7px' : '11px' }}>{displayDate}</span>
         </div>
       </div>
     </div>

@@ -1,7 +1,6 @@
-
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { KioskLayout } from "@/components/kiosk/kiosk-layout";
 import { NeonButton } from "@/components/kiosk/neon-button";
 import { AdminAuthDialog } from "@/components/kiosk/admin-auth-dialog";
@@ -17,14 +16,13 @@ import {
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
 import { BlueprintFrame } from "@/components/kiosk/blueprint-frame";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import * as Kawaii from "@/components/kiosk/kawaii-stickers";
 import { SessionStore } from "@/lib/kiosk/persistence";
 import { KioskLogger } from "@/lib/kiosk/logger";
 import { initializeFirebase } from "@/firebase";
 import { ref, uploadBytes } from "firebase/storage";
-import { doc, setDoc, serverTimestamp, onSnapshot, updateDoc } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "thankyou" | "test-camera";
 
@@ -36,7 +34,7 @@ export const FILTERS = [
   { id: "bwpro", label: "B&W PRO", sub: "CINEMATIC", class: "grayscale contrast-[1.6] brightness-[1.1]" },
   { id: "candy", label: "CANDY", sub: "POP VIBE", class: "saturate-[1.8] contrast-[1.25] brightness-[1.1] hue-rotate-[5deg]" },
   { id: "velvet", label: "VELVET", sub: "WARM PINK", class: "sepia-[0.1] saturate-[1.4] contrast-[1.1] hue-rotate-[-10deg] brightness-[1.05]" },
-  { id: "sunset", label: "SUNSET", sub: "GOLDEN HOUR", class: "sepia-[0.4] saturate-[1.7] brightness-[1.1] contrast!-[1.1] hue-rotate-[-15deg]" },
+  { id: "sunset", label: "SUNSET", sub: "GOLDEN HOUR", class: "sepia-[0.4] saturate-[1.7] brightness-[1.1] contrast-[1.1] hue-rotate-[-15deg]" },
   { id: "dream", label: "DREAM", sub: "SOFT GLOW", class: "brightness-[1.2] contrast-[0.9] saturate-[1.1] blur-[0.5px]" },
   { id: "film", label: "FILM", sub: "VINTAGE", class: "grayscale-[0.2] sepia-[0.15] contrast-[1.3] brightness-[0.95] saturate-[1.2]" },
 ];
@@ -110,7 +108,6 @@ export default function KioskPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const printIframeRef = useRef<HTMLIFrameElement>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
-  const [cameraError, setCameraError] = useState<string | null>(null);
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>("");
 
@@ -119,7 +116,6 @@ export default function KioskPage() {
   const [placedStickers, setPlacedStickers] = useState<PlacedSticker[]>([]);
   const [selectedQuote, setSelectedQuote] = useState(QUOTES[0]);
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
-  const [activeStickerCategory, setActiveStickerCategory] = useState("HEARTS");
 
   const [isOwnerMode, setIsOwnerMode] = useState(false);
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
@@ -127,17 +123,11 @@ export default function KioskPage() {
   const [isDevMode, setIsDevMode] = useState<boolean>(true);
 
   const [logoTapCount, setLogoTapCount] = useState(0);
-  const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
   const [currentSessionId, setCurrentSessionId] = useState("");
   const [softCopyQrUrl, setSoftCopyQrUrl] = useState("");
-  const [facebookQrUrl, setFacebookQrUrl] = useState("");
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "complete" | "error">("idle");
   const exportTriggeredRef = useRef(false);
 
-  const serialPortRef = useRef<any>(null);
-
-  // Dynamic Kiosk URL generation for robust QR scans
   const [originUrl, setOriginUrl] = useState("https://jnl-studio-booth.web.app");
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -146,7 +136,7 @@ export default function KioskPage() {
   }, []);
 
   const initiatePrint = useCallback((blob: Blob) => {
-    KioskLogger.log('info', 'PRINT', 'Automatic print job initiated.', 'SUCCESS');
+    KioskLogger.log('info', 'PRINT', 'Automatic print job initiated.', 'PENDING');
     
     if (!printIframeRef.current) {
       KioskLogger.log('error', 'PRINT', 'Print job creation aborted.', 'FAILED', 'Iframe reference missing');
@@ -162,6 +152,8 @@ export default function KioskPage() {
     }
 
     const dataUrl = URL.createObjectURL(blob);
+    KioskLogger.log('info', 'PRINT', 'Photo generated.', 'SUCCESS');
+
     doc.open();
     doc.write(`
       <html>
@@ -178,15 +170,14 @@ export default function KioskPage() {
       </html>
     `);
     doc.close();
+    KioskLogger.log('info', 'PRINT', 'Print intent created.', 'SUCCESS');
     
-    KioskLogger.log('info', 'PRINT', 'Preparing Android system handover...', 'SUCCESS');
-
     setTimeout(() => {
       try {
         iframe.contentWindow?.focus();
         iframe.contentWindow?.print();
         URL.revokeObjectURL(dataUrl);
-        KioskLogger.log('info', 'PRINT', 'Android Print Intent triggered.', 'SUCCESS');
+        KioskLogger.log('info', 'PRINT', 'Android print service reached.', 'SUCCESS');
       } catch (e: any) {
         KioskLogger.log('error', 'PRINT', 'Handover to Android Print Service failed.', 'FAILED', e.message);
       }
@@ -201,17 +192,19 @@ export default function KioskPage() {
       return;
     }
     
+    // Feature 1: Unique Session ID with High Entropy
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
     KioskLogger.log('info', 'QR', `Session ID created: ${sessionId}`, 'SUCCESS');
 
+    // Feature 1: Immediate QR URL generation
     const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-    KioskLogger.log('info', 'QR', 'QR URL generated immediately.', 'SUCCESS');
+    KioskLogger.log('info', 'QR', 'QR URL generated.', 'SUCCESS');
     
     const { storage, db } = initializeFirebase();
     
-    // IMMEDIATE HANDSHAKE
+    // Feature 1: Immediate Handshake to ensure public access is ready
     setDoc(doc(db, "photos", sessionId), {
       id: sessionId,
       storagePath: `photos/${sessionId}.jpg`,
@@ -219,7 +212,7 @@ export default function KioskPage() {
       isDownloaded: false,
       status: 'uploading'
     }).then(() => {
-      KioskLogger.log('info', 'QR', 'Retrieval record created in Cloud.', 'SUCCESS');
+      KioskLogger.log('info', 'QR', 'Retrieval record created in cloud.', 'SUCCESS');
     }).catch(e => {
       KioskLogger.log('error', 'QR', 'Cloud handshake failed.', 'FAILED', e.message);
     });
@@ -247,16 +240,19 @@ export default function KioskPage() {
         ctx.drawImage(img, slot.x + offsetX, slot.y, slot.w, slot.h);
       }
       
+      // Branding Area Calibration
       const footerY = 2200;
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(offsetX, footerY, 1600, 200);
       ctx.fillStyle = '#000000';
-      ctx.font = 'bold 32px Inter, sans-serif';
+      ctx.font = 'bold 36px Inter, sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(selectedQuote.text, offsetX + 800, footerY + 80);
       ctx.textAlign = 'left';
+      ctx.font = 'black 48px Inter, sans-serif';
       ctx.fillText('JNL STUDIO', offsetX + 80, footerY + 160);
       ctx.textAlign = 'right';
+      ctx.font = 'bold 32px Inter, sans-serif';
       ctx.fillText(new Date().toLocaleDateString(), offsetX + 1520, footerY + 160);
     };
 
@@ -272,12 +268,11 @@ export default function KioskPage() {
         KioskLogger.log('error', 'SESSION', 'Final photo assembly failed.', 'FAILED', 'Blob conversion failed');
         return;
       }
-      KioskLogger.log('info', 'SESSION', 'Final photo generated correctly.', 'SUCCESS');
+      KioskLogger.log('info', 'QR', 'Final image generated.', 'SUCCESS');
 
       await SessionStore.savePhotoLocally(sessionId, blob);
-      KioskLogger.log('info', 'HARDWARE', 'Local Gallery save successful.', 'SUCCESS');
+      KioskLogger.log('info', 'QR', 'Final image saved locally.', 'SUCCESS');
       
-      // AUTO PRINT
       initiatePrint(blob); 
 
       setUploadStatus("uploading");
@@ -285,12 +280,12 @@ export default function KioskPage() {
       uploadBytes(photoRef, blob).then(() => {
         updateDoc(doc(db, "photos", sessionId), { status: 'complete' });
         setUploadStatus("complete");
-        KioskLogger.log('info', 'QR', 'Cloud storage sync complete.', 'SUCCESS');
+        KioskLogger.log('info', 'QR', 'Final image uploaded to cloud.', 'SUCCESS');
       }).catch((e) => {
         setUploadStatus("error");
-        KioskLogger.log('error', 'QR', 'Cloud storage sync failed.', 'FAILED', e.message);
+        KioskLogger.log('error', 'QR', 'Image upload failed.', 'FAILED', e.message);
       });
-    }, 'image/jpeg', 0.88);
+    }, 'image/jpeg', 0.9);
 
   }, [selectedBlueprint, capturedPhotos, selectedQuote, originUrl, initiatePrint]);
 
@@ -360,9 +355,9 @@ export default function KioskPage() {
       setCapturedPhotos(prev => {
         const newPhotos = [...prev];
         newPhotos[index] = shot;
+        KioskLogger.log('info', 'SESSION', `Retake Selected replaced slot ${index + 1}.`, 'SUCCESS');
         return newPhotos;
       });
-      KioskLogger.log('info', 'SESSION', `Partial retake successful for slot ${index + 1}.`, 'SUCCESS');
     }
     await new Promise(r => setTimeout(r, 600)); 
     setIsProcessing(false);
@@ -388,14 +383,21 @@ export default function KioskPage() {
       const start = async () => {
         if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined, width: 1280, height: 1706 }, audio: false });
+          const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { 
+              deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined, 
+              width: { ideal: 1280 }, 
+              height: { ideal: 1706 } 
+            }, 
+            audio: false 
+          });
           setCameraStream(stream);
           if (videoRef.current) videoRef.current.srcObject = stream;
         } catch (e) {}
       };
       start();
     }
-  }, [appState, selectedCameraId, cameraStream]);
+  }, [appState, selectedCameraId]);
 
   return (
     <KioskLayout>
@@ -429,9 +431,11 @@ export default function KioskPage() {
         {appState === "welcome" && (
           <div className="flex flex-col items-center w-full h-full animate-in fade-in duration-1000 safe-area-spacing">
             <div className="flex-1 flex flex-col items-center justify-center">
-              <div className="flex flex-col items-center cursor-pointer" onClick={() => setLogoTapCount(p => p + 1)}>
+              <div className="flex flex-col items-center cursor-pointer" onClick={() => {
+                setLogoTapCount(p => p + 1);
+                if (logoTapCount >= 4) { setIsAdminDialogOpen(true); setLogoTapCount(0); }
+              }}>
                 <JnlLogo variant="hero" color="light" className="mb-0" />
-                {logoTapCount >= 5 && <button onClick={() => { setIsAdminDialogOpen(true); setLogoTapCount(0); }} className="hidden" />}
               </div>
             </div>
             <div className="w-full flex flex-col items-center pb-20 space-y-12">
@@ -480,11 +484,20 @@ export default function KioskPage() {
           <div className="w-full h-full flex flex-row items-center justify-center gap-12 py-6 px-8">
             <div className="flex-1 flex flex-col items-center">
               <div className="h-[70vh] aspect-[1600/2400] shadow-2xl relative border-4 border-white mb-6">
-                 {selectedBlueprint && <BlueprintFrame blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.class} isPreview />}
+                 {selectedBlueprint && (
+                    <BlueprintFrame 
+                      blueprint={selectedBlueprint} 
+                      photos={capturedPhotos} 
+                      filterClass={selectedFilter.class} 
+                      isPreview 
+                      onSelectSlot={(idx) => setSelectedRetakeIndex(idx)}
+                      selectedSlotIndex={selectedRetakeIndex}
+                    />
+                 )}
               </div>
               <div className="w-full max-w-2xl bg-white/5 border p-4 grid grid-cols-6 gap-2">
                 {capturedPhotos.map((photo, idx) => (
-                  <button key={idx} onClick={() => setSelectedRetakeIndex(idx)} className={cn("aspect-[3/4] border-2 overflow-hidden", selectedRetakeIndex === idx ? "border-primary scale-105" : "border-white/10")}>
+                  <button key={idx} onClick={() => setSelectedRetakeIndex(idx)} className={cn("aspect-[3/4] border-2 overflow-hidden transition-all", selectedRetakeIndex === idx ? "border-primary scale-110 shadow-[0_0_15px_rgba(255,51,153,0.5)] z-10" : "border-white/10 opacity-60")}>
                     <img src={photo} alt="" className={cn("w-full h-full object-cover", selectedFilter.class)} />
                   </button>
                 ))}
@@ -492,8 +505,14 @@ export default function KioskPage() {
             </div>
             <div className="w-96 space-y-6">
                <NeonButton onClick={() => setAppState("decorating")} className="w-full py-10 text-2xl">USE PHOTO</NeonButton>
-               <button onClick={() => selectedRetakeIndex !== null && startSingleShotSequence(selectedRetakeIndex)} disabled={selectedRetakeIndex === null} className="w-full py-6 bg-primary font-black uppercase italic disabled:opacity-20">RETAKE SELECTED</button>
-               <button onClick={() => setAppState("setup")} className="w-full py-4 border-2 border-white/20 font-black uppercase italic text-white/40">RETAKE ALL</button>
+               <button 
+                onClick={() => selectedRetakeIndex !== null && startSingleShotSequence(selectedRetakeIndex)} 
+                disabled={selectedRetakeIndex === null} 
+                className="w-full py-8 bg-primary font-black uppercase italic disabled:opacity-20 border-2 border-white/10"
+               >
+                 Retake Selected
+               </button>
+               <button onClick={() => setAppState("setup")} className="w-full py-4 border-2 border-white/20 font-black uppercase italic text-white/40">Retake All</button>
             </div>
           </div>
         )}
@@ -526,11 +545,11 @@ export default function KioskPage() {
                 <Progress value={printProgress} className="h-3" />
              </div>
              <div className="bg-white/5 border-2 border-white/10 p-8 flex flex-col items-center space-y-4 rounded-3xl w-80">
-                <div className="aspect-square w-full bg-white p-4 rounded-2xl flex items-center justify-center">
-                  {softCopyQrUrl ? <img src={softCopyQrUrl} alt="" className="w-full h-full" /> : <Loader2 className="w-8 h-8 animate-spin text-primary" />}
+                <div className="aspect-square w-full bg-white p-4 rounded-2xl flex items-center justify-center shadow-xl">
+                  {softCopyQrUrl ? <img src={softCopyQrUrl} alt="Scan to save" className="w-full h-full" /> : <Loader2 className="w-8 h-8 animate-spin text-primary" />}
                 </div>
                 <div className="text-[10px] font-black uppercase text-white/40 tracking-widest">SCAN TO SAVE</div>
-                {printProgress >= 95 && <button onClick={() => setAppState("thankyou")} className="w-full bg-primary py-4 font-black uppercase italic rounded-xl">FINISH</button>}
+                {uploadStatus === "complete" && <button onClick={() => setAppState("thankyou")} className="w-full bg-primary py-4 font-black uppercase italic rounded-xl">FINISH</button>}
              </div>
           </div>
         )}

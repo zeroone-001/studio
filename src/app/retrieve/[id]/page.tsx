@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
@@ -8,7 +7,7 @@ import { ref, getDownloadURL } from "firebase/storage";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { KioskLayout } from "@/components/kiosk/kiosk-layout";
 import { NeonButton } from "@/components/kiosk/neon-button";
-import { Download, Loader2, AlertCircle, Share2, Activity, Clock } from "lucide-react";
+import { Download, Loader2, AlertCircle } from "lucide-react";
 import { KioskLogger } from "@/lib/kiosk/logger";
 
 export default function RetrievePage() {
@@ -19,7 +18,7 @@ export default function RetrievePage() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<'verifying' | 'found' | 'syncing' | 'complete'>('verifying');
   const retryCount = useRef(0);
-  const MAX_RETRIES = 240; 
+  const MAX_RETRIES = 120; 
 
   const fetchPhoto = useCallback(async () => {
     if (!id) return;
@@ -34,17 +33,17 @@ export default function RetrievePage() {
       if (!docSnap.exists()) {
         if (retryCount.current < MAX_RETRIES) {
           retryCount.current += 1;
-          setTimeout(fetchPhoto, 250); 
+          setTimeout(fetchPhoto, 500); 
           return;
         }
         setError("Photo not found.");
         setLoading(false);
-        KioskLogger.log('error', 'QR', 'Image lookup failed.', 'FAILED', 'Session ID not found in database');
+        KioskLogger.log('error', 'QR', 'Image lookup failed.', 'FAILED', 'Session ID not found');
         return;
       }
 
       setStatus('syncing');
-      KioskLogger.log('info', 'QR', 'Session record found. Syncing HD portrait...', 'SUCCESS');
+      KioskLogger.log('info', 'QR', 'Session record found.', 'SUCCESS');
 
       const photoRef = ref(storage, `photos/${id}.jpg`);
       try {
@@ -56,17 +55,17 @@ export default function RetrievePage() {
       } catch (e: any) {
         if (retryCount.current < MAX_RETRIES) {
           retryCount.current += 1;
-          setTimeout(fetchPhoto, 500); 
+          setTimeout(fetchPhoto, 1000); 
         } else {
           setError("Photo syncing. Please refresh in a moment.");
           setLoading(false);
-          KioskLogger.log('error', 'QR', 'Image loaded failed.', 'FAILED', e.message);
+          KioskLogger.log('error', 'QR', 'Image load failed.', 'FAILED', e.message);
         }
       }
     } catch (err: any) {
       setError("Unable to connect to service.");
       setLoading(false);
-      KioskLogger.log('error', 'QR', 'Network/Handshake error.', 'FAILED', err.message);
+      KioskLogger.log('error', 'QR', 'Handshake error.', 'FAILED', err.message);
     }
   }, [id]);
 
@@ -78,22 +77,22 @@ export default function RetrievePage() {
     if (!imageUrl || !id) return;
     try {
       const { db } = initializeFirebase();
-      await updateDoc(doc(db, "photos", id), { isDownloaded: true });
+      updateDoc(doc(db, "photos", id), { isDownloaded: true });
       
       const response = await fetch(imageUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `JNL_Studio_HD_${id}.jpg`;
+      a.download = `JNL_Studio_Portrait_${id}.jpg`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      KioskLogger.log('info', 'QR', 'Download available and triggered.', 'SUCCESS');
+      KioskLogger.log('info', 'QR', 'Download triggered.', 'SUCCESS');
     } catch (e) {
       window.open(imageUrl, '_blank');
-      KioskLogger.log('warn', 'QR', 'Standard download failed. Fallback to direct link.', 'SUCCESS');
+      KioskLogger.log('warn', 'QR', 'Fallback download triggered.', 'SUCCESS');
     }
   };
 
@@ -116,8 +115,8 @@ export default function RetrievePage() {
             </div>
           ) : (
             <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
-              <div className="relative aspect-[2/3] w-full rounded-[1.5rem] overflow-hidden border-4 border-white">
-                <img src={imageUrl!} alt="" className="w-full h-full object-contain" />
+              <div className="relative aspect-[2/3] w-full rounded-[1.5rem] overflow-hidden border-4 border-white shadow-xl">
+                <img src={imageUrl!} alt="JNL Studio Portrait" className="w-full h-full object-contain" />
               </div>
               <div className="space-y-6">
                 <h2 className="text-2xl font-black italic uppercase text-primary">HD SOFT COPY</h2>

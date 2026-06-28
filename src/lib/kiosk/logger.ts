@@ -1,7 +1,6 @@
-
 /**
  * @fileOverview Centralized logging manager for kiosk diagnostics with hardware state capture.
- * Enhanced for JNL Studio to provide specific SUCCESS/FAILED traces for Print and QR workflows.
+ * Provides detailed SUCCESS/FAILED status tracing for Print and QR workflows.
  */
 
 export interface LogEntry {
@@ -9,7 +8,7 @@ export interface LogEntry {
   level: 'info' | 'warn' | 'error' | 'critical' | 'trace';
   module: 'PRINT' | 'QR' | 'HARDWARE' | 'CLOUD' | 'SESSION';
   message: string;
-  status?: 'SUCCESS' | 'FAILED';
+  status?: 'SUCCESS' | 'FAILED' | 'PENDING';
   error?: string;
 }
 
@@ -32,7 +31,6 @@ export const KioskLogger = {
       logs.unshift(entry);
       localStorage.setItem(LOG_KEY, JSON.stringify(logs.slice(0, MAX_LOGS)));
       
-      // Console mirroring for debugging overlays
       const logMsg = `[${module}] ${status ? status + ': ' : ''}${message}${error ? ' | ERR: ' + error : ''}`;
       if (level === 'error' || level === 'critical') console.error(logMsg);
       else console.log(logMsg);

@@ -18,12 +18,10 @@ export function initializeFirebase() {
   if (!getApps().length) {
     app = initializeApp(firebaseConfig);
     
-    // Enable production-grade logging for Kiosk
-    // 'error' level prevents minor connection warnings from flooding consoles
+    // Enable error-only logging for stable kiosk performance
     setLogLevel('error');
 
-    // Initialize Firestore with Offline Persistence (IndexedDB)
-    // This allows the kiosk to operate even with intermittent internet
+    // Enable IndexedDB Persistence for offline resiliency
     db = initializeFirestore(app, {
       localCache: persistentLocalCache({ 
         tabManager: persistentMultipleTabManager() 
@@ -33,7 +31,6 @@ export function initializeFirebase() {
     storage = getStorage(app);
   } else {
     app = getApps()[0];
-    // Avoid double initialization
     try {
       db = getFirestore(app);
     } catch (e) {

@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useMemo, useRef, useState, useEffect } from "react";
@@ -22,6 +21,8 @@ interface BlueprintFrameProps {
   onRemoveSticker?: (id: string) => void;
   onSelectSticker?: (id: string) => void;
   onBringToFront?: (id: string) => void;
+  onSelectSlot?: (index: number) => void;
+  selectedSlotIndex?: number | null;
 }
 
 export const BlueprintFrame = React.memo(({
@@ -38,6 +39,8 @@ export const BlueprintFrame = React.memo(({
   onRemoveSticker,
   onSelectSticker,
   onBringToFront,
+  onSelectSlot,
+  selectedSlotIndex = null,
 }: BlueprintFrameProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [canvasRect, setCanvasRect] = useState<DOMRect | null>(null);
@@ -46,11 +49,10 @@ export const BlueprintFrame = React.memo(({
     if (containerRef.current) {
       setCanvasRect(containerRef.current.getBoundingClientRect());
     }
-  }, [isPreview, blueprint, photos]);
+  }, [isPreview, blueprint]);
 
   if (!blueprint || !blueprint.slots) return null;
 
-  // Internal Canvas resolution: 1600x2400 (4x6 paper)
   const CANVAS_W = 1600;
   const CANVAS_H = 2400;
 
@@ -71,38 +73,46 @@ export const BlueprintFrame = React.memo(({
         zIndex: 0
       }}
     >
-      {/* Background Photos - Zero Gap Absolute Positioning */}
       <div className="absolute inset-0 z-0 bg-white">
         {blueprint.slots.map((slot, index) => {
           if (slot.w === 0 || slot.h === 0) return null;
           
           const sX = isStrip ? slot.x / 2 : slot.x;
           const sW = isStrip ? slot.w / 2 : slot.w;
+          const isSelected = selectedSlotIndex === index;
 
           return (
             <div
               key={index}
-              className="absolute bg-zinc-100 overflow-hidden"
+              className={cn(
+                "absolute bg-zinc-100 overflow-hidden cursor-pointer transition-all",
+                isSelected && isPreview && "ring-4 ring-primary ring-inset z-20"
+              )}
               style={{
                 left: `${(sX / STRIP_W) * 100}%`,
                 top: `${(slot.y / 2400) * 100}%`, 
                 width: `${(sW / STRIP_W) * 100}%`,
                 height: `${(slot.h / 2400) * 100}%`,
               }}
+              onClick={() => isPreview && onSelectSlot?.(index)}
             >
               {photos[index] ? (
                 <Image
                   src={photos[index]}
-                  alt="Portrait"
+                  alt={`Portrait ${index + 1}`}
                   fill
-                  className={cn("object-cover opacity-100", filterClass)}
-                  sizes="1000px"
+                  className={cn("object-cover", filterClass, isSelected && isPreview && "opacity-80")}
+                  sizes="800px"
                   unoptimized
-                  priority
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <span className="text-[10px] text-black/10 font-black uppercase">POSE {index + 1}</span>
+                  <span className="text-[10px] text-black/10 font-black uppercase">SLOT {index + 1}</span>
+                </div>
+              )}
+              {isSelected && isPreview && (
+                <div className="absolute inset-0 flex items-center justify-center bg-primary/20">
+                  <span className="bg-primary text-white text-[8px] font-black px-2 py-1 uppercase rounded-full">SELECTED</span>
                 </div>
               )}
             </div>
@@ -110,7 +120,6 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* Decorative Layer (Stickers) */}
       <div className="absolute inset-0 z-40 pointer-events-none">
         {stickers.map((s) => {
           const def = STICKER_DEFS.find(d => d.id === s.type);
@@ -150,14 +159,12 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* Enhanced Branding Footer - RECALIBRATED SPACING FOR QUOTE & LOGO */}
       <div 
         className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-between items-center py-4 px-6"
-        style={{ height: '8.33%' }} // 200/2400 = 8.33%
+        style={{ height: '8.33%' }}
       >
         <div className="w-full border-t border-black/10 mb-2"></div>
         
-        {/* Centered Quote - Center aligned with flexible multi-line support */}
         <div className="flex-1 flex items-center justify-center w-full px-2 text-center">
           {quoteText && (
             <p className="font-bold text-black italic text-center leading-tight overflow-hidden" style={{ fontSize: isStrip ? '8px' : '14px' }}>
@@ -166,7 +173,6 @@ export const BlueprintFrame = React.memo(({
           )}
         </div>
 
-        {/* Branding & Date at absolute bottom */}
         <div className="w-full flex justify-between items-end pb-2 border-t border-black/5 pt-2">
           <div className="flex flex-col items-start leading-none">
              <span className="font-headline font-black italic uppercase text-black flex items-center gap-1" style={{ fontSize: isStrip ? '12px' : '20px' }}>

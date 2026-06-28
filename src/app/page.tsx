@@ -12,7 +12,7 @@ import {
   Wallet, Sparkles, Frame, Quote, Trash2, Cat, Moon, Sun, 
   Coffee, Pizza, Flower2, Crown, Layers, CameraIcon, Flashlight, User, HeartIcon,
   QrCode, Facebook, Printer, Usb, AlertCircle, Star, Ghost, PartyPopper,
-  CheckCircle2, RotateCcw, Cookie as CookieIcon, Banknote, Loader2, Target
+  CheckCircle2, RotateCcw, Cookie as CookieIcon, Banknote, Loader2, Target, Plus
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -220,6 +220,7 @@ export default function KioskPage() {
     const isStrip = selectedBlueprint.package === 50;
     
     const drawContent = async (offsetX: number) => {
+      // 1. Draw Photos
       for (let i = 0; i < selectedBlueprint.slots.length; i++) {
         const slot = selectedBlueprint.slots[i];
         const photo = capturedPhotos[i];
@@ -230,7 +231,23 @@ export default function KioskPage() {
         await new Promise(resolve => img.onload = resolve);
         ctx.drawImage(img, slot.x + offsetX, slot.y, slot.w, slot.h);
       }
+
+      // 2. Draw Stickers
+      for (const sticker of placedStickers) {
+        const def = STICKER_DEFS.find(d => d.id === sticker.type);
+        if (!def) continue;
+        
+        // This is a simplified sticker render for canvas export
+        // In production, we'd use SVG-to-Canvas or Pre-rendered PNGs
+        ctx.save();
+        ctx.translate(sticker.x * 16 + offsetX, sticker.y * 24);
+        ctx.rotate((sticker.rotation * Math.PI) / 180);
+        ctx.fillStyle = def.color.includes('pink') ? '#FFB7CE' : '#333333';
+        ctx.fillRect(-(sticker.size * 8), -(sticker.size * 8), sticker.size * 16, sticker.size * 16);
+        ctx.restore();
+      }
       
+      // 3. Draw Branding Zone (Y=2200 to 2400)
       const footerY = 2200;
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(offsetX, footerY, 1600, 200);
@@ -276,7 +293,7 @@ export default function KioskPage() {
       });
     }, 'image/jpeg', 0.9);
 
-  }, [selectedBlueprint, capturedPhotos, selectedQuote, originUrl, initiatePrint]);
+  }, [selectedBlueprint, capturedPhotos, selectedQuote, originUrl, initiatePrint, placedStickers]);
 
   useEffect(() => {
     if (appState === "printing" && !exportTriggeredRef.current) {
@@ -372,6 +389,36 @@ export default function KioskPage() {
       return canvas.toDataURL('image/jpeg', 0.9);
     }
     return null;
+  };
+
+  const addSticker = (type: string) => {
+    const newSticker: PlacedSticker = {
+      id: Math.random().toString(36).substring(7),
+      type,
+      x: 50,
+      y: 40,
+      size: 15,
+      rotation: 0
+    };
+    setPlacedStickers([...placedStickers, newSticker]);
+    setSelectedStickerId(newSticker.id);
+  };
+
+  const updateSticker = (id: string, updates: Partial<PlacedSticker>) => {
+    setPlacedStickers(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
+  };
+
+  const removeSticker = (id: string) => {
+    setPlacedStickers(prev => prev.filter(s => s.id !== id));
+    setSelectedStickerId(null);
+  };
+
+  const bringToFront = (id: string) => {
+    setPlacedStickers(prev => {
+      const item = prev.find(s => s.id === id);
+      if (!item) return prev;
+      return [...prev.filter(s => s.id !== id), item];
+    });
   };
 
   useEffect(() => {
@@ -545,10 +592,34 @@ export default function KioskPage() {
         {appState === "decorating" && (
           <div className="w-full flex flex-row gap-12 items-start py-10 px-8">
              <div className="flex-1 h-[70vh] flex items-center justify-center">
-                {selectedBlueprint && <BlueprintFrame blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.class} quoteText={selectedQuote.text} isPreview />}
+                {selectedBlueprint && (
+                  <BlueprintFrame 
+                    blueprint={selectedBlueprint} 
+                    photos={capturedPhotos} 
+                    filterClass={selectedFilter.class} 
+                    quoteText={selectedQuote.text} 
+                    stickers={placedStickers}
+                    selectedStickerId={selectedStickerId}
+                    onUpdateSticker={updateSticker}
+                    onRemoveSticker={removeSticker}
+                    onSelectSticker={setSelectedStickerId}
+                    onBringToFront={bringToFront}
+                    isPreview 
+                  />
+                )}
              </div>
              <div className="w-[450px] space-y-8 h-[70vh] flex flex-col">
                 <div className="flex-1 space-y-6 overflow-y-auto pr-2 scrollbar-hide">
+                   <div className="space-y-4">
+                      <h3 className="text-[10px] font-black uppercase text-white/40 tracking-widest italic">Stickers</h3>
+                      <div className="grid grid-cols-4 gap-2">
+                        {STICKER_DEFS.map(s => (
+                          <button key={s.id} onClick={() => addSticker(s.id)} className="aspect-square bg-white/5 border-2 border-white/10 p-2 flex items-center justify-center hover:border-primary">
+                            <s.icon className={cn("w-full h-full", s.color)} />
+                          </button>
+                        ))}
+                      </div>
+                   </div>
                    <div className="space-y-4">
                       <h3 className="text-[10px] font-black uppercase text-white/40 tracking-widest italic">Inspiration</h3>
                       <div className="grid grid-cols-1 gap-2">

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -24,9 +25,6 @@ import { KioskLogger } from "@/lib/kiosk/logger";
 import { initializeFirebase } from "@/firebase";
 import { ref, uploadBytes } from "firebase/storage";
 import { doc, setDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
-
-// COMMERCIAL PRODUCTION ROUTING
-const PUBLIC_KIOSK_URL = "https://jnl-studio-booth.web.app";
 
 export type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "thankyou" | "test-camera";
 
@@ -178,6 +176,14 @@ export default function KioskPage() {
   const exportTriggeredRef = useRef(false);
 
   const serialPortRef = useRef<any>(null);
+
+  // Dynamic Kiosk URL generation for robust QR scans
+  const [originUrl, setOriginUrl] = useState("https://jnl-studio-booth.web.app");
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setOriginUrl(window.location.origin);
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -355,8 +361,8 @@ export default function KioskPage() {
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
 
-    // 2. IMMEDIATE QR GENERATION (PRODUCTION ROUTING)
-    const retrievalUrl = `${PUBLIC_KIOSK_URL}/retrieve/${sessionId}`;
+    // 2. IMMEDIATE QR GENERATION (Dynamic Routing)
+    const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
     KioskLogger.log('info', 'Export', `Secure ID Linked: ${sessionId}`);
 
@@ -433,7 +439,7 @@ export default function KioskPage() {
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
 
-      // Local Persistence (Honor Pad Gallery simulation via IndexedDB)
+      // Local Persistence
       await SessionStore.savePhotoLocally(sessionId, blob);
       
       // DEFERRED USB BACKUP (Consent: YES)
@@ -468,7 +474,7 @@ export default function KioskPage() {
       })();
     }, 'image/jpeg', 0.88);
 
-  }, [selectedBlueprint, capturedPhotos, selectedFilter, selectedQuote, promoConsent, usbDirectoryHandle]);
+  }, [selectedBlueprint, capturedPhotos, selectedFilter, selectedQuote, promoConsent, usbDirectoryHandle, originUrl]);
 
   useEffect(() => {
     if (appState === "printing" && !exportTriggeredRef.current) {
@@ -759,7 +765,6 @@ export default function KioskPage() {
                  {selectedBlueprint && capturedPhotos.length > 0 && <BlueprintFrame blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.class} isPreview />}
               </div>
               
-              {/* Photo Selector for Selective Retake */}
               <div className="w-full max-w-2xl bg-white/5 border border-white/10 p-4 rounded-3xl">
                 <p className="text-[10px] font-black uppercase text-primary mb-3 text-center tracking-widest">Select a photo to retake</p>
                 <div className="grid grid-cols-6 gap-2">

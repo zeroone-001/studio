@@ -1,3 +1,4 @@
+
 export type PhotoSlot = {
   x: number;
   y: number;
@@ -35,8 +36,8 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     package: 50,
     slots: [
       { x: 0, y: 0, w: 1600, h: 1152 }, // Large Face-Safe Frame
-      { x: 0, y: 1152, w: 800, h: 1152 }, // Body Safe Left
-      { x: 800, y: 1152, w: 800, h: 1152 }, // Body Safe Right
+      { x: 0, y: 1152, w: 800, h: 1152 }, // Body Safe Left (3:4 Ratio)
+      { x: 800, y: 1152, w: 800, h: 1152 }, // Body Safe Right (3:4 Ratio)
     ],
   },
   {

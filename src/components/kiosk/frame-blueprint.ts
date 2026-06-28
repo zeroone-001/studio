@@ -23,7 +23,7 @@ export const BLUEPRINTS: FrameBlueprint[] = [
   // These layouts are mirrored for dual-strip 4x6 printing (800px width per strip)
   {
     id: "p50-strip-classic",
-    label: "CLASSIC STRIP",
+    label: "CLASSIC STACK",
     package: 50,
     slots: [
       { x: 0, y: 50, w: 1600, h: 680 },
@@ -33,7 +33,7 @@ export const BLUEPRINTS: FrameBlueprint[] = [
   },
   {
     id: "p50-strip-hero",
-    label: "HERO STRIP",
+    label: "HERO FOCUS",
     package: 50,
     slots: [
       { x: 0, y: 50, w: 1600, h: 1000 },
@@ -42,20 +42,20 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     ],
   },
   {
-    id: "p50-strip-modern",
-    label: "MODERN STRIP",
+    id: "p50-strip-inverted",
+    label: "DYNAMIC BASE",
     package: 50,
     slots: [
       { x: 0, y: 50, w: 1600, h: 500 },
-      { x: 0, y: 580, w: 1600, h: 1000 },
-      { x: 0, y: 1610, w: 1600, h: 500 },
+      { x: 0, y: 580, w: 1600, h: 500 },
+      { x: 0, y: 1110, w: 1600, h: 1000 },
     ],
   },
 
   // ₱100 PACKAGE: 4x6 PORTRAIT (6 SHOTS)
   {
     id: "p100-grid-standard",
-    label: "GRID STANDARD",
+    label: "STANDARD GRID",
     package: 100,
     slots: [
       { x: 30, y: 30, w: 755, h: 680 }, { x: 815, y: 30, w: 755, h: 680 },
@@ -77,8 +77,8 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     ],
   },
   {
-    id: "p100-classic-six",
-    label: "CLASSIC SIX",
+    id: "p100-vertical-triplets",
+    label: "VERTICAL TRIPlets",
     package: 100,
     slots: [
       { x: 30, y: 30, w: 500, h: 1040 }, { x: 550, y: 30, w: 500, h: 1040 }, { x: 1070, y: 30, w: 500, h: 1040 },
@@ -86,18 +86,8 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     ],
   },
   {
-    id: "p100-vertical-split",
-    label: "VERTICAL SPLIT",
-    package: 100,
-    slots: [
-      { x: 30, y: 30, w: 755, h: 1040 }, { x: 815, y: 30, w: 755, h: 1040 },
-      { x: 30, y: 1100, w: 480, h: 500 }, { x: 550, y: 1100, w: 500, h: 500 }, { x: 1090, y: 1100, w: 480, h: 500 },
-      { x: 30, y: 1640, w: 1540, h: 500 },
-    ],
-  },
-  {
-    id: "p100-asym-trio",
-    label: "ASYM TRIO",
+    id: "p100-landscape-panorama",
+    label: "PANORAMA MIX",
     package: 100,
     slots: [
       { x: 30, y: 30, w: 1540, h: 1040 },
@@ -106,12 +96,22 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     ],
   },
   {
-    id: "p100-modern-grid",
-    label: "MODERN GRID",
+    id: "p100-staggered-focus",
+    label: "STAGGERED FOCUS",
     package: 100,
     slots: [
-      { x: 30, y: 30, w: 1540, h: 680 },
-      { x: 30, y: 740, w: 500, h: 680 }, { x: 550, y: 740, w: 500, h: 680 }, { x: 1070, y: 740, w: 500, h: 680 },
+      { x: 30, y: 30, w: 755, h: 500 }, { x: 815, y: 30, w: 755, h: 500 },
+      { x: 30, y: 560, w: 1540, h: 1040 },
+      { x: 30, y: 1630, w: 500, h: 500 }, { x: 550, y: 1630, w: 500, h: 500 }, { x: 1070, y: 1630, w: 500, h: 500 },
+    ],
+  },
+  {
+    id: "p100-modern-asymmetry",
+    label: "MODERN ASYMMETRY",
+    package: 100,
+    slots: [
+      { x: 30, y: 30, w: 500, h: 680 }, { x: 550, y: 30, w: 1020, h: 680 },
+      { x: 30, y: 740, w: 1020, h: 680 }, { x: 1070, y: 740, w: 500, h: 680 },
       { x: 30, y: 1450, w: 755, h: 680 }, { x: 815, y: 1450, w: 755, h: 680 },
     ],
   }

@@ -1,4 +1,3 @@
-
 export type PhotoSlot = {
   x: number;
   y: number;
@@ -16,28 +15,28 @@ export type FrameBlueprint = {
 /**
  * JNL Studio Blueprints - BODY-SAFE & ZERO-GAP CALIBRATION
  * Internal Coordinate System: 1600 (W) x 2400 (H)
- * Footer begins at Y=2220 (exactly 7.5% height for quote space)
+ * Footer begins at Y=2304 (exactly 4% height for sentential quote space)
  */
 export const BLUEPRINTS: FrameBlueprint[] = [
-  // ₱50 PACKAGE (3 SHOTS) - RECALIBRATED TO PREVENT CROPPED FACES
+  // ₱50 PACKAGE (3 SHOTS) - RECALIBRATED FOR ZERO-CUT FACE CAPTURE
   {
     id: "p50-balanced-trio",
     label: "BALANCED TRIO",
     package: 50,
     slots: [
       { x: 0, y: 0, w: 1600, h: 1200 }, 
-      { x: 0, y: 1200, w: 800, h: 1020 },
-      { x: 800, y: 1200, w: 800, h: 1020 },
+      { x: 0, y: 1200, w: 800, h: 1104 },
+      { x: 800, y: 1200, w: 800, h: 1104 },
     ],
   },
   {
     id: "p50-body-hero",
-    label: "BODY HERO",
+    label: "SPLIT PORTRAIT",
     package: 50,
     slots: [
-      { x: 0, y: 0, w: 800, h: 2220 }, // Hero Side (Portrait aspect - Safe for full body)
-      { x: 800, y: 0, w: 800, h: 1110 }, // Top Square-ish Portrait
-      { x: 800, y: 1110, w: 800, h: 1110 }, // Bottom Square-ish Portrait
+      { x: 0, y: 0, w: 1600, h: 1200 }, // Large Hero Face Frame
+      { x: 0, y: 1200, w: 800, h: 1104 }, // Body Safe Left
+      { x: 800, y: 1200, w: 800, h: 1104 }, // Body Safe Right
     ],
   },
   {
@@ -45,9 +44,9 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "PORTRAIT STACK",
     package: 50,
     slots: [
-      { x: 0, y: 0, w: 1600, h: 740 },
-      { x: 0, y: 740, w: 1600, h: 740 },
-      { x: 0, y: 1480, w: 1600, h: 740 },
+      { x: 0, y: 0, w: 1600, h: 768 },
+      { x: 0, y: 768, w: 1600, h: 768 },
+      { x: 0, y: 1536, w: 1600, h: 768 },
     ],
   },
 
@@ -57,8 +56,8 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "PORTRAIT SIX",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 533, h: 1110 }, { x: 533, y: 0, w: 534, h: 1110 }, { x: 1067, y: 0, w: 533, h: 1110 },
-      { x: 0, y: 1110, w: 533, h: 1110 }, { x: 533, y: 1110, w: 534, h: 1110 }, { x: 1067, y: 1110, w: 533, h: 1110 },
+      { x: 0, y: 0, w: 533, h: 1152 }, { x: 533, y: 0, w: 534, h: 1152 }, { x: 1067, y: 0, w: 533, h: 1152 },
+      { x: 0, y: 1152, w: 533, h: 1152 }, { x: 533, y: 1152, w: 534, h: 1152 }, { x: 1067, y: 1152, w: 533, h: 1152 },
     ],
   },
   {
@@ -66,12 +65,12 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "MOSAIC HERO",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 1067, h: 1480 },
-      { x: 1067, y: 0, w: 533, h: 740 },
-      { x: 1067, y: 740, w: 533, h: 740 },
-      { x: 0, y: 1480, w: 533, h: 740 },
-      { x: 533, y: 1480, w: 534, h: 740 },
-      { x: 1067, y: 1480, w: 533, h: 740 },
+      { x: 0, y: 0, w: 1067, h: 1536 },
+      { x: 1067, y: 0, w: 533, h: 768 },
+      { x: 1067, y: 768, w: 533, h: 768 },
+      { x: 0, y: 1536, w: 533, h: 768 },
+      { x: 533, y: 1536, w: 534, h: 768 },
+      { x: 1067, y: 1536, w: 533, h: 768 },
     ],
   },
   {
@@ -79,9 +78,9 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "STAGGERED ZIP",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 1067, h: 740 }, { x: 1067, y: 0, w: 533, h: 740 },
-      { x: 0, y: 740, w: 533, h: 740 }, { x: 533, y: 740, w: 1067, h: 740 },
-      { x: 0, y: 1480, w: 1067, h: 740 }, { x: 1067, y: 1480, w: 533, h: 740 },
+      { x: 0, y: 0, w: 1067, h: 768 }, { x: 1067, y: 0, w: 533, h: 768 },
+      { x: 0, y: 768, w: 533, h: 768 }, { x: 533, y: 768, w: 1067, h: 768 },
+      { x: 0, y: 1536, w: 1067, h: 768 }, { x: 1067, y: 1536, w: 533, h: 768 },
     ],
   },
   {
@@ -89,9 +88,9 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "CLASSIC GRID",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 800, h: 740 }, { x: 800, y: 0, w: 800, h: 740 },
-      { x: 0, y: 740, w: 800, h: 740 }, { x: 800, y: 740, w: 800, h: 740 },
-      { x: 0, y: 1480, w: 800, h: 740 }, { x: 800, y: 1480, w: 800, h: 740 },
+      { x: 0, y: 0, w: 800, h: 768 }, { x: 800, y: 0, w: 800, h: 768 },
+      { x: 0, y: 768, w: 800, h: 768 }, { x: 800, y: 768, w: 800, h: 768 },
+      { x: 0, y: 1536, w: 800, h: 768 }, { x: 800, y: 1536, w: 800, h: 768 },
     ],
   },
   {
@@ -99,9 +98,9 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "MODERN MIX",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 800, h: 1110 }, { x: 800, y: 0, w: 800, h: 1110 },
-      { x: 0, y: 1110, w: 800, h: 555 }, { x: 800, y: 1110, w: 800, h: 555 },
-      { x: 0, y: 1665, w: 800, h: 555 }, { x: 800, y: 1665, w: 800, h: 555 },
+      { x: 0, y: 0, w: 800, h: 1152 }, { x: 800, y: 0, w: 800, h: 1152 },
+      { x: 0, y: 1152, w: 800, h: 576 }, { x: 800, y: 1152, w: 800, h: 576 },
+      { x: 0, y: 1728, w: 800, h: 576 }, { x: 800, y: 1728, w: 800, h: 576 },
     ],
   },
   {
@@ -109,9 +108,9 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "ASYMMETRIC VIBE",
     package: 100,
     slots: [
-      { x: 0, y: 0, w: 533, h: 740 }, { x: 533, y: 0, w: 1067, h: 740 },
-      { x: 0, y: 740, w: 1067, h: 740 }, { x: 1067, y: 740, w: 533, h: 740 },
-      { x: 0, y: 1480, w: 533, h: 740 }, { x: 533, y: 1480, w: 534, h: 740 }, { x: 1067, y: 1480, w: 533, h: 740 },
+      { x: 0, y: 0, w: 533, h: 768 }, { x: 533, y: 0, w: 1067, h: 768 },
+      { x: 0, y: 768, w: 1067, h: 768 }, { x: 1067, y: 768, w: 533, h: 768 },
+      { x: 0, y: 1536, w: 533, h: 768 }, { x: 533, y: 1536, w: 534, h: 768 }, { x: 1067, y: 1536, w: 533, h: 768 },
     ],
   }
 ];

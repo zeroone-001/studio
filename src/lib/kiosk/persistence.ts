@@ -31,7 +31,7 @@ const DB_NAME = 'JNL_Studio_Kiosk_DB';
 const STORE_NAME = 'photos';
 
 export const SessionStore = {
-  // Initialize IndexedDB for high-performance large photo storage
+  // Initialize IndexedDB for high-performance large photo storage (Honor Pad Gallery)
   initDB: (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
       if (typeof window === 'undefined') return reject('IndexedDB not available');
@@ -47,7 +47,7 @@ export const SessionStore = {
     });
   },
 
-  // Save photo to IndexedDB for instant local persistence
+  // Save photo to IndexedDB for instant local persistence (Local Gallery)
   savePhotoLocally: async (id: string, blob: Blob) => {
     try {
       if (typeof window === 'undefined') return;
@@ -60,25 +60,36 @@ export const SessionStore = {
         tx.onerror = () => reject(tx.error);
       });
     } catch (e) {
-      console.error('Local Buffer Failed', e);
+      console.error('Local Gallery Save Failed', e);
+    }
+  },
+
+  // Save specifically to the Lexar USB Drive
+  saveToUsb: async (handle: FileSystemDirectoryHandle, id: string, blob: Blob) => {
+    try {
+      // Create 'Lexar JNL Photobooth YES' folder structure if needed
+      const fileHandle = await handle.getFileHandle(`${id}.jpg`, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return true;
+    } catch (e) {
+      console.error('USB Backup Failed', e);
+      return false;
     }
   },
 
   // Cleanup logic: Verify backups before deleting local temporary copy
-  cleanupSession: async (id: string, skipFacebook: boolean) => {
+  cleanupSession: async (id: string) => {
     try {
       if (typeof window === 'undefined') return;
-      const session = SessionStore.load();
-      if (!session || session.id !== id) return;
-
-      // Only delete if verified backups exist and customer didn't want Facebook post
-      if (skipFacebook && session.isUsbBackedUp && (session.isSynced || session.isDownloaded)) {
-        const db = await SessionStore.initDB();
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        store.delete(id);
-        SessionStore.clear();
-      }
+      const db = await SessionStore.initDB();
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      store.delete(id);
+      return new Promise((resolve) => {
+        tx.oncomplete = () => resolve(true);
+      });
     } catch (e) {
       console.error('Cleanup Error', e);
     }

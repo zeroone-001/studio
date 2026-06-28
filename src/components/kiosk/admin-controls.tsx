@@ -289,7 +289,7 @@ export function AdminControls({
                 )}
               >
                 {usbStatus === 'connected' ? <CheckCircle2 className="w-4 h-4" /> : <FolderOpen className="w-4 h-4" />}
-                {usbStatus === 'connected' ? "LEXAR USB MOUNTED" : "SELECT LEXAR DRIVE"}
+                {usbStatus === 'connected' ? "LEXAR JNL YES MOUNTED" : "SELECT LEXAR DRIVE"}
               </button>
 
               <button 

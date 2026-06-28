@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -24,7 +23,7 @@ import { SessionStore } from "@/lib/kiosk/persistence";
 import { KioskLogger } from "@/lib/kiosk/logger";
 import { initializeFirebase } from "@/firebase";
 import { ref, uploadBytes } from "firebase/storage";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, onSnapshot } from "firebase/firestore";
 
 // COMMERCIAL PRODUCTION ROUTING
 const PUBLIC_KIOSK_URL = "https://jnl-studio-booth.web.app";
@@ -171,6 +170,7 @@ export default function KioskPage() {
   const [logoTapCount, setLogoTapCount] = useState(0);
   const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [currentSessionId, setCurrentSessionId] = useState("");
   const [softCopyQrUrl, setSoftCopyQrUrl] = useState("");
   const [facebookQrUrl, setFacebookQrUrl] = useState("");
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "complete" | "error">("idle");
@@ -193,6 +193,24 @@ export default function KioskPage() {
       setIsOwnerMode(false);
     }
   }, [appState]);
+
+  // AUTO-PURGE MONITOR: Deletes local copy for "NO" sessions after download verification
+  useEffect(() => {
+    if (appState === "printing" && currentSessionId && promoConsent === false) {
+      const { db } = initializeFirebase();
+      const unsub = onSnapshot(doc(db, "photos", currentSessionId), (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          if (data.isDownloaded === true) {
+            KioskLogger.log('info', 'Privacy', `Auto-Purging NO session local copy: ${currentSessionId}`);
+            SessionStore.cleanupSession(currentSessionId);
+            unsub();
+          }
+        }
+      });
+      return () => unsub();
+    }
+  }, [appState, currentSessionId, promoConsent]);
 
   const initBillAcceptor = useCallback(async () => {
     if (typeof navigator === 'undefined' || !('serial' in navigator)) return;
@@ -334,7 +352,8 @@ export default function KioskPage() {
     
     // 1. SECURE SESSION ID (HIGH ENTROPY)
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}_${Math.random().toString(36).substring(2, 12)}`;
-    
+    setCurrentSessionId(sessionId);
+
     // 2. IMMEDIATE QR GENERATION (PRODUCTION ROUTING)
     const retrievalUrl = `${PUBLIC_KIOSK_URL}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
@@ -376,8 +395,8 @@ export default function KioskPage() {
       }
 
       // Branding Footer (Zero Gap)
-      const footerY = 2220;
-      const footerH = 180;
+      const footerY = 2304;
+      const footerH = 96;
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(offsetX, footerY, 1600, footerH);
 
@@ -385,15 +404,15 @@ export default function KioskPage() {
       ctx.fillStyle = '#000000';
       ctx.font = 'italic 28px Inter, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(selectedQuote.text, offsetX + 800, footerY + 60);
+      ctx.fillText(selectedQuote.text, offsetX + 800, footerY + 40);
 
       // JNL STUDIO Left
       ctx.fillStyle = '#000000';
       ctx.font = '900 italic 24px Inter, sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText('JNL', offsetX + 60, footerY + 120);
+      ctx.fillText('JNL', offsetX + 60, footerY + 80);
       ctx.fillStyle = '#FF3399';
-      ctx.fillText('STUDIO', offsetX + 115, footerY + 120);
+      ctx.fillText('STUDIO', offsetX + 115, footerY + 80);
     };
 
     if (isStrip) {
@@ -413,9 +432,17 @@ export default function KioskPage() {
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
 
-      // Local Persistence
+      // Local Persistence (Honor Pad Gallery simulation via IndexedDB)
       await SessionStore.savePhotoLocally(sessionId, blob);
       
+      // DEFERRED USB BACKUP (Consent: YES)
+      if (promoConsent === true && usbDirectoryHandle) {
+        setTimeout(async () => {
+          await SessionStore.saveToUsb(usbDirectoryHandle, sessionId, blob);
+          KioskLogger.log('info', 'Hardware', `USB Backup (YES): ${sessionId} saved to Lexar.`);
+        }, 2 * 60 * 1000); // 2 minutes delay
+      }
+
       // Parallel Print Start
       initiatePrint(blob); 
 
@@ -435,12 +462,12 @@ export default function KioskPage() {
           setUploadStatus("complete");
         } catch (e) {
           setUploadStatus("error");
-          KioskLogger.log('error', 'Cloud', 'Sync handshake deferred.');
+          KioskLogger.log('error', 'Cloud', 'Sync deferred.');
         }
       })();
     }, 'image/jpeg', 0.88);
 
-  }, [selectedBlueprint, capturedPhotos, selectedFilter, selectedQuote]);
+  }, [selectedBlueprint, capturedPhotos, selectedFilter, selectedQuote, promoConsent, usbDirectoryHandle]);
 
   useEffect(() => {
     if (appState === "printing" && !exportTriggeredRef.current) {
@@ -451,6 +478,7 @@ export default function KioskPage() {
       exportTriggeredRef.current = false;
       setUploadStatus("idle");
       setSoftCopyQrUrl("");
+      setCurrentSessionId("");
     }
   }, [appState, handleFinalExport]);
 

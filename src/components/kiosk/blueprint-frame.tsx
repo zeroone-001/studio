@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useMemo, useRef, useState, useEffect } from "react";
@@ -151,25 +150,25 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* Spacious Branding Footer - 7.5% Height (180px at 2400px height) */}
+      {/* Spacious Branding Footer - 4% Height (96px at 2400px height) */}
       <div 
-        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-center items-center px-6 pt-8 pb-4"
-        style={{ height: '7.5%' }}
+        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-center items-center px-6 pt-4 pb-2"
+        style={{ height: '4%' }}
       >
-        {/* Inspirational Quote Sentence - Increased Spacing from Photo Edge */}
+        {/* Inspirational Quote Sentence - Elegant Spacing from Photo Edge */}
         {quoteText && (
-          <p className="font-bold text-black italic text-center leading-relaxed mb-4 mt-8 px-4" style={{ fontSize: isStrip ? '10px' : '16px' }}>
+          <p className="font-bold text-black italic text-center leading-relaxed mb-2 mt-2 px-4" style={{ fontSize: isStrip ? '8px' : '14px' }}>
             "{quoteText}"
           </p>
         )}
-        <div className="w-full flex justify-between items-center border-t border-black/5 pt-3 mb-2">
+        <div className="w-full flex justify-between items-center border-t border-black/5 pt-1">
           <div className="flex flex-col items-start leading-none gap-0">
-             <span className="font-headline font-black italic uppercase text-black flex items-center gap-1" style={{ fontSize: isStrip ? '11px' : '18px' }}>
+             <span className="font-headline font-black italic uppercase text-black flex items-center gap-1" style={{ fontSize: isStrip ? '9px' : '16px' }}>
                <span>JNL</span>
                <span className="text-[#FF3399]">STUDIO</span>
              </span>
           </div>
-          <span className="font-bold uppercase tracking-[0.15em] text-black/30 leading-none" style={{ fontSize: isStrip ? '6px' : '10px' }}>{displayDate}</span>
+          <span className="font-bold uppercase tracking-[0.15em] text-black/30 leading-none" style={{ fontSize: isStrip ? '5px' : '8px' }}>{displayDate}</span>
         </div>
       </div>
     </div>

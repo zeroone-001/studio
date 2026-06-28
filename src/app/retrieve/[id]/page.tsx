@@ -1,11 +1,10 @@
-
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import { initializeFirebase } from "@/firebase";
 import { ref, getDownloadURL } from "firebase/storage";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { KioskLayout } from "@/components/kiosk/kiosk-layout";
 import { NeonButton } from "@/components/kiosk/neon-button";
 import { Download, Loader2, AlertCircle, Share2, Activity, Clock } from "lucide-react";
@@ -63,8 +62,14 @@ export default function RetrievePage() {
   }, [fetchPhoto]);
 
   const handleDownload = async () => {
-    if (!imageUrl) return;
+    if (!imageUrl || !id) return;
     try {
+      // Signal to Kiosk that download was triggered (for auto-purge logic)
+      const { db } = initializeFirebase();
+      await updateDoc(doc(db, "photos", id), {
+        isDownloaded: true
+      });
+
       const response = await fetch(imageUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);

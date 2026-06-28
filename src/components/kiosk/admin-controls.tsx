@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -31,7 +32,8 @@ import {
   CheckCircle2,
   Printer,
   Banknote,
-  Cpu
+  Cpu,
+  Search
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
@@ -58,7 +60,6 @@ interface AdminControlsProps {
   cameras?: MediaDeviceInfo[];
   selectedCameraId?: string;
   onSelectCamera?: (id: string) => void;
-  resolution?: string;
 }
 
 export function AdminControls({ 
@@ -69,190 +70,70 @@ export function AdminControls({
   onBypassPayment,
   usbStatus,
   onSetupUsb,
-  onSetupBillAcceptor,
   isDevMode,
   onToggleDevMode,
   isCameraActive = false,
   onTestCamera,
   cameras = [],
   selectedCameraId,
-  onSelectCamera,
-  resolution
+  onSelectCamera
 }: AdminControlsProps) {
-  const [view, setView] = useState<'main' | 'logs' | 'diag' | 'hardware'>('main');
-  const [stats, setStats] = useState({ used: '0MB', percent: '0', queue: 0 });
-  const [isMaintenance, setIsMaintenance] = useState(false);
-  const [usbPrinterInfo, setUsbPrinterInfo] = useState<any>(null);
+  const [view, setView] = useState<'main' | 'logs' | 'diag'>('main');
   const logs = KioskLogger.getLogs();
-
-  useEffect(() => {
-    const updateStats = () => {
-      const s = SessionStore.getStorageStats();
-      const q = SessionStore.getSyncQueue().filter(i => i.status === 'pending');
-      setStats({ used: s.usedMB, percent: s.percent, queue: q.length });
-    };
-    const interval = setInterval(updateStats, 2000);
-    updateStats();
-    return () => clearInterval(interval);
-  }, []);
-
-  // Update USB Printer info
-  useEffect(() => {
-    const fetchUsbInfo = async () => {
-      try {
-        if (typeof navigator !== 'undefined' && 'usb' in navigator) {
-          const devices = await navigator.usb.getDevices();
-          if (devices.length > 0) {
-            const device = devices[0];
-            setUsbPrinterInfo({
-              name: device.productName || "Generic USB Device",
-              manufacturer: device.manufacturerName || "Unknown",
-              vid: device.vendorId.toString(16).padStart(4, '0').toUpperCase(),
-              pid: device.productId.toString(16).padStart(4, '0').toUpperCase(),
-              status: "Connected"
-            });
-          } else {
-            setUsbPrinterInfo(null);
-          }
-        }
-      } catch (e) {
-        // Silently handle Permissions Policy errors
-        setUsbPrinterInfo(null);
-      }
-    };
-    fetchUsbInfo();
-    const int = setInterval(fetchUsbInfo, 5000);
-    return () => clearInterval(int);
-  }, []);
-
-  const handleRequestUsb = async () => {
-    try {
-      if (typeof navigator !== 'undefined' && 'usb' in navigator) {
-        const device = await navigator.usb.requestDevice({ filters: [] });
-        KioskLogger.log('info', 'Hardware', `USB Device Paired: ${device.productName}`);
-      }
-    } catch (e) {
-      KioskLogger.log('error', 'Hardware', 'USB Permission Denied or Policy Restricted.');
-    }
-  };
-
-  const states: { id: SessionState; label: string; icon: any }[] = [
-    { id: "welcome", label: "Intro", icon: PlayCircle },
-    { id: "payment", label: "Cash", icon: CreditCard },
-    { id: "setup", label: "Setup", icon: Palette },
-    { id: "capturing", label: "Camera", icon: Camera },
-    { id: "review", label: "Review", icon: ImageIcon },
-    { id: "decorating", label: "Decor", icon: ImageIcon },
-    { id: "consent", label: "Privacy", icon: ShieldAlert },
-    { id: "printing", label: "Print/QR", icon: PrinterIcon },
-  ];
 
   return (
     <div className="fixed bottom-16 right-4 z-[100] flex flex-col items-end gap-2 scale-90 sm:scale-100 origin-bottom-right">
-      <div className="bg-zinc-950/95 backdrop-blur-md border-2 border-primary/50 p-4 shadow-[0_0_30px_rgba(255,51,153,0.3)] w-80 animate-in slide-in-from-right-4">
+      <div className="bg-zinc-950/95 border-2 border-primary/50 p-4 shadow-2xl w-96 animate-in slide-in-from-right-4">
         <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/10">
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-             <button onClick={() => setView('main')} className={cn("text-[8px] font-black uppercase tracking-tighter px-1", view === 'main' ? "text-primary" : "text-white/40")}>Control</button>
-             <button onClick={() => setView('logs')} className={cn("text-[8px] font-black uppercase tracking-tighter px-1", view === 'logs' ? "text-primary" : "text-white/40")}>Logs</button>
-             <button onClick={() => setView('hardware')} className={cn("text-[8px] font-black uppercase tracking-tighter px-1", view === 'hardware' ? "text-primary" : "text-white/40")}>H/W</button>
-             <button onClick={() => setView('diag')} className={cn("text-[8px] font-black uppercase tracking-tighter px-1", view === 'diag' ? "text-primary" : "text-white/40")}>Diag</button>
+          <div className="flex items-center gap-3">
+             <button onClick={() => setView('main')} className={cn("text-[9px] font-black uppercase tracking-widest", view === 'main' ? "text-primary" : "text-white/40")}>Control</button>
+             <button onClick={() => setView('logs')} className={cn("text-[9px] font-black uppercase tracking-widest", view === 'logs' ? "text-primary" : "text-white/40")}>Diagnostics</button>
+             <button onClick={() => setView('diag')} className={cn("text-[9px] font-black uppercase tracking-widest", view === 'diag' ? "text-primary" : "text-white/40")}>Hardware</button>
           </div>
-          <button onClick={onExitOwnerMode} className="text-white/40 hover:text-white">
-            <LogOut className="w-4 h-4" />
-          </button>
+          <button onClick={onExitOwnerMode} className="text-white/40 hover:text-white"><LogOut className="w-4 h-4" /></button>
         </div>
 
         {view === 'main' && (
           <div className="space-y-4">
-            <div className="flex gap-2">
-              <div className="flex-1 bg-blue-600/10 border border-blue-500/30 p-2 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-[8px] font-black uppercase text-blue-400">
-                  <Code2 className="w-3 h-3" /> Dev Mode
-                </div>
-                <button onClick={onToggleDevMode} className="text-blue-400">
-                  {isDevMode ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5 opacity-40" />}
-                </button>
-              </div>
-              <div className="flex-1 bg-yellow-600/10 border border-yellow-500/30 p-2 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-[8px] font-black uppercase text-yellow-400">
-                  <ShieldCheck className="w-3 h-3" /> Maint.
-                </div>
-                <button onClick={() => setIsMaintenance(!isMaintenance)} className="text-yellow-400">
-                  {isMaintenance ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5 opacity-40" />}
-                </button>
-              </div>
-            </div>
-
-            <button 
-              onClick={onTestCamera} 
-              className={cn(
-                "w-full py-3 text-[10px] font-black uppercase flex items-center justify-center gap-2 border-2 transition-all",
-                currentStatus === 'test-camera' ? "bg-primary border-primary text-white" : "bg-white/5 border-white/20 text-white/60"
-              )}
-            >
+            <button onClick={onTestCamera} className="w-full py-4 text-[10px] font-black uppercase flex items-center justify-center gap-2 bg-white/5 border-2 border-white/10">
               <MonitorSmartphone className="w-4 h-4" /> Visual Test Mode
             </button>
-
             <div className="grid grid-cols-2 gap-2">
                <button onClick={() => onBypassPayment(50)} className="bg-primary/20 border border-primary/40 py-2 text-[9px] font-black uppercase">P50 Bypass</button>
                <button onClick={() => onBypassPayment(100)} className="bg-primary/20 border border-primary/40 py-2 text-[9px] font-black uppercase">P100 Bypass</button>
             </div>
-
-            <div className="grid grid-cols-2 gap-1 max-h-40 overflow-y-auto scrollbar-hide">
-              {states.map((state) => (
-                <button
-                  key={state.id}
-                  onClick={() => onJumpTo(state.id)}
-                  className={cn(
-                    "flex items-center gap-2 px-2 py-2 text-[8px] font-bold uppercase border-l-2",
-                    currentStatus === state.id ? "bg-primary/20 border-primary text-primary" : "bg-white/5 border-transparent text-white/60"
-                  )}
-                >
-                  <state.icon className="w-2.5 h-2.5" />
-                  {state.label}
-                </button>
-              ))}
-            </div>
-            
-            <button onClick={onReset} className="w-full bg-red-500/10 border border-red-500/30 py-2 text-[10px] font-black uppercase text-red-500 flex items-center justify-center gap-2">
-              <RefreshCcw className="w-3 h-3" /> Emergency Reset
-            </button>
+            <button onClick={onReset} className="w-full bg-red-500/10 border border-red-500/30 py-2 text-[10px] font-black uppercase text-red-500">Emergency Reset</button>
           </div>
         )}
 
-        {view === 'hardware' && (
-          <div className="space-y-4 animate-in fade-in duration-300">
-            {/* Printer Diagnostics */}
-            <div className="bg-white/5 border border-white/10 p-3 rounded-lg space-y-2">
-              <div className="flex items-center gap-2 text-[8px] font-black uppercase text-primary mb-1">
-                 <Printer className="w-3 h-3" /> Printer Diagnostics
-              </div>
-              {usbPrinterInfo ? (
-                <div className="space-y-1">
-                  <div className="flex justify-between text-[7px] font-bold uppercase">
-                    <span className="text-white/40">Product:</span>
-                    <span className="text-white truncate max-w-[120px]">{usbPrinterInfo.name}</span>
+        {view === 'logs' && (
+          <div className="space-y-3">
+             <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                <span className="text-[10px] font-black text-primary uppercase flex items-center gap-2"><Activity className="w-3 h-3" /> Runtime Trace</span>
+                <button onClick={() => KioskLogger.clear()} className="text-red-500"><Trash2 className="w-3 h-3" /></button>
+             </div>
+             <div className="space-y-2 max-h-80 overflow-y-auto pr-2 scrollbar-hide">
+                {logs.length === 0 && <div className="text-[9px] italic text-white/20 text-center py-10">No diagnostic data available.</div>}
+                {logs.map((log, i) => (
+                  <div key={i} className={cn("text-[8px] p-2 rounded-lg border", log.status === 'SUCCESS' ? "bg-green-500/5 border-green-500/20" : log.status === 'FAILED' ? "bg-red-500/5 border-red-500/20" : "bg-white/5 border-white/5")}>
+                     <div className="flex justify-between items-center mb-1">
+                        <span className={cn("font-black px-1.5 py-0.5 rounded-sm", log.status === 'SUCCESS' ? "bg-green-500 text-white" : log.status === 'FAILED' ? "bg-red-500 text-white" : "bg-zinc-800 text-zinc-400")}>
+                          {log.module}
+                        </span>
+                        <span className="text-white/20">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                     </div>
+                     <p className="font-bold text-white/80">{log.message}</p>
+                     {log.error && <p className="text-red-400 mt-1 italic font-medium">ERROR: {log.error}</p>}
                   </div>
-                  <div className="flex justify-between text-[7px] font-bold uppercase">
-                    <span className="text-white/40">Maker:</span>
-                    <span className="text-white truncate max-w-[120px]">{usbPrinterInfo.manufacturer}</span>
-                  </div>
-                  <div className="flex justify-between text-[7px] font-bold uppercase">
-                    <span className="text-white/40">VID/PID:</span>
-                    <span className="text-primary">{usbPrinterInfo.vid}:{usbPrinterInfo.pid}</span>
-                  </div>
-                  <div className="flex justify-between text-[7px] font-bold uppercase">
-                    <span className="text-white/40">Status:</span>
-                    <span className="text-green-500">Ready</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-[7px] font-black uppercase text-white/20 italic">No Paired Printer Detected</div>
-              )}
-            </div>
+                ))}
+             </div>
+          </div>
+        )}
 
-            <div className="space-y-2">
-              <label className="text-[8px] font-black uppercase text-white/40 tracking-widest">Select Video Source</label>
+        {view === 'diag' && (
+          <div className="space-y-4">
+             <div className="space-y-2">
+              <label className="text-[8px] font-black uppercase text-white/40">Video Source</label>
               <Select value={selectedCameraId} onValueChange={onSelectCamera}>
                 <SelectTrigger className="bg-white/5 border-white/10 text-[10px] h-10 uppercase font-bold">
                   <SelectValue placeholder="No Camera Detected" />
@@ -266,86 +147,10 @@ export function AdminControls({
                 </SelectContent>
               </Select>
             </div>
-            
-            <div className="bg-primary/10 border border-primary/30 p-4 space-y-2 rounded-lg">
-              <div className="flex items-center justify-between">
-                <span className="text-[8px] font-black uppercase text-primary">Camera State</span>
-                <span className={cn("text-[8px] font-black uppercase", isCameraActive ? "text-green-500" : "text-red-500")}>
-                  {isCameraActive ? "READY" : "OFFLINE"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[8px] font-black uppercase text-primary">Resolution</span>
-                <span className="text-[8px] font-black uppercase text-white">{resolution || 'Detecting...'}</span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <button 
-                onClick={onSetupUsb} 
-                className={cn(
-                  "w-full py-4 text-[10px] font-black uppercase flex items-center justify-center gap-2 border-2 transition-all",
-                  usbStatus === 'connected' ? "bg-blue-500 border-blue-400 text-white" : "bg-white/5 border-white/10 text-white/60"
-                )}
-              >
-                {usbStatus === 'connected' ? <CheckCircle2 className="w-4 h-4" /> : <FolderOpen className="w-4 h-4" />}
-                {usbStatus === 'connected' ? "LEXAR JNL YES MOUNTED" : "SELECT LEXAR DRIVE"}
-              </button>
-
-              <button 
-                onClick={onSetupBillAcceptor} 
-                className="w-full py-3 bg-zinc-800 text-[10px] font-black uppercase text-white/60 border-2 border-white/10 hover:border-white/30 transition-all flex items-center justify-center gap-2"
-              >
-                <Banknote className="w-4 h-4" /> Pair Bill Acceptor
-              </button>
-
-              <button 
-                onClick={handleRequestUsb} 
-                className="w-full py-3 bg-zinc-800 text-[9px] font-black uppercase text-white/60 border border-white/10 hover:border-white/30 transition-all flex items-center justify-center gap-2"
-              >
-                <Printer className="w-3 h-3" /> Pair & Detect Printer
-              </button>
-            </div>
-          </div>
-        )}
-
-        {view === 'logs' && (
-          <div className="space-y-3">
-             <div className="flex items-center justify-between">
-                <span className="text-[9px] font-bold text-white/40 uppercase">Recovery Logs</span>
-                <button onClick={() => KioskLogger.clear()} className="text-red-500"><Trash2 className="w-3 h-3" /></button>
-             </div>
-             <div className="space-y-2 max-h-64 overflow-y-auto pr-2 scrollbar-hide">
-                {logs.map((log, i) => (
-                  <div key={i} className="text-[7px] border-b border-white/5 pb-2">
-                     <div className="flex justify-between text-white/40">
-                        <span>{log.module}</span>
-                        <span>{new Date(log.timestamp).toLocaleTimeString()}</span>
-                     </div>
-                     <p className={cn(log.level === 'error' ? "text-red-400" : "text-white/80")}>{log.message}</p>
-                  </div>
-                ))}
-             </div>
-          </div>
-        )}
-
-        {view === 'diag' && (
-          <div className="space-y-4">
-             <div className="bg-white/5 p-3 space-y-2">
-                <div className="justify-between flex text-[8px] font-bold uppercase">
-                   <span className="text-white/40">Storage Cache</span>
-                   <span>{stats.used} ({stats.percent}%)</span>
-                </div>
-                <div className="justify-between flex text-[8px] font-bold uppercase">
-                   <span className="text-white/40">Pending Sync</span>
-                   <span className={cn(stats.queue > 0 ? "text-primary" : "text-white/40")}>{stats.queue} Items</span>
-                </div>
-                <div className="justify-between flex text-[8px] font-bold uppercase">
-                   <span className="text-white/40">USB Storage</span>
-                   <span className={usbStatus === 'connected' ? "text-blue-400" : "text-white/20"}>{usbStatus.toUpperCase()}</span>
-                </div>
-             </div>
-             <button onClick={() => window.location.reload()} className="w-full bg-zinc-800 py-2 text-[9px] font-black uppercase">Reload Engine</button>
+            <button onClick={onSetupUsb} className={cn("w-full py-4 text-[10px] font-black uppercase flex items-center justify-center gap-2 border-2", usbStatus === 'connected' ? "bg-blue-500 border-blue-400 text-white" : "bg-white/5 border-white/10 text-white/60")}>
+              {usbStatus === 'connected' ? <CheckCircle2 className="w-4 h-4" /> : <FolderOpen className="w-4 h-4" />}
+              {usbStatus === 'connected' ? "LEXAR USB READY" : "MOUNT LEXAR USB"}
+            </button>
           </div>
         )}
       </div>

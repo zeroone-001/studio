@@ -9,9 +9,8 @@ import { AdminControls } from "@/components/kiosk/admin-controls";
 import { HealthMonitor } from "@/components/kiosk/health-monitor";
 import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
-  Wallet, Sparkles, Frame, Quote, Trash2, CameraIcon, Flashlight, User, HeartIcon,
-  QrCode, Facebook, Printer, Usb, AlertCircle, Star, Ghost, PartyPopper,
-  CheckCircle2, RotateCcw, Cookie as CookieIcon, Banknote, Loader2, Target, Plus
+  Printer, Loader2, Download, CheckCircle2, AlertCircle, 
+  RotateCcw, Camera, Target, Trash2, Layers, Maximize2, RotateCw, X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -45,9 +44,6 @@ export const QUOTES = [
   { id: "q3", label: "MAGIC", text: "Create magic in every moment." },
   { id: "q4", label: "DREAMER", text: "Dream big, stay focused." },
   { id: "q5", label: "STAY TRUE", text: "Stay true to your soul." },
-  { id: "q6", label: "GOOD VIBES", text: "Radiate good vibes only." },
-  { id: "q7", label: "BRAVE", text: "Be brave, start now." },
-  { id: "q8", label: "JOY", text: "Choose joy every day." },
 ];
 
 export const STICKER_DEFS = [
@@ -83,7 +79,6 @@ export default function KioskPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
   const [printProgress, setPrintProgress] = useState(0);
-  const [promoConsent, setPromoConsent] = useState<boolean | null>(null);
   const [selectedRetakeIndex, setSelectedRetakeIndex] = useState<number | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -101,9 +96,6 @@ export default function KioskPage() {
 
   const [isOwnerMode, setIsOwnerMode] = useState(false);
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
-  const [usbDirectoryHandle, setUsbDirectoryHandle] = useState<FileSystemDirectoryHandle | null>(null);
-  const [isDevMode, setIsDevMode] = useState<boolean>(true);
-
   const [logoTapCount, setLogoTapCount] = useState(0);
   const [currentSessionId, setCurrentSessionId] = useState("");
   const [softCopyQrUrl, setSoftCopyQrUrl] = useState("");
@@ -126,7 +118,7 @@ export default function KioskPage() {
   }, [selectedCameraId]);
 
   const initiatePrint = useCallback((blob: Blob) => {
-    KioskLogger.log('info', 'PRINT', 'Automatic print job initiated.', 'PENDING');
+    KioskLogger.log('info', 'PRINT', 'Handing over portrait to printer system.', 'PENDING');
     if (!printIframeRef.current) return;
     const iframe = printIframeRef.current;
     const docObj = iframe.contentDocument || iframe.contentWindow?.document;
@@ -149,22 +141,24 @@ export default function KioskPage() {
         iframe.contentWindow?.focus();
         iframe.contentWindow?.print();
         URL.revokeObjectURL(dataUrl);
+        KioskLogger.log('info', 'PRINT', 'System print signal sent.', 'SUCCESS');
       } catch (e: any) {
-        KioskLogger.log('error', 'PRINT', 'Print failed.', 'FAILED', e.message);
+        KioskLogger.log('error', 'PRINT', 'System print failed.', 'FAILED', e.message);
       }
     }, 1000);
   }, []);
 
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
-    const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
+    const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
 
+    // Feature 1: Isolated Soft Copy Handshake
     const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
     
     const { storage, db } = initializeFirebase();
-    // Instant handshake
+    // Instant handshake in Firestore before upload starts
     setDoc(doc(db, "photos", sessionId), {
       id: sessionId,
       storagePath: `photos/${sessionId}.jpg`,
@@ -248,7 +242,6 @@ export default function KioskPage() {
     setSelectedQuote(QUOTES[0]);
     setSelectedStickerId(null);
     setPrintProgress(0);
-    setPromoConsent(null);
     setSelectedRetakeIndex(null);
   }, []);
 
@@ -343,6 +336,9 @@ export default function KioskPage() {
     }
   }, [appState, selectedCameraId]);
 
+  const currentFilters = packageSelected === 50 ? FILTERS.slice(0, 5) : FILTERS;
+  const currentBlueprints = BLUEPRINTS.filter(b => b.package === packageSelected);
+
   return (
     <KioskLayout>
       <canvas ref={canvasRef} className="hidden" />
@@ -359,11 +355,11 @@ export default function KioskPage() {
             hasPackage={!!packageSelected}
             onSimulateCash={(amount) => setPaymentReceived(prev => prev + amount)}
             onBypassPayment={(pkg) => { setPackageSelected(pkg); setPaymentReceived(pkg); setAppState("setup"); }}
-            usbStatus={usbDirectoryHandle ? "connected" : "disconnected"}
-            onSetupUsb={async () => { try { const handle = await (window as any).showDirectoryPicker(); setUsbDirectoryHandle(handle); } catch (e) {} }}
+            usbStatus={"disconnected"}
+            onSetupUsb={() => {}}
             onSetupBillAcceptor={() => {}}
-            isDevMode={isDevMode}
-            onToggleDevMode={() => setIsDevMode(!isDevMode)}
+            isDevMode={true}
+            onToggleDevMode={() => {}}
             cameras={availableCameras}
             selectedCameraId={selectedCameraId}
             onSelectCamera={setSelectedCameraId}
@@ -410,29 +406,40 @@ export default function KioskPage() {
           </div>
         )}
 
-        {(appState === "setup" || appState === "test-camera") && (
+        {appState === "setup" && (
           <div className="w-full h-full max-w-7xl flex flex-row gap-8 items-start py-10 px-8">
-             <div className="relative flex-1 aspect-[16/9] bg-zinc-900 border-4 border-white overflow-hidden">
-                <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} />
-                <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-4 py-2 border border-white/20">
-                  <span className="text-[10px] font-black uppercase italic text-primary">LANDSCAPE PREVIEW</span>
+             <div className="flex-1 space-y-6 overflow-y-auto pr-4 scrollbar-hide">
+                <div className="space-y-4">
+                  <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Select Layout</h2>
+                  <div className="grid grid-cols-2 gap-4">
+                    {currentBlueprints.map(bp => (
+                      <button 
+                        key={bp.id} 
+                        onClick={() => setSelectedBlueprint(bp)} 
+                        className={cn("p-4 border-2 flex flex-col items-center bg-white/5 transition-all", selectedBlueprint?.id === bp.id ? "border-primary bg-primary/10 scale-95" : "border-white/10")}
+                      >
+                        <span className="text-xs font-black uppercase italic">{bp.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Filters</h2>
+                  <div className="grid grid-cols-2 gap-2">
+                    {currentFilters.map(f => (
+                      <button key={f.id} onClick={() => setSelectedFilter(f)} className={cn("p-4 border-2 flex flex-col bg-white/5 transition-all", selectedFilter.id === f.id ? "border-primary bg-primary/10" : "border-white/10")}>
+                        <span className="text-[10px] font-black uppercase italic">{f.label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
              </div>
-             <div className="w-[450px] space-y-8">
-              <div className="space-y-2">
-                <h2 className="font-headline font-black text-4xl italic uppercase text-primary">Styling</h2>
-                <p className="text-[10px] font-black uppercase text-white/40 italic">Select your professional vibe</p>
-              </div>
-              <div className="grid grid-cols-2 gap-2 max-h-[40vh] overflow-y-auto pr-2 scrollbar-hide">
-                {FILTERS.map((f) => (
-                  <button key={f.id} onClick={() => setSelectedFilter(f)} className={cn("p-4 border-2 flex flex-col items-center transition-all", selectedFilter.id === f.id ? "border-primary bg-primary/10 scale-95" : "border-white/10 bg-white/5")}>
-                    <span className="text-[10px] font-black uppercase italic">{f.label}</span>
-                    <span className="text-[8px] opacity-40 font-bold">{f.sub}</span>
-                  </button>
-                ))}
-              </div>
-              <button onClick={() => startShotSequence()} className="w-full py-10 text-2xl bg-primary font-black uppercase italic shadow-[0_0_20px_rgba(255,51,153,0.4)] active:scale-95 transition-transform">SHOOT</button>
-            </div>
+             <div className="w-[500px] flex flex-col gap-6">
+                <div className="relative aspect-[16/9] bg-zinc-900 border-4 border-white overflow-hidden shadow-2xl">
+                   <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} />
+                </div>
+                <NeonButton onClick={() => startShotSequence()} className="w-full py-12 text-3xl">SHOOT</NeonButton>
+             </div>
           </div>
         )}
 
@@ -444,9 +451,7 @@ export default function KioskPage() {
                  <span className="text-[25rem] font-black italic text-white animate-bounce drop-shadow-[0_0_50px_rgba(255,51,153,0.8)]">{countdown}</span>
                </div>
              )}
-             {isProcessing && (
-               <div className="absolute inset-0 bg-white animate-pulse z-[60]" />
-             )}
+             {isProcessing && <div className="absolute inset-0 bg-white animate-pulse z-[60]" />}
           </div>
         )}
 
@@ -465,36 +470,37 @@ export default function KioskPage() {
                     />
                  )}
               </div>
-              <p className="text-[10px] font-black uppercase text-white/40 italic">Tap a photo slot to select for partial retake</p>
+              <p className="text-[10px] font-black uppercase text-white/40 italic tracking-widest">Tap a photo slot to select for partial retake</p>
             </div>
             <div className="w-96 space-y-4">
-               <div className="space-y-2 mb-6">
-                 <h2 className="font-headline font-black text-3xl italic uppercase text-primary">Review</h2>
-                 <p className="text-[10px] font-black uppercase text-white/40 italic">Final check before decoration</p>
+               <div className="space-y-2 mb-6 text-center">
+                 <h2 className="font-headline font-black text-4xl italic uppercase text-primary">Review</h2>
+                 <p className="text-[10px] font-black uppercase text-white/40 italic">Check your portraits</p>
                </div>
                
-               <NeonButton onClick={() => setAppState("decorating")} className="w-full py-8 text-xl border-4 border-primary">CONTINUE TO DECORATE</NeonButton>
+               <NeonButton onClick={() => setAppState("decorating")} className="w-full py-8 text-xl border-4 border-primary">DECORATE PORTRAIT</NeonButton>
                
                <div className="h-px bg-white/10 w-full my-4" />
                
+               {/* Selective Partial Retake Feature */}
                <button 
                 onClick={() => selectedRetakeIndex !== null && startSingleShotSequence(selectedRetakeIndex)} 
                 disabled={selectedRetakeIndex === null} 
                 className={cn(
-                  "w-full py-8 font-black uppercase italic transition-all border-2",
+                  "w-full py-8 font-black uppercase italic transition-all border-2 flex items-center justify-center gap-3",
                   selectedRetakeIndex !== null 
-                    ? "bg-white text-black border-white hover:bg-white/90 scale-105" 
+                    ? "bg-white text-black border-white hover:scale-105" 
                     : "bg-white/5 text-white/20 border-white/10 opacity-50"
                 )}
                >
-                 {selectedRetakeIndex !== null ? `Retake Photo ${selectedRetakeIndex + 1}` : "Select Photo to Retake"}
+                 <Target className="w-5 h-5" /> {selectedRetakeIndex !== null ? `Retake Photo ${selectedRetakeIndex + 1}` : "Select Slot to Retake"}
                </button>
 
                <button 
                 onClick={() => setAppState("setup")} 
-                className="w-full py-4 border-2 border-white/20 font-black uppercase italic text-white/40 hover:text-white hover:border-white transition-colors"
+                className="w-full py-4 border-2 border-white/20 font-black uppercase italic text-white/40 hover:text-white transition-colors flex items-center justify-center gap-2"
                >
-                 Retake All Photos
+                 <RotateCcw className="w-4 h-4" /> Retake All
                </button>
             </div>
           </div>
@@ -532,7 +538,7 @@ export default function KioskPage() {
                       </div>
                    </div>
                    <div className="space-y-4">
-                      <h3 className="text-[10px] font-black uppercase text-white/40 italic">Inspirational Quote</h3>
+                      <h3 className="text-[10px] font-black uppercase text-white/40 italic">Quotes</h3>
                       <div className="grid grid-cols-1 gap-2">
                         {QUOTES.map(q => (
                           <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("p-4 border-2 text-left transition-all", selectedQuote.id === q.id ? "border-primary bg-primary/10" : "border-white/10 bg-white/5")}><p className="text-xs font-bold italic">"{q.text}"</p></button>
@@ -540,7 +546,7 @@ export default function KioskPage() {
                       </div>
                    </div>
                 </div>
-                <NeonButton onClick={() => setAppState("consent")} className="w-full py-10 text-2xl">FINISH & PRINT</NeonButton>
+                <NeonButton onClick={() => setAppState("printing")} className="w-full py-10 text-2xl">FINISH & PRINT</NeonButton>
              </div>
           </div>
         )}
@@ -555,7 +561,7 @@ export default function KioskPage() {
                 <Progress value={printProgress} className="h-4 bg-white/10" />
                 <div className="flex items-center gap-4 p-6 bg-white/5 border border-white/10 rounded-2xl">
                   <Printer className="w-8 h-8 text-primary animate-pulse" />
-                  <p className="text-sm font-bold uppercase italic text-white/60">HANDING OVER TO THERMAL PRINTER VIA UGREEN HUB</p>
+                  <p className="text-sm font-bold uppercase italic text-white/60">SENDING DATA TO THERMAL PRINTER via NOKOPRINT</p>
                 </div>
              </div>
              <div className="bg-white/5 border-2 border-white/10 p-8 flex flex-col items-center space-y-6 rounded-[3rem] w-[400px] shadow-[0_0_50px_rgba(255,51,153,0.2)]">
@@ -571,7 +577,7 @@ export default function KioskPage() {
                 ) : (
                   <div className="flex items-center gap-3 py-6">
                     <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                    <span className="text-[10px] font-black uppercase text-white/40 italic">Uploading to Cloud...</span>
+                    <span className="text-[10px] font-black uppercase text-white/40 italic">Syncing HD to Cloud...</span>
                   </div>
                 )}
              </div>

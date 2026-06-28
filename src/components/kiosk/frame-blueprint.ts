@@ -19,7 +19,7 @@ export type FrameBlueprint = {
  * Footer begins at Y=2200 to provide space for quotes and JNL branding.
  */
 export const BLUEPRINTS: FrameBlueprint[] = [
-  // ₱50 PACKAGE (3 SHOTS)
+  // ₱50 PACKAGE (3 SHOTS, 3 Layouts)
   {
     id: "p50-balanced-trio",
     label: "BALANCED TRIO",
@@ -51,9 +51,9 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     ],
   },
 
-  // ₱100 PACKAGE (6 SHOTS)
+  // ₱100 PACKAGE (6 SHOTS, 6 Layouts)
   {
-    id: "p100-vertical-six",
+    id: "p100-portrait-six",
     label: "PORTRAIT SIX",
     package: 100,
     slots: [

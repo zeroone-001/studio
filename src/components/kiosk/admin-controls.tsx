@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from "react";
@@ -14,8 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-type SessionState = "welcome" | "payment" | "setup" | "capturing" | "review" | "decorating" | "consent" | "printing" | "thankyou" | "test-camera";
+import { SessionState } from "@/lib/kiosk/constants";
 
 interface AdminControlsProps {
   currentStatus: SessionState;

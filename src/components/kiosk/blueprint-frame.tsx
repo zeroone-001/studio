@@ -4,7 +4,10 @@ import React, { useMemo, useRef, useState, useEffect } from "react";
 import Image from "next/image";
 import { FrameBlueprint } from "./frame-blueprint";
 import { cn } from "@/lib/utils";
-import { PlacedSticker, STICKER_DEFS } from "@/app/page";
+import { 
+  PlacedSticker, 
+  STICKER_DEFS 
+} from "@/lib/kiosk/constants";
 import { StickerEditor } from "./sticker-editor";
 
 interface BlueprintFrameProps {

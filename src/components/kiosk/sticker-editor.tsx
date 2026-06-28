@@ -1,9 +1,11 @@
-
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { STICKER_DEFS, PlacedSticker } from "@/app/page";
+import { 
+  STICKER_DEFS, 
+  PlacedSticker 
+} from "@/lib/kiosk/constants";
 import { X, RotateCw, Maximize2, Layers } from "lucide-react";
 
 interface StickerEditorProps {
@@ -29,7 +31,6 @@ export const StickerEditor = React.memo(({
   if (!def) return null;
   const StickerIcon = def.icon;
 
-  // Interaction State - Local only for high-performance visual updates
   const [isInteracting, setIsInteracting] = useState(false);
   const [localTransform, setLocalTransform] = useState({
     x: sticker.x,
@@ -42,7 +43,6 @@ export const StickerEditor = React.memo(({
   const startPos = useRef({ x: 0, y: 0 });
   const startValue = useRef({ x: 0, y: 0, size: 0, rotation: 0, angle: 0 });
 
-  // Reset local state when sticker changes from outside (e.g. selection)
   useEffect(() => {
     if (!isInteracting) {
       setLocalTransform({
@@ -139,7 +139,6 @@ export const StickerEditor = React.memo(({
     const handlePointerUp = () => {
       setIsInteracting(false);
       interactionType.current = null;
-      // Sync local changes to parent only on release for butter-smooth performance
       onUpdate(sticker.id, {
         x: localTransform.x,
         y: localTransform.y,
@@ -182,7 +181,6 @@ export const StickerEditor = React.memo(({
 
       {isSelected && (
         <>
-          {/* Delete Handle */}
           <button
             onPointerDown={(e) => { e.stopPropagation(); onDelete(sticker.id); }}
             className="absolute -top-6 -right-6 w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white shadow-2xl border-2 border-white active:scale-90 z-[60]"
@@ -190,7 +188,6 @@ export const StickerEditor = React.memo(({
             <X className="w-5 h-5" strokeWidth={4} />
           </button>
 
-          {/* Rotate Handle */}
           <div
             onPointerDown={handleRotateStart}
             className="absolute -top-6 -left-6 w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-2xl border-2 border-white cursor-pointer active:scale-90 z-[60]"
@@ -198,7 +195,6 @@ export const StickerEditor = React.memo(({
             <RotateCw className="w-5 h-5" strokeWidth={3} />
           </div>
 
-          {/* Resize Handle */}
           <div
             onPointerDown={handleResizeStart}
             className="absolute -bottom-6 -right-6 w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white shadow-2xl border-2 border-white cursor-se-resize active:scale-90 z-[60]"
@@ -206,7 +202,6 @@ export const StickerEditor = React.memo(({
             <Maximize2 className="w-5 h-5" strokeWidth={3} />
           </div>
 
-          {/* Layer Control */}
           <button
             onPointerDown={(e) => { e.stopPropagation(); onBringToFront(sticker.id); }}
             className="absolute -bottom-6 -left-6 w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center text-white shadow-2xl border-2 border-white active:scale-90 z-[60]"

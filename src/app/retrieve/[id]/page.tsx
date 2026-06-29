@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
@@ -30,6 +31,7 @@ export default function RetrievePage() {
       const docRef = doc(db, "photos", id);
       const docSnap = await getDoc(docRef);
       
+      // If doc doesn't exist yet, keep polling. Cloud upload might be slow.
       if (!docSnap.exists()) {
         if (retryCount.current < MAX_RETRIES) {
           retryCount.current += 1;
@@ -54,7 +56,7 @@ export default function RetrievePage() {
         KioskLogger.log('info', 'QR', 'Photo Displayed.', 'SUCCESS');
         KioskLogger.log('info', 'QR', 'Download Available.', 'SUCCESS');
       } catch (e: any) {
-        // Record exists but file not in storage yet
+        // Record exists but file not in storage yet (Syncing state)
         if (retryCount.current < MAX_RETRIES) {
           retryCount.current += 1;
           setTimeout(fetchPhoto, 1000); 

@@ -143,6 +143,7 @@ export default function KioskPage() {
     
     KioskLogger.log('info', 'PRINT', 'Print Request Generated & Intent Created.', 'SUCCESS');
 
+    // CRITICAL: Delay added to allow Android OS and NokoPrint to register the iframe content
     setTimeout(() => {
       try {
         iframe.contentWindow?.focus();
@@ -152,7 +153,7 @@ export default function KioskPage() {
       } catch (e: any) {
         KioskLogger.log('error', 'PRINT', 'Android Spooler Rejection.', 'FAILED', e.message);
       }
-    }, 500); // Reduced delay for faster handoff
+    }, 500); 
   }, []);
 
   const handleFinalExport = useCallback(async () => {
@@ -166,6 +167,7 @@ export default function KioskPage() {
     const { storage, db } = initializeFirebase();
 
     // 2. IMMEDIATE FIRESTORE RECORD CREATION (CRITICAL FOR SCAN SPEED)
+    // We do this BEFORE rendering to ensure the URL is "valid" the moment it's scanned
     setDoc(doc(db, "photos", sessionId), {
       id: sessionId,
       storagePath: `photos/${sessionId}.jpg`,
@@ -174,6 +176,7 @@ export default function KioskPage() {
       promoConsent: promoConsent,
       status: 'uploading'
     });
+    KioskLogger.log('info', 'SESSION', 'Session Created.', 'SUCCESS');
 
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1600;
@@ -223,7 +226,6 @@ export default function KioskPage() {
       
       // 3. IMMEDIATE PRINT SIGNAL (FIRST PRIORITY)
       initiatePrint(blob); 
-      KioskLogger.log('info', 'PRINT', 'Signal Sent to NokoPrint.', 'SUCCESS');
 
       // 4. IMMEDIATE LOCAL SAVE
       SessionStore.savePhotoLocally(sessionId, blob);
@@ -231,8 +233,8 @@ export default function KioskPage() {
 
       // 5. OPTIMISTIC QR GENERATION (ZERO WAIT)
       setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-      setUploadStatus("complete"); // Show "Complete" UI immediately
-      KioskLogger.log('info', 'QR', 'QR Generated Optimistically.', 'SUCCESS');
+      setUploadStatus("complete");
+      KioskLogger.log('info', 'QR', 'QR Generated.', 'SUCCESS');
 
       // 6. BACKGROUND CLOUD UPLOAD (NON-BLOCKING)
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
@@ -794,4 +796,3 @@ export default function KioskPage() {
     </KioskLayout>
   );
 }
-

@@ -49,8 +49,8 @@ export function HealthMonitor() {
               const name = (device.productName || "").toLowerCase();
               const manufacturer = (device.manufacturerName || "").toLowerCase();
               
-              // Detect Epson or generic printer profiles
-              if (name.includes('epson') || name.includes('printer') || manufacturer.includes('epson')) {
+              // Detect Epson or generic printer profiles (L210)
+              if (name.includes('epson') || name.includes('l210') || name.includes('printer') || manufacturer.includes('epson')) {
                 detectedPrinter = true;
               }
               // Detect Lexar or generic mass storage

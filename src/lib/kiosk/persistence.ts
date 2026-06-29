@@ -49,19 +49,20 @@ export const SessionStore = {
   },
 
   // Save photo to IndexedDB for instant local persistence (Local Gallery)
-  savePhotoLocally: async (id: string, blob: Blob) => {
+  savePhotoLocally: async (id: string, blob: Blob): Promise<boolean> => {
     try {
-      if (typeof window === 'undefined') return;
+      if (typeof window === 'undefined') return false;
       const db = await SessionStore.initDB();
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
       store.put(blob, id);
       return new Promise((resolve, reject) => {
         tx.oncomplete = () => resolve(true);
-        tx.onerror = () => reject(tx.error);
+        tx.onerror = () => reject(false);
       });
     } catch (e) {
       console.error('Local Gallery Save Failed', e);
+      return false;
     }
   },
 

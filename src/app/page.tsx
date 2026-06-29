@@ -19,7 +19,7 @@ import { SessionStore } from "@/lib/kiosk/persistence";
 import { KioskLogger } from "@/lib/kiosk/logger";
 import { initializeFirebase } from "@/firebase";
 import { ref, uploadBytes } from "firebase/storage";
-import { doc, setDoc, serverTimestamp, updateDoc, onSnapshot } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, updateDoc, onSnapshot, getDoc } from "firebase/firestore";
 import { 
   SessionState, 
   FILTERS, 
@@ -165,17 +165,6 @@ export default function KioskPage() {
     
     const { storage, db } = initializeFirebase();
 
-    // OPTIMISTIC SESSION RECORD
-    setDoc(doc(db, "photos", sessionId), {
-      id: sessionId,
-      storagePath: `photos/${sessionId}.jpg`,
-      timestamp: serverTimestamp(),
-      isDownloaded: false,
-      promoConsent: promoConsent,
-      status: 'uploading'
-    });
-    KioskLogger.log('info', 'SESSION', 'Session Created.', 'SUCCESS');
-
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1600;
     exportCanvas.height = 2400;
@@ -222,28 +211,53 @@ export default function KioskPage() {
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
       
-      // IMMEDIATE PRINT SIGNAL
-      initiatePrint(blob); 
+      // 1. VERIFIED SAVE (IndexedDB)
+      const saveResult = await SessionStore.savePhotoLocally(sessionId, blob);
+      if (saveResult) {
+        KioskLogger.log('info', 'SESSION', 'Photo Saved = SUCCESS', 'SUCCESS');
+      } else {
+        KioskLogger.log('error', 'SESSION', 'Photo Saved = FAILED', 'FAILED');
+      }
 
-      // IMMEDIATE LOCAL SAVE
-      SessionStore.savePhotoLocally(sessionId, blob);
-      KioskLogger.log('info', 'SESSION', 'Photo Saved Locally.', 'SUCCESS');
+      // 2. CREATE SESSION RECORD (Firestore)
+      try {
+        await setDoc(doc(db, "photos", sessionId), {
+          id: sessionId,
+          storagePath: `photos/${sessionId}.jpg`,
+          timestamp: serverTimestamp(),
+          isDownloaded: false,
+          promoConsent: promoConsent,
+          status: 'uploading'
+        });
+        KioskLogger.log('info', 'SESSION', 'Session Created = SUCCESS', 'SUCCESS');
+      } catch (e: any) {
+        KioskLogger.log('error', 'SESSION', 'Session Created = FAILED', 'FAILED', e.message);
+      }
 
-      // OPTIMISTIC QR GENERATION
-      setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-      setUploadStatus("complete");
-      KioskLogger.log('info', 'QR', 'QR Generated.', 'SUCCESS');
-
-      // BACKGROUND UPLOAD
+      // 3. UPLOAD HD (Verify existence for QR)
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
+      setUploadStatus("uploading");
+      
       uploadBytes(photoRef, blob).then(async () => {
         await updateDoc(doc(db, "photos", sessionId), { status: 'complete' });
-        KioskLogger.log('info', 'CLOUD', 'HD Cloud Sync Complete.', 'SUCCESS');
-      });
+        setUploadStatus("complete");
+        KioskLogger.log('info', 'CLOUD', 'HD Cloud Sync = SUCCESS', 'SUCCESS');
+        
+        // 4. GENERATE QR (Only after upload verified or record ready)
+        setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
+        KioskLogger.log('info', 'QR', 'QR Generated = SUCCESS', 'SUCCESS');
 
-      if (promoConsent && usbHandle) {
-        SessionStore.saveToUsb(usbHandle, sessionId, blob);
-      }
+        // 5. START PRINTING (Immediately after QR)
+        initiatePrint(blob);
+
+        if (promoConsent && usbHandle) {
+          SessionStore.saveToUsb(usbHandle, sessionId, blob);
+        }
+      }).catch(e => {
+        KioskLogger.log('error', 'CLOUD', 'HD Cloud Sync = FAILED', 'FAILED', e.message);
+        setUploadStatus("error");
+      });
+      
     }, 'image/jpeg', 0.9);
   }, [selectedBlueprint, capturedPhotos, selectedQuote, originUrl, initiatePrint, promoConsent, usbHandle, selectedFilter]);
 

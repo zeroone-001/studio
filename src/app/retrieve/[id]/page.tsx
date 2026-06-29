@@ -53,8 +53,7 @@ export default function RetrievePage() {
         setImageUrl(url);
         setLoading(false);
         setStatus('complete');
-        KioskLogger.log('info', 'QR', 'Photo Displayed.', 'SUCCESS');
-        KioskLogger.log('info', 'QR', 'Download Available.', 'SUCCESS');
+        KioskLogger.log('info', 'QR', 'Photo Displayed = SUCCESS', 'SUCCESS');
       } catch (e: any) {
         // Record exists but file not in storage yet (Syncing state)
         if (retryCount.current < MAX_RETRIES) {
@@ -94,7 +93,7 @@ export default function RetrievePage() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      KioskLogger.log('info', 'QR', 'Download triggered.', 'SUCCESS');
+      KioskLogger.log('info', 'QR', 'Download Available = SUCCESS', 'SUCCESS');
     } catch (e) {
       // Mobile fallback if manual blob download fails
       window.open(imageUrl, '_blank');

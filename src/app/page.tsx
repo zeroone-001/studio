@@ -134,7 +134,11 @@ export default function KioskPage() {
     docObj.write(`
       <html>
         <head>
-          <style>@page { size: 4in 6in; margin: 0; } body { margin: 0; display: flex; align-items: center; justify-content: center; background: white; } img { width: 4in; height: 6in; object-fit: contain; }</style>
+          <style>
+            @page { size: 4in 6in; margin: 0; } 
+            body { margin: 0; display: flex; align-items: center; justify-content: center; background: white; } 
+            img { width: 4in; height: 6in; object-fit: contain; }
+          </style>
         </head>
         <body><img src="${dataUrl}" /></body>
       </html>
@@ -143,6 +147,7 @@ export default function KioskPage() {
     
     KioskLogger.log('info', 'PRINT', 'Print Request Generated & Intent Created.', 'SUCCESS');
 
+    // Android focus handshake pattern
     setTimeout(() => {
       try {
         iframe.contentWindow?.focus();
@@ -158,8 +163,9 @@ export default function KioskPage() {
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
+    // Performance Optimization: Start measurements
+    const startTime = Date.now();
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
-    const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
     setCurrentSessionId(sessionId);
     
     const { storage, db } = initializeFirebase();
@@ -210,27 +216,26 @@ export default function KioskPage() {
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
       
-      const saveResult = await SessionStore.savePhotoLocally(sessionId, blob);
-      if (saveResult) {
-        KioskLogger.log('info', 'SESSION', 'Photo Saved = SUCCESS', 'SUCCESS');
-      } else {
-        KioskLogger.log('error', 'SESSION', 'Photo Saved = FAILED', 'FAILED');
-      }
+      // SPEED OPTIMIZATION: Parallelize Local Save, Session Create, and QR Generation
+      const photoSavePromise = SessionStore.savePhotoLocally(sessionId, blob);
+      
+      const sessionCreatePromise = setDoc(doc(db, "photos", sessionId), {
+        id: sessionId,
+        storagePath: `photos/${sessionId}.jpg`,
+        timestamp: serverTimestamp(),
+        isDownloaded: false,
+        promoConsent: promoConsent,
+        status: 'uploading'
+      });
 
-      try {
-        await setDoc(doc(db, "photos", sessionId), {
-          id: sessionId,
-          storagePath: `photos/${sessionId}.jpg`,
-          timestamp: serverTimestamp(),
-          isDownloaded: false,
-          promoConsent: promoConsent,
-          status: 'uploading'
-        });
-        KioskLogger.log('info', 'SESSION', 'Session Created = SUCCESS', 'SUCCESS');
-      } catch (e: any) {
-        KioskLogger.log('error', 'SESSION', 'Session Created = FAILED', 'FAILED', e.message);
-      }
+      // INSTANT QR: No need to wait for upload completion
+      const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
+      setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
+      
+      // Start printing signal immediately
+      initiatePrint(blob);
 
+      // Background Upload & Logging
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       setUploadStatus("uploading");
       
@@ -238,19 +243,21 @@ export default function KioskPage() {
         await updateDoc(doc(db, "photos", sessionId), { status: 'complete' });
         setUploadStatus("complete");
         KioskLogger.log('info', 'CLOUD', 'HD Cloud Sync = SUCCESS', 'SUCCESS');
-        
-        setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-        KioskLogger.log('info', 'QR', 'QR Generated = SUCCESS', 'SUCCESS');
-
-        initiatePrint(blob);
-
-        if (promoConsent && usbHandle) {
-          SessionStore.saveToUsb(usbHandle, sessionId, blob);
-        }
       }).catch(e => {
         KioskLogger.log('error', 'CLOUD', 'HD Cloud Sync = FAILED', 'FAILED', e.message);
         setUploadStatus("error");
       });
+
+      // Wait for essential local tasks for diagnostic logging
+      const [saveOk] = await Promise.all([photoSavePromise, sessionCreatePromise]);
+      
+      KioskLogger.log('info', 'SESSION', `Photo Saved = ${saveOk ? 'SUCCESS' : 'FAILED'} in ${Date.now() - startTime}ms`, saveOk ? 'SUCCESS' : 'FAILED');
+      KioskLogger.log('info', 'SESSION', 'Session Created = SUCCESS', 'SUCCESS');
+      KioskLogger.log('info', 'QR', 'QR Generated = SUCCESS', 'SUCCESS');
+
+      if (promoConsent && usbHandle) {
+        SessionStore.saveToUsb(usbHandle, sessionId, blob);
+      }
       
     }, 'image/jpeg', 0.9);
   }, [selectedBlueprint, capturedPhotos, selectedQuote, originUrl, initiatePrint, promoConsent, usbHandle, selectedFilter]);

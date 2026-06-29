@@ -19,7 +19,7 @@ export default function RetrievePage() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<'verifying' | 'found' | 'syncing' | 'complete'>('verifying');
   const retryCount = useRef(0);
-  const MAX_RETRIES = 120; // 60 seconds of polling for HD availability (120 * 500ms)
+  const MAX_RETRIES = 120; // Aggressive polling (60 seconds at 500ms intervals)
 
   const fetchPhoto = useCallback(async () => {
     if (!id) return;
@@ -31,44 +31,34 @@ export default function RetrievePage() {
       const docRef = doc(db, "photos", id);
       const docSnap = await getDoc(docRef);
       
-      // If doc doesn't exist yet, keep polling. Cloud upload might be slow.
-      if (!docSnap.exists()) {
-        if (retryCount.current < MAX_RETRIES) {
-          retryCount.current += 1;
-          setTimeout(fetchPhoto, 500); 
+      // If doc exists, check status and try to get download URL
+      if (docSnap.exists()) {
+        setStatus('syncing');
+        const photoRef = ref(storage, `photos/${id}.jpg`);
+        try {
+          const url = await getDownloadURL(photoRef);
+          setImageUrl(url);
+          setLoading(false);
+          setStatus('complete');
+          KioskLogger.log('info', 'QR', 'Photo Displayed = SUCCESS', 'SUCCESS');
           return;
+        } catch (e: any) {
+          // File not in storage yet, continue polling
         }
-        setError("Photo not found.");
-        setLoading(false);
-        KioskLogger.log('error', 'QR', 'Image lookup failed.', 'FAILED', 'Session ID not found');
-        return;
       }
 
-      setStatus('syncing');
-      KioskLogger.log('info', 'QR', 'Session record found.', 'SUCCESS');
-
-      const photoRef = ref(storage, `photos/${id}.jpg`);
-      try {
-        const url = await getDownloadURL(photoRef);
-        setImageUrl(url);
+      // Record or file missing, poll if within retry limit
+      if (retryCount.current < MAX_RETRIES) {
+        retryCount.current += 1;
+        setTimeout(fetchPhoto, 500); 
+      } else {
+        setError("HD Portrait still syncing. Please refresh in a moment.");
         setLoading(false);
-        setStatus('complete');
-        KioskLogger.log('info', 'QR', 'Photo Displayed = SUCCESS', 'SUCCESS');
-      } catch (e: any) {
-        // Record exists but file not in storage yet (Syncing state)
-        if (retryCount.current < MAX_RETRIES) {
-          retryCount.current += 1;
-          setTimeout(fetchPhoto, 1000); 
-        } else {
-          setError("Photo syncing. Please refresh in a moment.");
-          setLoading(false);
-          KioskLogger.log('error', 'QR', 'Image load failed.', 'FAILED', e.message);
-        }
+        KioskLogger.log('error', 'QR', 'Image load failed after max retries.', 'FAILED');
       }
     } catch (err: any) {
       setError("Unable to connect to service.");
       setLoading(false);
-      KioskLogger.log('error', 'QR', 'Handshake error.', 'FAILED', err.message);
     }
   }, [id]);
 
@@ -80,7 +70,6 @@ export default function RetrievePage() {
     if (!imageUrl || !id) return;
     try {
       const { db } = initializeFirebase();
-      // Update Firestore so the kiosk knows the download was successful
       await updateDoc(doc(db, "photos", id), { isDownloaded: true });
       
       const response = await fetch(imageUrl);
@@ -93,11 +82,8 @@ export default function RetrievePage() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      KioskLogger.log('info', 'QR', 'Download Available = SUCCESS', 'SUCCESS');
     } catch (e) {
-      // Mobile fallback if manual blob download fails
       window.open(imageUrl, '_blank');
-      KioskLogger.log('warn', 'QR', 'Fallback download triggered.', 'SUCCESS');
     }
   };
 
@@ -109,7 +95,7 @@ export default function RetrievePage() {
             <div className="flex flex-col items-center py-24 space-y-6">
               <Loader2 className="w-16 h-16 text-primary animate-spin" />
               <p className="text-white/80 font-black uppercase tracking-[0.3em] text-[10px]">
-                {status === 'verifying' ? 'VERIFYING SESSION...' : 'HD VERSION SYNCING...'}
+                {status === 'verifying' ? 'VERIFYING SESSION...' : 'HD PORTRAIT SYNCING...'}
               </p>
             </div>
           ) : error ? (

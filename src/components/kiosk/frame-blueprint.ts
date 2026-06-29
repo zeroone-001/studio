@@ -1,3 +1,4 @@
+
 export type PhotoSlot = {
   x: number;
   y: number;
@@ -20,15 +21,14 @@ export type FrameBlueprint = {
  */
 export const BLUEPRINTS: FrameBlueprint[] = [
   // ₱50 PACKAGE: 2x6 STRIP (3 SHOTS)
-  // These layouts are mirrored for dual-strip 4x6 printing (800px width per strip)
   {
     id: "p50-strip-classic",
     label: "CLASSIC STACK",
     package: 50,
     slots: [
-      { x: 0, y: 50, w: 1600, h: 680 },
-      { x: 0, y: 760, w: 1600, h: 680 },
-      { x: 0, y: 1470, w: 1600, h: 680 },
+      { x: 30, y: 30, w: 1540, h: 680 },
+      { x: 30, y: 740, w: 1540, h: 680 },
+      { x: 30, y: 1450, w: 1540, h: 680 },
     ],
   },
   {
@@ -36,19 +36,19 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     label: "HERO FOCUS",
     package: 50,
     slots: [
-      { x: 0, y: 50, w: 1600, h: 1000 },
-      { x: 0, y: 1080, w: 1600, h: 500 },
-      { x: 0, y: 1610, w: 1600, h: 500 },
+      { x: 30, y: 30, w: 1540, h: 1000 },
+      { x: 30, y: 1060, w: 1540, h: 500 },
+      { x: 30, y: 1590, w: 1540, h: 500 },
     ],
   },
   {
-    id: "p50-strip-inverted",
+    id: "p50-strip-dynamic",
     label: "DYNAMIC BASE",
     package: 50,
     slots: [
-      { x: 0, y: 50, w: 1600, h: 500 },
-      { x: 0, y: 580, w: 1600, h: 500 },
-      { x: 0, y: 1110, w: 1600, h: 1000 },
+      { x: 30, y: 30, w: 1540, h: 500 },
+      { x: 30, y: 560, w: 1540, h: 500 },
+      { x: 30, y: 1090, w: 1540, h: 1000 },
     ],
   },
 
@@ -78,7 +78,7 @@ export const BLUEPRINTS: FrameBlueprint[] = [
   },
   {
     id: "p100-vertical-triplets",
-    label: "VERTICAL TRIPlets",
+    label: "VERTICAL TRIPLETS",
     package: 100,
     slots: [
       { x: 30, y: 30, w: 500, h: 1040 }, { x: 550, y: 30, w: 500, h: 1040 }, { x: 1070, y: 30, w: 500, h: 1040 },
@@ -86,13 +86,13 @@ export const BLUEPRINTS: FrameBlueprint[] = [
     ],
   },
   {
-    id: "p100-landscape-panorama",
+    id: "p100-panorama-mix",
     label: "PANORAMA MIX",
     package: 100,
     slots: [
       { x: 30, y: 30, w: 1540, h: 1040 },
       { x: 30, y: 1100, w: 755, h: 500 }, { x: 815, y: 1100, w: 755, h: 500 },
-      { x: 30, y: 1640, w: 500, h: 500 }, { x: 550, y: 1640, w: 500, h: 500 }, { x: 1070, y: 1640, w: 500, h: 500 },
+      { x: 30, y: 1630, w: 500, h: 500 }, { x: 550, y: 1630, w: 500, h: 500 }, { x: 1070, y: 1630, w: 500, h: 500 },
     ],
   },
   {

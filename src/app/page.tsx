@@ -208,11 +208,9 @@ export default function KioskPage() {
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
       
-      // REQUIREMENT: Save photo locally on Honor Pad storage first
       await SessionStore.savePhotoLocally(sessionId, blob);
       KioskLogger.log('info', 'SESSION', 'Portrait saved to local gallery.', 'SUCCESS');
       
-      // Auto-Print 2 Copies
       initiatePrint(blob); 
       
       setUploadStatus("uploading");
@@ -222,7 +220,6 @@ export default function KioskPage() {
         updateDoc(doc(db, "photos", sessionId), { status: 'complete' });
         setUploadStatus("complete");
         
-        // REQUIREMENT: IF Consent = YES, copy to USB "JNL POST" folder
         if (promoConsent && usbHandle) {
           SessionStore.saveToUsb(usbHandle, sessionId, blob).then(success => {
             if (success) KioskLogger.log('info', 'HARDWARE', 'Backup to Lexar USB (JNL POST) complete.', 'SUCCESS');
@@ -426,7 +423,7 @@ export default function KioskPage() {
           <div className="w-full h-full max-w-7xl flex flex-row gap-8 items-start py-6 px-8 overflow-hidden">
              <div className="flex-[0.4] space-y-4 overflow-y-auto pr-4 scrollbar-hide h-full pb-20">
                 <div className="space-y-4">
-                  <h2 className="font-headline font-black text-2xl italic uppercase text-primary">1. Select Layout</h2>
+                  <h2 className="font-headline font-black text-2xl italic uppercase text-primary">Layout Selection</h2>
                   <div className="grid grid-cols-2 gap-3">
                     {currentBlueprints.map(bp => (
                       <button 
@@ -443,7 +440,7 @@ export default function KioskPage() {
                   </div>
                 </div>
                 <div className="space-y-4">
-                  <h2 className="font-headline font-black text-2xl italic uppercase text-primary">2. Beauty Filters</h2>
+                  <h2 className="font-headline font-black text-2xl italic uppercase text-primary">Beauty Filters</h2>
                   <div className="grid grid-cols-2 gap-2">
                     {currentFilters.map(f => (
                       <button key={f.id} onClick={() => setSelectedFilter(f)} className={cn("p-4 border-2 flex flex-col bg-white/5 transition-all", selectedFilter.id === f.id ? "border-primary bg-primary/10" : "border-white/10")}>
@@ -458,7 +455,7 @@ export default function KioskPage() {
                    <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} />
                 </div>
                 <div className="flex flex-col items-center gap-4">
-                  <p className="text-[10px] font-black uppercase italic tracking-widest text-white/40">Check your pose & select filters above to continue</p>
+                  <p className="text-[10px] font-black uppercase italic tracking-widest text-white/40">Check your pose & select choices to continue</p>
                   <NeonButton 
                     disabled={!selectedBlueprint}
                     onClick={() => setAppState("test-camera")} 

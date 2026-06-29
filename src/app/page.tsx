@@ -116,12 +116,19 @@ export default function KioskPage() {
   }, [currentSessionId, promoConsent, uploadStatus]);
 
   const initiatePrint = useCallback((blob: Blob) => {
-    KioskLogger.log('info', 'PRINT', 'Preparing print signal for Epson L210.', 'PENDING');
-    if (!printIframeRef.current) return;
+    // RUNTIME DIAGNOSTICS FOR AUTO-PRINT SIGNAL
+    KioskLogger.log('info', 'PRINT', 'Signal Generation Started.', 'PENDING');
+    
+    if (!printIframeRef.current) {
+      KioskLogger.log('error', 'PRINT', 'Handover Failed: Iframe not available.', 'FAILED');
+      return;
+    }
+    
     const iframe = printIframeRef.current;
     const docObj = iframe.contentDocument || iframe.contentWindow?.document;
+    
     if (!docObj) {
-      KioskLogger.log('error', 'PRINT', 'Print iframe handshake failed.', 'FAILED');
+      KioskLogger.log('error', 'PRINT', 'Handover Failed: Document handshake failed.', 'FAILED');
       return;
     }
 
@@ -137,16 +144,19 @@ export default function KioskPage() {
     `);
     docObj.close();
     
+    KioskLogger.log('info', 'PRINT', 'Print Request Generated & Intent Created.', 'SUCCESS');
+
+    // HANDOVER TO SYSTEM PRINT (Interpreted by NokoPrint)
     setTimeout(() => {
       try {
         iframe.contentWindow?.focus();
         iframe.contentWindow?.print();
+        KioskLogger.log('info', 'PRINT', 'Android Print Intent Sent (Handoff to NokoPrint).', 'SUCCESS');
         URL.revokeObjectURL(dataUrl);
-        KioskLogger.log('info', 'PRINT', 'System Print Request Sent.', 'SUCCESS');
       } catch (e: any) {
-        KioskLogger.log('error', 'PRINT', 'Handover to NokoPrint failed.', 'FAILED', e.message);
+        KioskLogger.log('error', 'PRINT', 'Android Spooler Rejection.', 'FAILED', e.message);
       }
-    }, 1000);
+    }, 1500);
   }, []);
 
   const handleFinalExport = useCallback(async () => {
@@ -385,7 +395,7 @@ export default function KioskPage() {
             onSelectCamera={setSelectedCameraId}
           />
         )}
-        {isOwnerMode && <HealthMonitor />}
+        <HealthMonitor />
 
         {appState === "welcome" && (
           <div className="flex flex-col items-center w-full h-full animate-in fade-in duration-1000">

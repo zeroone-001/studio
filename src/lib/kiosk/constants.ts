@@ -24,27 +24,28 @@ export interface PlacedSticker {
 }
 
 /**
- * BEAUTY FILTERS
- * Optimized for modern social media aesthetics and skin-tone preservation.
+ * BEAUTY FILTERS - ENHANCED QUALITY
+ * Optimized for Honor Pad X10 camera and skin-tone preservation.
+ * Strictly maintains 5 filters for ₱50 and 10 for ₱100.
  */
 export const FILTERS = [
+  // BASE 5 FILTERS (₱50 Package)
   { id: "natural", label: "NATURAL BEAUTY", class: "brightness-105 contrast-[1.02] saturate-[1.05]" },
-  { id: "soft", label: "SOFT SKIN", class: "brightness-110 contrast-[0.98] saturate-[1.05] blur-[0.4px]" },
-  { id: "bright", label: "BRIGHT SKIN", class: "brightness-118 contrast-[1.02] saturate-[1.05]" },
-  { id: "warm", label: "WARM GLOW", class: "sepia-[0.15] brightness-[1.05] saturate-[1.2] contrast-[1.05]" },
-  { id: "cool", label: "COOL VIBE", class: "hue-rotate-[-10deg] saturate-[0.9] brightness-[1.08] contrast-[1.05]" },
+  { id: "soft", label: "SOFT SKIN", class: "brightness-108 contrast-[0.98] saturate-[1.05] blur-[0.4px]" },
+  { id: "bright", label: "BRIGHT GLOW", class: "brightness-115 contrast-[1.02] saturate-[1.05]" },
+  { id: "tiktok", label: "TIKTOK BEAUTY", class: "brightness-112 contrast-[1.08] saturate-[1.15] sepia-[0.05]" },
+  { id: "warm", label: "WARM TONE", class: "sepia-[0.15] brightness-[1.05] saturate-[1.1] contrast-[1.02]" },
   
-  // 100 PESOS PACKAGE ADDITIONAL
-  { id: "tiktok", label: "TIKTOK BEAUTY", class: "brightness-112 contrast-[1.1] saturate-[1.2] sepia-[0.05]" },
-  { id: "clean", label: "CLEAN LOOK", class: "contrast-[1.1] brightness-[1.1] saturate-[0.95] blur-[0.2px]" },
-  { id: "glow", label: "SOFT GLOW", class: "brightness-115 contrast-[1.05] saturate-[1.2] drop-shadow-[0_0_10px_rgba(255,255,255,0.1)]" },
-  { id: "fresh", label: "FRESH LOOK", class: "hue-rotate-[5deg] saturate-[1.1] brightness-[1.1] contrast-[1.02]" },
-  { id: "classic", label: "CLASSIC PORTRAIT", class: "contrast-[1.15] brightness-[1.05] saturate-[1.05]" },
+  // ADDITIONAL 5 FILTERS (Total 10 for ₱100 Package)
+  { id: "cool", label: "COOL TONE", class: "hue-rotate-[-8deg] saturate-[0.95] brightness-[1.08] contrast-[1.05]" },
+  { id: "clean", label: "CLEAN LOOK", class: "contrast-[1.05] brightness-[1.1] saturate-[0.98] blur-[0.2px]" },
+  { id: "glow", label: "STUDIO GLOW", class: "brightness-115 contrast-[1.05] saturate-[1.15] drop-shadow-[0_0_8px_rgba(255,255,255,0.1)]" },
+  { id: "fresh", label: "FRESH LOOK", class: "hue-rotate-[5deg] saturate-[1.05] brightness-[1.1] contrast-[1.02]" },
+  { id: "classic", label: "PORTRAIT ENHANCE", class: "contrast-[1.12] brightness-[1.05] saturate-[1.08]" },
 ];
 
 /**
  * 50 SHORT INSPIRATIONAL QUOTES
- * Designed for the JNL Studio Branding Zone.
  */
 export const QUOTES = [
   { id: "q1", label: "STORY", text: "Every picture tells a story." },
@@ -99,10 +100,6 @@ export const QUOTES = [
   { id: "q50", label: "MEMORIES2", text: "Beautiful memories." },
 ];
 
-/**
- * 50 CUTE AND BEAUTIFUL STICKERS
- * A massive variety of hand-crafted Kawaii icons for photo decoration.
- */
 export const STICKER_DEFS = [
   // --- HEARTS ---
   { id: "heart_puffy", label: "Puffy", icon: Kawaii.PuffyHeart, color: "text-pink-400" },

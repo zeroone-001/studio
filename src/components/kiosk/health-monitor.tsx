@@ -1,7 +1,8 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Printer, Wallet, Wifi, ShieldCheck, Database, RefreshCcw, Video, Usb, Banknote } from "lucide-react";
+import { Printer, Wallet, Wifi, ShieldCheck, Database, RefreshCcw, Video, Usb, Banknote, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SessionStore } from "@/lib/kiosk/persistence";
 import { KioskLogger } from "@/lib/kiosk/logger";
@@ -17,7 +18,8 @@ export function HealthMonitor() {
     storage: "0MB",
     storagePercent: "0",
     syncPending: 0,
-    printer: "HUB PENDING",
+    printer: "DISCONNECTED",
+    printerConnected: false,
     camera: false,
     usbHub: false,
     billAcceptor: false,
@@ -41,9 +43,9 @@ export function HealthMonitor() {
           try {
             const usbDevices = await navigator.usb.getDevices();
             hasUsb = usbDevices.length > 0;
-            detectedPrinter = usbDevices[0] || null;
+            // The first device on the hub is usually the printer in this specific setup
+            detectedPrinter = usbDevices.find(d => d.productName?.toLowerCase().includes('epson') || d.productName?.toLowerCase().includes('printer')) || usbDevices[0] || null;
           } catch (usbErr) {
-            // Permission Policy restricted
             hasUsb = false;
           }
         }
@@ -64,7 +66,8 @@ export function HealthMonitor() {
         storage: `${stats.usedMB}MB`,
         storagePercent: stats.percent,
         syncPending: queue.length,
-        printer: detectedPrinter ? (detectedPrinter.productName || "PRINTER READY") : (hasUsb ? "HUB ACTIVE" : "HUB PENDING"),
+        printer: detectedPrinter ? "CONNECTED" : "DISCONNECTED",
+        printerConnected: !!detectedPrinter,
         camera: hasCam,
         usbHub: hasUsb,
         billAcceptor: hasSerial,
@@ -72,7 +75,7 @@ export function HealthMonitor() {
       }));
 
     } catch (e) {
-      // Handshake silent retry
+      // silent retry
     }
   }, []);
 
@@ -86,11 +89,11 @@ export function HealthMonitor() {
       
       if ('usb' in navigator) {
         const handleConnect = (event: USBConnectionEvent) => {
-          KioskLogger.log('info', 'Hardware', `USB Device Connected: ${event.device.productName || 'Unknown'}`);
+          KioskLogger.log('info', 'HARDWARE', `USB Device Linked: ${event.device.productName || 'Hub Device'}`);
           checkHealth();
         };
         const handleDisconnect = (event: USBConnectionEvent) => {
-          KioskLogger.log('warn', 'Hardware', `USB Device Disconnected: ${event.device.productName || 'Unknown'}`);
+          KioskLogger.log('warn', 'HARDWARE', `USB Device Unlinked: ${event.device.productName || 'Hub Device'}`);
           checkHealth();
         };
 
@@ -103,9 +106,7 @@ export function HealthMonitor() {
             navigator.usb.removeEventListener('disconnect', handleDisconnect);
             clearInterval(interval);
           };
-        } catch (e) {
-          // Event listener policy restricted
-        }
+        } catch (e) {}
       }
     }
 
@@ -121,17 +122,29 @@ export function HealthMonitor() {
           <Wifi className={cn("w-2.5 h-2.5", status.online ? "text-green-500" : "text-red-500")} />
           <span>Cloud</span>
         </div>
+        
+        {/* AUTO-DETECTION STATUS DISPLAY */}
+        <div className="flex items-center gap-2 px-2 border-l border-white/10">
+          {status.printerConnected ? (
+            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-green-400">
+              <CheckCircle2 className="w-3 h-3" />
+              <span>✅ Printer Connected</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-red-500">
+              <AlertCircle className="w-3 h-3" />
+              <span>❌ Printer Disconnected</span>
+            </div>
+          )}
+        </div>
+
         <div className="flex items-center gap-1 text-[8px] font-black uppercase text-white tracking-tighter">
           <Usb className={cn("w-2.5 h-2.5", status.usbHub ? "text-blue-400" : "text-white/20")} />
-          <span>UGreen Hub</span>
+          <span>Hub Active</span>
         </div>
         <div className="flex items-center gap-1 text-[8px] font-black uppercase text-white tracking-tighter">
           <Banknote className={cn("w-2.5 h-2.5", status.billAcceptor ? "text-green-500" : "text-white/20")} />
-          <span>Bill Acceptor: {status.billAcceptor ? "LINKED" : "OFFLINE"}</span>
-        </div>
-        <div className="flex items-center gap-1 text-[8px] font-black uppercase text-white tracking-tighter">
-          <Printer className={cn("w-2.5 h-2.5", status.printerDevice ? "text-primary" : "text-white/20")} />
-          <span>{status.printer}</span>
+          <span>Bill Acc: {status.billAcceptor ? "LINKED" : "OFFLINE"}</span>
         </div>
         <div className="flex items-center gap-1 text-[8px] font-black uppercase text-white tracking-tighter">
           <Database className={cn("w-2.5 h-2.5", parseInt(status.storagePercent) > 80 ? "text-red-500" : "text-blue-400")} />
@@ -141,7 +154,7 @@ export function HealthMonitor() {
       
       <div className="flex items-center gap-2 opacity-20">
         <ShieldCheck className="w-2.5 h-2.5 text-green-500" />
-        <span className="text-[8px] font-black uppercase tracking-widest text-white">Hardware Hub Active</span>
+        <span className="text-[8px] font-black uppercase tracking-widest text-white">Honor Pad X10 Security Active</span>
       </div>
     </div>
   );

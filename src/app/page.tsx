@@ -58,7 +58,7 @@ export default function KioskPage() {
   const [logoTapCount, setLogoTapCount] = useState(0);
   const [currentSessionId, setCurrentSessionId] = useState("");
   const [softCopyQrUrl, setSoftCopyQrUrl] = useState("");
-  const [fbQrUrl] = useState(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent("https://www.facebook.com/share/1UUtaRzzMB/")}`);
+  const [fbQrUrl] = useState(`https://www.facebook.com/share/1UUtaRzzMB/`);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "complete" | "error">("idle");
   const [promoConsent, setPromoConsent] = useState<boolean | null>(null);
   const [usbHandle, setUsbHandle] = useState<FileSystemDirectoryHandle | null>(null);
@@ -104,7 +104,9 @@ export default function KioskPage() {
         const data = docSnap.data();
         if (data?.isDownloaded === true) {
           KioskLogger.log('info', 'SESSION', `Privacy Purge Triggered for ${currentSessionId}.`, 'SUCCESS');
-          SessionStore.cleanupSession(currentSessionId);
+          SessionStore.cleanupSession(currentSessionId).then(() => {
+            KioskLogger.log('info', 'SESSION', 'Private photo deleted from local storage.', 'SUCCESS');
+          });
           unsub();
         }
       });
@@ -156,21 +158,31 @@ export default function KioskPage() {
 
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
+    
+    // REQUIREMENT: Unique sessionId for reliable retrieval
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
 
     const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
-    setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
     
     const { storage, db } = initializeFirebase();
-    setDoc(doc(db, "photos", sessionId), {
-      id: sessionId,
-      storagePath: `photos/${sessionId}.jpg`,
-      timestamp: serverTimestamp(),
-      isDownloaded: false,
-      promoConsent: promoConsent,
-      status: 'uploading'
-    });
+
+    // REQUIREMENT: Prepare Firestore record FIRST
+    try {
+      await setDoc(doc(db, "photos", sessionId), {
+        id: sessionId,
+        storagePath: `photos/${sessionId}.jpg`,
+        timestamp: serverTimestamp(),
+        isDownloaded: false,
+        promoConsent: promoConsent,
+        status: 'uploading'
+      });
+      KioskLogger.log('info', 'SESSION', 'Session Created.', 'SUCCESS');
+    } catch (err: any) {
+      KioskLogger.log('error', 'SESSION', 'Session Creation Failed.', 'FAILED', err.message);
+      setUploadStatus("error");
+      return;
+    }
 
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1600;
@@ -213,23 +225,39 @@ export default function KioskPage() {
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
       
-      await SessionStore.savePhotoLocally(sessionId, blob);
-      KioskLogger.log('info', 'SESSION', 'Portrait saved to local gallery.', 'SUCCESS');
-      
-      initiatePrint(blob); 
+      // REQUIREMENT: Save locally IMMEDIATELY
+      try {
+        await SessionStore.savePhotoLocally(sessionId, blob);
+        KioskLogger.log('info', 'SESSION', 'Photo Saved.', 'SUCCESS');
+      } catch (err: any) {
+        KioskLogger.log('error', 'SESSION', 'Local Save Failed.', 'FAILED', err.message);
+      }
       
       setUploadStatus("uploading");
       
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
-      uploadBytes(photoRef, blob).then(() => {
-        updateDoc(doc(db, "photos", sessionId), { status: 'complete' });
+      
+      // REQUIREMENT: Verify photo availability before generating QR
+      uploadBytes(photoRef, blob).then(async () => {
+        await updateDoc(doc(db, "photos", sessionId), { status: 'complete' });
         setUploadStatus("complete");
         
+        // REQUIREMENT: Generate QR ONLY AFTER availability is verified
+        setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
+        KioskLogger.log('info', 'QR', 'QR Generated.', 'SUCCESS');
+        
+        // REQUIREMENT: Start printing after QR is ready
+        initiatePrint(blob); 
+        
+        // REQUIREMENT: USB Sync (YES Consent) without blocking QR
         if (promoConsent && usbHandle) {
           SessionStore.saveToUsb(usbHandle, sessionId, blob).then(success => {
             if (success) KioskLogger.log('info', 'HARDWARE', 'Backup to Lexar USB (JNL POST) complete.', 'SUCCESS');
           });
         }
+      }).catch((err: any) => {
+        KioskLogger.log('error', 'CLOUD', 'Cloud Upload Failed.', 'FAILED', err.message);
+        setUploadStatus("error");
       });
     }, 'image/jpeg', 0.9);
   }, [selectedBlueprint, capturedPhotos, selectedQuote, originUrl, initiatePrint, promoConsent, usbHandle]);
@@ -243,6 +271,7 @@ export default function KioskPage() {
       exportTriggeredRef.current = false;
       setUploadStatus("idle");
       setPromoConsent(null);
+      setSoftCopyQrUrl("");
     }
   }, [appState, handleFinalExport]);
 
@@ -723,7 +752,7 @@ export default function KioskPage() {
                 <p className="text-3xl font-black italic uppercase text-primary flex items-center gap-4">
                    FOLLOW US 👇
                 </p>
-                <div className="w-56 h-56 bg-white p-4 rounded-2xl shadow-[0_0_40px_rgba(255,51,153,0.4)]">
+                <div className="w-56 h-56 bg-white p-4 rounded-2xl shadow-[0_0_40px_rgba(255,255,255,0.4)]">
                    <img src={fbQrUrl} alt="FB Follow" className="w-full h-full" />
                 </div>
              </div>

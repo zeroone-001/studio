@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
@@ -19,7 +18,7 @@ export default function RetrievePage() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<'verifying' | 'found' | 'syncing' | 'complete'>('verifying');
   const retryCount = useRef(0);
-  const MAX_RETRIES = 120; 
+  const MAX_RETRIES = 120; // 60 seconds of polling for HD availability
 
   const fetchPhoto = useCallback(async () => {
     if (!id) return;
@@ -52,8 +51,10 @@ export default function RetrievePage() {
         setImageUrl(url);
         setLoading(false);
         setStatus('complete');
-        KioskLogger.log('info', 'QR', 'Image loaded successfully.', 'SUCCESS');
+        KioskLogger.log('info', 'QR', 'Photo Displayed.', 'SUCCESS');
+        KioskLogger.log('info', 'QR', 'Download Available.', 'SUCCESS');
       } catch (e: any) {
+        // Record exists but file not in storage yet
         if (retryCount.current < MAX_RETRIES) {
           retryCount.current += 1;
           setTimeout(fetchPhoto, 1000); 

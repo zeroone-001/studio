@@ -10,7 +10,7 @@ import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
   Printer, Loader2, Download, CheckCircle2, AlertCircle, 
   RotateCcw, Camera, Target, Trash2, Layers, Maximize2, RotateCw, X,
-  Facebook, HandMetal, Play, Heart, Shield
+  Facebook, HandMetal, Play, Heart, Shield, Activity
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -159,15 +159,12 @@ export default function KioskPage() {
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
-    // REQUIREMENT: Unique sessionId for reliable retrieval
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
 
     const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
-    
     const { storage, db } = initializeFirebase();
 
-    // REQUIREMENT: Prepare Firestore record FIRST
     try {
       await setDoc(doc(db, "photos", sessionId), {
         id: sessionId,
@@ -179,7 +176,7 @@ export default function KioskPage() {
       });
       KioskLogger.log('info', 'SESSION', 'Session Created.', 'SUCCESS');
     } catch (err: any) {
-      KioskLogger.log('error', 'SESSION', 'Session Creation Failed.', 'FAILED', err.message);
+      KioskLogger.log('error', 'SESSION', 'Session Created.', 'FAILED', err.message);
       setUploadStatus("error");
       return;
     }
@@ -225,34 +222,28 @@ export default function KioskPage() {
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
       
-      // REQUIREMENT: Save locally IMMEDIATELY
       try {
         await SessionStore.savePhotoLocally(sessionId, blob);
         KioskLogger.log('info', 'SESSION', 'Photo Saved.', 'SUCCESS');
       } catch (err: any) {
-        KioskLogger.log('error', 'SESSION', 'Local Save Failed.', 'FAILED', err.message);
+        KioskLogger.log('error', 'SESSION', 'Photo Saved.', 'FAILED', err.message);
       }
       
       setUploadStatus("uploading");
-      
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       
-      // REQUIREMENT: Verify photo availability before generating QR
       uploadBytes(photoRef, blob).then(async () => {
         await updateDoc(doc(db, "photos", sessionId), { status: 'complete' });
         setUploadStatus("complete");
         
-        // REQUIREMENT: Generate QR ONLY AFTER availability is verified
         setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
         KioskLogger.log('info', 'QR', 'QR Generated.', 'SUCCESS');
         
-        // REQUIREMENT: Start printing after QR is ready
         initiatePrint(blob); 
         
-        // REQUIREMENT: USB Sync (YES Consent) without blocking QR
         if (promoConsent && usbHandle) {
           SessionStore.saveToUsb(usbHandle, sessionId, blob).then(success => {
-            if (success) KioskLogger.log('info', 'HARDWARE', 'Backup to Lexar USB (JNL POST) complete.', 'SUCCESS');
+            if (success) KioskLogger.log('info', 'HARDWARE', 'Backup to Lexar USB complete.', 'SUCCESS');
           });
         }
       }).catch((err: any) => {
@@ -305,7 +296,6 @@ export default function KioskPage() {
     for (let i = startIdx; i < endIdx; i++) {
       setCurrentShotIndex(i);
       
-      // Automatic 3-2-1 Countdown
       for (let c = 3; c > 0; c--) {
         setCountdown(c);
         await new Promise(r => setTimeout(r, 1000));
@@ -327,7 +317,6 @@ export default function KioskPage() {
       await new Promise(r => setTimeout(r, 800)); 
       setIsProcessing(false);
       
-      // Short delay before starting the next automatic countdown
       if (i < endIdx - 1) {
         await new Promise(r => setTimeout(r, 1000));
       }
@@ -368,9 +357,9 @@ export default function KioskPage() {
       // @ts-ignore
       const handle = await window.showDirectoryPicker();
       setUsbHandle(handle);
-      KioskLogger.log('info', 'HARDWARE', 'Lexar USB Directory Linked.', 'SUCCESS');
+      KioskLogger.log('info', 'HARDWARE', 'Lexar USB linked.', 'SUCCESS');
     } catch (e) {
-      KioskLogger.log('error', 'HARDWARE', 'USB Link Cancelled.', 'FAILED');
+      KioskLogger.log('error', 'HARDWARE', 'USB link cancelled.', 'FAILED');
     }
   };
 
@@ -380,7 +369,7 @@ export default function KioskPage() {
         if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined, width: { ideal: 1280 }, height: { ideal: 720 } }, 
+            video: { deviceId: selectedCameraId ? { exact: selectedCameraId } : undefined, width: { ideal: 1920 }, height: { ideal: 1080 } }, 
             audio: false 
           });
           setCameraStream(stream);
@@ -390,6 +379,12 @@ export default function KioskPage() {
       start();
     }
   }, [appState, selectedCameraId]);
+
+  const getLogStatus = (module: string, messagePart: string) => {
+    const logs = KioskLogger.getLogs();
+    const entry = logs.find(l => l.module === module && l.message.includes(messagePart));
+    return entry ? entry.status : "PENDING";
+  };
 
   const currentFilters = packageSelected === 50 ? FILTERS.slice(0, 5) : FILTERS.slice(0, 10);
   const currentBlueprints = BLUEPRINTS.filter(b => b.package === packageSelected);
@@ -424,7 +419,7 @@ export default function KioskPage() {
 
         {appState === "welcome" && (
           <div className="flex flex-col items-center w-full h-full animate-in fade-in duration-1000">
-            <div className="flex-1 flex flex-col items-center justify-center">
+            <div className="flex-1 flex flex-col items-center justify-center relative">
               <div 
                 className="flex flex-col items-center cursor-pointer" 
                 onClick={() => {
@@ -434,6 +429,23 @@ export default function KioskPage() {
               >
                 <JnlLogo variant="hero" color="light" />
               </div>
+
+              {isOwnerMode && (
+                <div className="absolute top-4 left-4 bg-black/80 border border-primary p-4 rounded-xl space-y-2 z-[100] animate-in slide-in-from-left-4">
+                  <div className="flex items-center gap-2 mb-2 border-b border-white/20 pb-2">
+                    <Activity className="w-4 h-4 text-primary" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-primary">System Diagnostics</span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-1 text-[8px] font-bold uppercase italic tracking-tighter">
+                    <div className="flex justify-between gap-4"><span>Photo Saved =</span> <span className={cn(getLogStatus('SESSION', 'Photo Saved') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('SESSION', 'Photo Saved')}</span></div>
+                    <div className="flex justify-between gap-4"><span>Session Created =</span> <span className={cn(getLogStatus('SESSION', 'Session Created') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('SESSION', 'Session Created')}</span></div>
+                    <div className="flex justify-between gap-4"><span>QR Generated =</span> <span className={cn(getLogStatus('QR', 'QR Generated') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('QR', 'QR Generated')}</span></div>
+                    <div className="flex justify-between gap-4"><span>QR Scanned =</span> <span className={cn(getLogStatus('QR', 'Retrieval page opened') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('QR', 'Retrieval page opened')}</span></div>
+                    <div className="flex justify-between gap-4"><span>Photo Displayed =</span> <span className={cn(getLogStatus('QR', 'Photo Displayed') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('QR', 'Photo Displayed')}</span></div>
+                    <div className="flex justify-between gap-4"><span>Download Available =</span> <span className={cn(getLogStatus('QR', 'Download Available') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('QR', 'Download Available')}</span></div>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="w-full flex flex-col items-center pb-20">
               <NeonButton onClick={() => setAppState("payment")} className="w-[40%] text-3xl py-12">TOUCH TO START</NeonButton>
@@ -522,19 +534,19 @@ export default function KioskPage() {
         )}
 
         {appState === "capturing" && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
-             <video ref={videoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover", selectedFilter.class)} />
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black overflow-hidden">
+             <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} />
              
-             <div className="absolute top-10 left-10 z-[70] bg-black/60 px-6 py-3 border border-primary">
+             <div className="absolute top-10 left-10 z-[120] bg-black/60 px-6 py-3 border border-primary backdrop-blur-md">
                 <span className="text-2xl font-black italic uppercase text-primary">SHOT {currentShotIndex + 1} OF {packageSelected === 50 ? 3 : 6}</span>
              </div>
 
              {countdown !== null && (
-               <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+               <div className="absolute inset-0 flex items-center justify-center bg-black/20 z-[110]">
                  <span className="text-[25rem] font-black italic text-white animate-bounce drop-shadow-[0_0_50px_rgba(255,51,153,0.8)]">{countdown}</span>
                </div>
              )}
-             {isProcessing && <div className="absolute inset-0 bg-white animate-pulse z-[60]" />}
+             {isProcessing && <div className="absolute inset-0 bg-white animate-pulse z-[130]" />}
           </div>
         )}
 

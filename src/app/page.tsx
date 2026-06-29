@@ -143,7 +143,7 @@ export default function KioskPage() {
     
     KioskLogger.log('info', 'PRINT', 'Print Request Generated & Intent Created.', 'SUCCESS');
 
-    // CRITICAL: Delay added to allow Android OS and NokoPrint to register the iframe content
+    // CRITICAL: Delay increased to 1s to ensure Android Print Spooler handles the transition correctly
     setTimeout(() => {
       try {
         iframe.contentWindow?.focus();
@@ -153,21 +153,19 @@ export default function KioskPage() {
       } catch (e: any) {
         KioskLogger.log('error', 'PRINT', 'Android Spooler Rejection.', 'FAILED', e.message);
       }
-    }, 500); 
+    }, 1000); 
   }, []);
 
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
-    // 1. PRE-CALCULATE IDS & URLS FOR OPTIMISTIC UI
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
     setCurrentSessionId(sessionId);
     
     const { storage, db } = initializeFirebase();
 
-    // 2. IMMEDIATE FIRESTORE RECORD CREATION (CRITICAL FOR SCAN SPEED)
-    // We do this BEFORE rendering to ensure the URL is "valid" the moment it's scanned
+    // OPTIMISTIC SESSION RECORD
     setDoc(doc(db, "photos", sessionId), {
       id: sessionId,
       storagePath: `photos/${sessionId}.jpg`,
@@ -224,28 +222,25 @@ export default function KioskPage() {
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
       
-      // 3. IMMEDIATE PRINT SIGNAL (FIRST PRIORITY)
+      // IMMEDIATE PRINT SIGNAL
       initiatePrint(blob); 
 
-      // 4. IMMEDIATE LOCAL SAVE
+      // IMMEDIATE LOCAL SAVE
       SessionStore.savePhotoLocally(sessionId, blob);
       KioskLogger.log('info', 'SESSION', 'Photo Saved Locally.', 'SUCCESS');
 
-      // 5. OPTIMISTIC QR GENERATION (ZERO WAIT)
+      // OPTIMISTIC QR GENERATION
       setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
       setUploadStatus("complete");
       KioskLogger.log('info', 'QR', 'QR Generated.', 'SUCCESS');
 
-      // 6. BACKGROUND CLOUD UPLOAD (NON-BLOCKING)
+      // BACKGROUND UPLOAD
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       uploadBytes(photoRef, blob).then(async () => {
         await updateDoc(doc(db, "photos", sessionId), { status: 'complete' });
         KioskLogger.log('info', 'CLOUD', 'HD Cloud Sync Complete.', 'SUCCESS');
-      }).catch((err: any) => {
-        KioskLogger.log('error', 'CLOUD', 'Cloud Upload Delayed.', 'FAILED', err.message);
       });
 
-      // 7. BACKGROUND USB BACKUP
       if (promoConsent && usbHandle) {
         SessionStore.saveToUsb(usbHandle, sessionId, blob);
       }
@@ -295,6 +290,12 @@ export default function KioskPage() {
     for (let i = startIdx; i < endIdx; i++) {
       setCurrentShotIndex(i);
       
+      // 1. POSE PERIOD (2 SECONDS)
+      // The customer sees the full-screen live feed without any overlay
+      setCountdown(null);
+      await new Promise(r => setTimeout(r, 2000));
+      
+      // 2. COUNTDOWN (3 SECONDS)
       for (let c = 3; c > 0; c--) {
         setCountdown(c);
         await new Promise(r => setTimeout(r, 1000));

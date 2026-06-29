@@ -19,7 +19,7 @@ export default function RetrievePage() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<'verifying' | 'found' | 'syncing' | 'complete'>('verifying');
   const retryCount = useRef(0);
-  const MAX_RETRIES = 120; // 60 seconds of polling for HD availability
+  const MAX_RETRIES = 120; // 60 seconds of polling for HD availability (120 * 500ms)
 
   const fetchPhoto = useCallback(async () => {
     if (!id) return;
@@ -81,7 +81,7 @@ export default function RetrievePage() {
     if (!imageUrl || !id) return;
     try {
       const { db } = initializeFirebase();
-      // REQUIREMENT: Update Firestore so the kiosk knows the download was successful
+      // Update Firestore so the kiosk knows the download was successful
       await updateDoc(doc(db, "photos", id), { isDownloaded: true });
       
       const response = await fetch(imageUrl);

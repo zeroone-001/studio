@@ -27,21 +27,72 @@ export interface PlacedSticker {
  * BEAUTY FILTERS - ENHANCED QUALITY
  * Optimized for Honor Pad X10 camera and skin-tone preservation.
  * Strictly maintains 5 filters for ₱50 and 10 for ₱100.
+ * Added 'filter' property for direct CSS application to Video and Canvas.
  */
 export const FILTERS = [
   // BASE 5 FILTERS (₱50 Package)
-  { id: "natural", label: "NATURAL BEAUTY", class: "brightness-105 contrast-[1.02] saturate-[1.05]" },
-  { id: "soft", label: "SOFT SKIN", class: "brightness-108 contrast-[0.98] saturate-[1.05] blur-[0.4px]" },
-  { id: "bright", label: "BRIGHT GLOW", class: "brightness-115 contrast-[1.02] saturate-[1.05]" },
-  { id: "tiktok", label: "TIKTOK BEAUTY", class: "brightness-112 contrast-[1.08] saturate-[1.15] sepia-[0.05]" },
-  { id: "warm", label: "WARM TONE", class: "sepia-[0.15] brightness-[1.05] saturate-[1.1] contrast-[1.02]" },
+  { 
+    id: "natural", 
+    label: "NATURAL BEAUTY", 
+    class: "brightness-105 contrast-[1.02] saturate-[1.05]",
+    filter: "brightness(1.05) contrast(1.02) saturate(1.05)"
+  },
+  { 
+    id: "soft", 
+    label: "SOFT SKIN", 
+    class: "brightness-110 contrast-[0.9] saturate-[1.05] blur-[1.2px]",
+    filter: "brightness(1.1) contrast(0.9) saturate(1.05) blur(1.2px)"
+  },
+  { 
+    id: "bright", 
+    label: "BRIGHT GLOW", 
+    class: "brightness-135 contrast-[1.05] saturate-[1.1]",
+    filter: "brightness(1.35) contrast(1.05) saturate(1.1)"
+  },
+  { 
+    id: "tiktok", 
+    label: "TIKTOK BEAUTY", 
+    class: "brightness-110 contrast-[1.1] saturate-[1.5]",
+    filter: "brightness(1.1) contrast(1.1) saturate(1.5) hue-rotate(-5deg)"
+  },
+  { 
+    id: "warm", 
+    label: "WARM TONE", 
+    class: "sepia-[0.35] brightness-[1.1] saturate-[1.25]",
+    filter: "sepia(0.35) brightness(1.1) saturate(1.25) contrast(1.05)"
+  },
   
   // ADDITIONAL 5 FILTERS (Total 10 for ₱100 Package)
-  { id: "cool", label: "COOL TONE", class: "hue-rotate-[-8deg] saturate-[0.95] brightness-[1.08] contrast-[1.05]" },
-  { id: "clean", label: "CLEAN LOOK", class: "contrast-[1.05] brightness-[1.1] saturate-[0.98] blur-[0.2px]" },
-  { id: "glow", label: "STUDIO GLOW", class: "brightness-115 contrast-[1.05] saturate-[1.15] drop-shadow-[0_0_8px_rgba(255,255,255,0.1)]" },
-  { id: "fresh", label: "FRESH LOOK", class: "hue-rotate-[5deg] saturate-[1.05] brightness-[1.1] contrast-[1.02]" },
-  { id: "classic", label: "PORTRAIT ENHANCE", class: "contrast-[1.12] brightness-[1.05] saturate-[1.08]" },
+  { 
+    id: "cool", 
+    label: "COOL TONE", 
+    class: "hue-rotate-[-25deg] saturate-[1.15] brightness-[1.1]",
+    filter: "hue-rotate(-25deg) saturate(1.15) brightness(1.1) contrast(1.05)"
+  },
+  { 
+    id: "clean", 
+    label: "CLEAN LOOK", 
+    class: "contrast-[1.45] brightness-[1.2] saturate-[0.7]",
+    filter: "contrast(1.45) brightness(1.2) saturate(0.7) blur(0.2px)"
+  },
+  { 
+    id: "glow", 
+    label: "STUDIO GLOW", 
+    class: "brightness-130 contrast-[1.1] saturate-[1.2]",
+    filter: "brightness(1.3) contrast(1.1) saturate(1.2) opacity(0.98)"
+  },
+  { 
+    id: "fresh", 
+    label: "FRESH LOOK", 
+    class: "hue-rotate-[15deg] saturate-[1.35] brightness-[1.15]",
+    filter: "hue-rotate(15deg) saturate(1.35) brightness(1.15) contrast(1.05)"
+  },
+  { 
+    id: "classic", 
+    label: "PORTRAIT ENHANCE", 
+    class: "contrast-[1.55] brightness-[1.05] saturate-[1.15]",
+    filter: "contrast(1.55) brightness(1.05) saturate(1.15) blur(0.1px)"
+  },
 ];
 
 /**

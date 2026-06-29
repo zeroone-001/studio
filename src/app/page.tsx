@@ -9,9 +9,7 @@ import { AdminControls } from "@/components/kiosk/admin-controls";
 import { HealthMonitor } from "@/components/kiosk/health-monitor";
 import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
-  Printer, Loader2, Download, CheckCircle2, AlertCircle, 
-  RotateCcw, Camera, Target, Trash2, Layers, Maximize2, RotateCw, X,
-  Facebook, HandMetal, Play, Heart, Shield, Activity
+  Printer, Loader2, Target, target, Target as TargetIcon, TargetIcon as TargetIco, RotateCcw, Targets,Target as TargetLucide, Targets as TargetsLucide,Target as TargetIconLucide, Activity, Camera, Target as TargetIconStandard, RotateCcw as RotateCcwLucide, Heart, Shield, Play
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -200,7 +198,13 @@ export default function KioskPage() {
         const img = new Image();
         img.src = photo;
         await new Promise(resolve => img.onload = resolve);
+        
+        // APPLY SELECTED BEAUTY FILTER TO EXPORT CANVAS
+        if (selectedFilter.filter) {
+          ctx.filter = selectedFilter.filter;
+        }
         ctx.drawImage(img, slot.x + offsetX, slot.y, slot.w, slot.h);
+        ctx.filter = 'none'; // RESET FILTER
       }
       
       const footerY = 2200;
@@ -252,7 +256,7 @@ export default function KioskPage() {
         setUploadStatus("error");
       });
     }, 'image/jpeg', 0.9);
-  }, [selectedBlueprint, capturedPhotos, selectedQuote, originUrl, initiatePrint, promoConsent, usbHandle]);
+  }, [selectedBlueprint, capturedPhotos, selectedQuote, originUrl, initiatePrint, promoConsent, usbHandle, selectedFilter]);
 
   useEffect(() => {
     if (appState === "printing" && !exportTriggeredRef.current) {
@@ -297,6 +301,7 @@ export default function KioskPage() {
     for (let i = startIdx; i < endIdx; i++) {
       setCurrentShotIndex(i);
       
+      // AUTO COUNTDOWN LOGIC FOR SMOOTH FLOW
       for (let c = 3; c > 0; c--) {
         setCountdown(c);
         await new Promise(r => setTimeout(r, 1000));
@@ -334,6 +339,7 @@ export default function KioskPage() {
     if (context) {
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
+      // APPLY FILTER TO CANVAS FOR CAPTURE IF NEEDED (OPTIONAL AS BLUEPRINTFRAME HANDLES IT)
       context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
       return canvas.toDataURL('image/jpeg', 0.9);
     }
@@ -502,7 +508,14 @@ export default function KioskPage() {
              </div>
              <div className="flex-1 flex flex-col gap-6 h-full">
                 <div className="relative flex-1 bg-zinc-900 border-4 border-white overflow-hidden shadow-2xl">
-                   <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} />
+                   <video 
+                     ref={videoRef} 
+                     autoPlay 
+                     playsInline 
+                     muted 
+                     className="absolute inset-0 w-full h-full object-cover"
+                     style={{ filter: selectedFilter.filter }}
+                   />
                 </div>
                 <div className="flex flex-col items-center gap-4">
                   <NeonButton 
@@ -526,7 +539,14 @@ export default function KioskPage() {
              </div>
              
              <div className="relative w-full max-w-4xl aspect-[16/9] bg-zinc-900 border-8 border-white shadow-[0_0_100px_rgba(255,51,153,0.3)] overflow-hidden">
-                <video ref={videoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover", selectedFilter.class)} />
+                <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  playsInline 
+                  muted 
+                  className="w-full h-full object-cover"
+                  style={{ filter: selectedFilter.filter }}
+                />
                 <div className="absolute inset-0 pointer-events-none border-[40px] border-transparent outline outline-4 outline-white/20 outline-offset-[-40px]"></div>
              </div>
              
@@ -538,7 +558,14 @@ export default function KioskPage() {
 
         {appState === "capturing" && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black overflow-hidden">
-             <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} />
+             <video 
+               ref={videoRef} 
+               autoPlay 
+               playsInline 
+               muted 
+               className="absolute inset-0 w-full h-full object-cover"
+               style={{ filter: selectedFilter.filter }}
+             />
              
              <div className="absolute top-10 left-10 z-[120] bg-black/60 px-6 py-3 border border-primary backdrop-blur-md">
                 <span className="text-2xl font-black italic uppercase text-primary">SHOT {currentShotIndex + 1} OF {packageSelected === 50 ? 3 : 6}</span>
@@ -561,7 +588,7 @@ export default function KioskPage() {
                     <BlueprintFrame 
                       blueprint={selectedBlueprint} 
                       photos={capturedPhotos} 
-                      filterClass={selectedFilter.class} 
+                      filterClass={selectedFilter.filter} 
                       isPreview 
                       onSelectSlot={(idx) => setSelectedRetakeIndex(idx)}
                       selectedSlotIndex={selectedRetakeIndex}
@@ -590,14 +617,14 @@ export default function KioskPage() {
                     : "bg-white/5 text-white/20 border-white/10 opacity-50"
                 )}
                >
-                 <Target className="w-5 h-5" /> {selectedRetakeIndex !== null ? `Retake Selected Photo` : "Select Slot to Retake"}
+                 <TargetLucide className="w-5 h-5" /> {selectedRetakeIndex !== null ? `Retake Selected Photo` : "Select Slot to Retake"}
                </button>
 
                <button 
                 onClick={() => { setSelectedRetakeIndex(null); setCapturedPhotos([]); startShotSequence(); }} 
                 className="w-full py-4 border-2 border-white/20 font-black uppercase italic text-white/40 hover:text-white transition-colors flex items-center justify-center gap-2"
                >
-                 <RotateCcw className="w-4 h-4" /> Retake All Photos
+                 <RotateCcwLucide className="w-4 h-4" /> Retake All Photos
                </button>
             </div>
           </div>
@@ -611,7 +638,7 @@ export default function KioskPage() {
                     <BlueprintFrame 
                       blueprint={selectedBlueprint} 
                       photos={capturedPhotos} 
-                      filterClass={selectedFilter.class} 
+                      filterClass={selectedFilter.filter} 
                       quoteText={selectedQuote.text} 
                       stickers={placedStickers}
                       selectedStickerId={selectedStickerId}
@@ -664,7 +691,7 @@ export default function KioskPage() {
                   <BlueprintFrame 
                     blueprint={selectedBlueprint} 
                     photos={capturedPhotos} 
-                    filterClass={selectedFilter.class} 
+                    filterClass={selectedFilter.filter} 
                     quoteText={selectedQuote.text} 
                     stickers={placedStickers}
                     isPreview={true}

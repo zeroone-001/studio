@@ -1,6 +1,8 @@
+
 "use client";
 
-import React, { useMemo, useRef, useState, useEffect } from "react";
+import * as React from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import Image from "next/image";
 import { FrameBlueprint } from "./frame-blueprint";
 import { cn } from "@/lib/utils";
@@ -105,7 +107,8 @@ export const BlueprintFrame = React.memo(({
                   src={photos[index]}
                   alt={`Portrait ${index + 1}`}
                   fill
-                  className={cn("object-cover", filterClass, isSelected && isPreview && "opacity-80")}
+                  className={cn("object-cover", isSelected && isPreview && "opacity-80")}
+                  style={{ filter: filterClass }}
                   sizes="800px"
                   unoptimized
                 />

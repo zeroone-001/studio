@@ -415,7 +415,9 @@ export default function KioskPage() {
             onSelectCamera={setSelectedCameraId}
           />
         )}
-        <HealthMonitor />
+        
+        {/* Only show Health Monitor icons and diag status in Owner Mode */}
+        {isOwnerMode && <HealthMonitor />}
 
         {appState === "welcome" && (
           <div className="flex flex-col items-center w-full h-full animate-in fade-in duration-1000">

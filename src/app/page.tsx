@@ -19,7 +19,7 @@ import { SessionStore } from "@/lib/kiosk/persistence";
 import { KioskLogger } from "@/lib/kiosk/logger";
 import { initializeFirebase } from "@/firebase";
 import { ref, uploadBytes } from "firebase/storage";
-import { doc, setDoc, serverTimestamp, updateDoc, onSnapshot, getDoc } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, updateDoc, onSnapshot } from "firebase/firestore";
 import { 
   SessionState, 
   FILTERS, 
@@ -143,7 +143,6 @@ export default function KioskPage() {
     
     KioskLogger.log('info', 'PRINT', 'Print Request Generated & Intent Created.', 'SUCCESS');
 
-    // CRITICAL: Delay increased to 1s to ensure Android Print Spooler handles the transition correctly
     setTimeout(() => {
       try {
         iframe.contentWindow?.focus();
@@ -211,7 +210,6 @@ export default function KioskPage() {
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
       
-      // 1. VERIFIED SAVE (IndexedDB)
       const saveResult = await SessionStore.savePhotoLocally(sessionId, blob);
       if (saveResult) {
         KioskLogger.log('info', 'SESSION', 'Photo Saved = SUCCESS', 'SUCCESS');
@@ -219,7 +217,6 @@ export default function KioskPage() {
         KioskLogger.log('error', 'SESSION', 'Photo Saved = FAILED', 'FAILED');
       }
 
-      // 2. CREATE SESSION RECORD (Firestore)
       try {
         await setDoc(doc(db, "photos", sessionId), {
           id: sessionId,
@@ -234,7 +231,6 @@ export default function KioskPage() {
         KioskLogger.log('error', 'SESSION', 'Session Created = FAILED', 'FAILED', e.message);
       }
 
-      // 3. UPLOAD HD (Verify existence for QR)
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       setUploadStatus("uploading");
       
@@ -243,11 +239,9 @@ export default function KioskPage() {
         setUploadStatus("complete");
         KioskLogger.log('info', 'CLOUD', 'HD Cloud Sync = SUCCESS', 'SUCCESS');
         
-        // 4. GENERATE QR (Only after upload verified or record ready)
         setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
         KioskLogger.log('info', 'QR', 'QR Generated = SUCCESS', 'SUCCESS');
 
-        // 5. START PRINTING (Immediately after QR)
         initiatePrint(blob);
 
         if (promoConsent && usbHandle) {
@@ -304,7 +298,7 @@ export default function KioskPage() {
     for (let i = startIdx; i < endIdx; i++) {
       setCurrentShotIndex(i);
       
-      // 1. POSE PERIOD (2 SECONDS)
+      // 1. POSE PERIOD (2 SECONDS) - No countdown visible yet
       setCountdown(null);
       await new Promise(r => setTimeout(r, 2000));
       
@@ -377,7 +371,7 @@ export default function KioskPage() {
   };
 
   useEffect(() => {
-    if (appState === "setup" || appState === "test-camera" || appState === "capturing") {
+    if (appState === "setup" || appState === "capturing") {
       const start = async () => {
         if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
         try {
@@ -526,7 +520,7 @@ export default function KioskPage() {
                 <div className="flex flex-col items-center gap-4">
                   <NeonButton 
                     disabled={!selectedBlueprint}
-                    onClick={() => setAppState("test-camera")} 
+                    onClick={() => startShotSequence()} 
                     className="w-full py-10 text-3xl"
                   >
                     NEXT
@@ -534,31 +528,6 @@ export default function KioskPage() {
                   <p className="text-[10px] font-black uppercase italic tracking-widest text-white/40">Check your pose & select choices to continue</p>
                 </div>
              </div>
-          </div>
-        )}
-
-        {appState === "test-camera" && (
-          <div className="w-full h-full max-w-7xl flex flex-col items-center justify-center px-8 py-10 space-y-8">
-             <div className="text-center space-y-2">
-                <h2 className="font-headline font-black text-5xl italic uppercase text-primary">ADJUST YOUR POSE</h2>
-                <p className="text-white/40 font-black uppercase italic tracking-widest">Get ready for your automatic session!</p>
-             </div>
-             
-             <div className="relative w-full max-w-4xl aspect-[16/9] bg-zinc-900 border-8 border-white shadow-[0_0_100px_rgba(255,51,153,0.3)] overflow-hidden">
-                <video 
-                  ref={videoRef} 
-                  autoPlay 
-                  playsInline 
-                  muted 
-                  className="w-full h-full object-cover"
-                  style={{ filter: selectedFilter.filter }}
-                />
-                <div className="absolute inset-0 pointer-events-none border-[40px] border-transparent outline outline-4 outline-white/20 outline-offset-[-40px]"></div>
-             </div>
-             
-             <NeonButton onClick={() => startShotSequence()} className="px-24 py-12 text-4xl flex items-center gap-4">
-                <Play className="w-10 h-10" /> START PHOTO SESSION
-             </NeonButton>
           </div>
         )}
 

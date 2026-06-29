@@ -612,7 +612,10 @@ export default function KioskPage() {
             </div>
             
             <div className="flex-1 flex items-center justify-center">
-              <div className="h-[60vh] aspect-[1600/2400] relative border-[12px] border-white bg-white shadow-[0_0_80px_rgba(255,51,153,0.3)] overflow-hidden">
+              <div 
+                className="h-[60vh] relative border-[12px] border-white bg-white shadow-[0_0_80px_rgba(255,51,153,0.3)] overflow-hidden"
+                style={{ aspectRatio: packageSelected === 50 ? '800/2400' : '1600/2400' }}
+              >
                 {selectedBlueprint && (
                   <BlueprintFrame 
                     blueprint={selectedBlueprint} 
@@ -620,7 +623,7 @@ export default function KioskPage() {
                     filterClass={selectedFilter.class} 
                     quoteText={selectedQuote.text} 
                     stickers={placedStickers}
-                    isPreview={false}
+                    isPreview={true}
                   />
                 )}
               </div>

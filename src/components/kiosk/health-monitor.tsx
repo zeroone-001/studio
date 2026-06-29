@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Printer, Wallet, Wifi, ShieldCheck, Database, RefreshCcw, Video, Usb, Banknote, CheckCircle2, AlertCircle } from "lucide-react";
+import { Wifi, Usb, Banknote, Database, CheckCircle2, AlertCircle, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SessionStore } from "@/lib/kiosk/persistence";
 import { KioskLogger } from "@/lib/kiosk/logger";
@@ -10,7 +10,7 @@ import { KioskLogger } from "@/lib/kiosk/logger";
 /**
  * Health Monitor component.
  * Automatically detects hardware state (Camera, UGreen Hub, Printer, Bill Acceptor).
- * Optimized for Honor Pad X10 via UGreen 7-in-1 Hub using WebUSB for printer monitoring.
+ * Optimized for Honor Pad X10 via UGreen 7-in-1 Hub using WebUSB for device monitoring.
  */
 export function HealthMonitor() {
   const [status, setStatus] = useState({
@@ -18,12 +18,10 @@ export function HealthMonitor() {
     storage: "0MB",
     storagePercent: "0",
     syncPending: 0,
-    printer: "DISCONNECTED",
     printerConnected: false,
-    camera: false,
     usbHub: false,
     billAcceptor: false,
-    printerDevice: null as USBDevice | null
+    lexarUsb: false
   });
 
   const checkHealth = useCallback(async () => {
@@ -34,27 +32,39 @@ export function HealthMonitor() {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const hasCam = devices.some(d => d.kind === 'videoinput');
       
-      let hasUsb = false;
+      let detectedPrinter = false;
+      let detectedHub = false;
+      let detectedLexar = false;
       let hasSerial = false;
-      let detectedPrinter: USBDevice | null = null;
 
       if (typeof navigator !== 'undefined') {
         if ('usb' in navigator) {
           try {
             const usbDevices = await navigator.usb.getDevices();
-            hasUsb = usbDevices.length > 0;
-            // The first device on the hub is usually the printer in this specific setup
-            detectedPrinter = usbDevices.find(d => d.productName?.toLowerCase().includes('epson') || d.productName?.toLowerCase().includes('printer')) || usbDevices[0] || null;
-          } catch (usbErr) {
-            hasUsb = false;
+            detectedHub = usbDevices.length > 0;
+            
+            usbDevices.forEach(device => {
+              const name = (device.productName || "").toLowerCase();
+              const manufacturer = (device.manufacturerName || "").toLowerCase();
+              
+              if (name.includes('epson') || name.includes('printer') || manufacturer.includes('epson')) {
+                detectedPrinter = true;
+              }
+              if (name.includes('lexar') || name.includes('usb') || name.includes('storage')) {
+                detectedLexar = true;
+              }
+            });
+          } catch (e) {
+            detectedHub = false;
           }
         }
+        
         if ('serial' in navigator) {
           try {
             // @ts-ignore
             const serialPorts = await navigator.serial.getPorts();
             hasSerial = serialPorts.length > 0;
-          } catch (serialErr) {
+          } catch (e) {
             hasSerial = false;
           }
         }
@@ -66,16 +76,14 @@ export function HealthMonitor() {
         storage: `${stats.usedMB}MB`,
         storagePercent: stats.percent,
         syncPending: queue.length,
-        printer: detectedPrinter ? "CONNECTED" : "DISCONNECTED",
-        printerConnected: !!detectedPrinter,
-        camera: hasCam,
-        usbHub: hasUsb,
-        billAcceptor: hasSerial,
-        printerDevice: detectedPrinter
+        printerConnected: detectedPrinter,
+        usbHub: detectedHub,
+        lexarUsb: detectedLexar,
+        billAcceptor: hasSerial
       }));
 
     } catch (e) {
-      // silent retry
+      // Silent retry on hardware failure
     }
   }, []);
 
@@ -88,73 +96,84 @@ export function HealthMonitor() {
       window.addEventListener('offline', checkHealth);
       
       if ('usb' in navigator) {
-        const handleConnect = (event: USBConnectionEvent) => {
-          KioskLogger.log('info', 'HARDWARE', `USB Device Linked: ${event.device.productName || 'Hub Device'}`);
-          checkHealth();
-        };
-        const handleDisconnect = (event: USBConnectionEvent) => {
-          KioskLogger.log('warn', 'HARDWARE', `USB Device Unlinked: ${event.device.productName || 'Hub Device'}`);
+        const handleHardwareChange = (event: USBConnectionEvent) => {
+          const deviceName = event.device.productName || 'Unknown Device';
+          const type = event.type === 'connect' ? 'Linked' : 'Unlinked';
+          KioskLogger.log(
+            event.type === 'connect' ? 'info' : 'warn', 
+            'HARDWARE', 
+            `Hardware ${type}: ${deviceName}`,
+            'SUCCESS'
+          );
           checkHealth();
         };
 
         try {
-          navigator.usb.addEventListener('connect', handleConnect);
-          navigator.usb.addEventListener('disconnect', handleDisconnect);
+          navigator.usb.addEventListener('connect', handleHardwareChange);
+          navigator.usb.addEventListener('disconnect', handleHardwareChange);
 
           return () => {
-            navigator.usb.removeEventListener('connect', handleConnect);
-            navigator.usb.removeEventListener('disconnect', handleDisconnect);
+            navigator.usb.removeEventListener('connect', handleHardwareChange);
+            navigator.usb.removeEventListener('disconnect', handleHardwareChange);
             clearInterval(interval);
           };
         } catch (e) {}
       }
     }
 
-    return () => {
-      clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, [checkHealth]);
 
   return (
-    <div className="fixed bottom-2 left-6 right-6 z-[40] flex justify-between items-center pointer-events-none select-none">
-      <div className="flex items-center gap-4 opacity-40 hover:opacity-100 transition-opacity pointer-events-auto bg-black/40 backdrop-blur-sm px-4 py-1 rounded-full border border-white/5">
-        <div className="flex items-center gap-1 text-[8px] font-black uppercase text-white tracking-tighter">
-          <Wifi className={cn("w-2.5 h-2.5", status.online ? "text-green-500" : "text-red-500")} />
+    <div className="fixed bottom-4 left-6 right-6 z-[60] flex justify-between items-center pointer-events-none select-none animate-in fade-in slide-in-from-bottom-4">
+      <div className="flex items-center gap-6 pointer-events-auto bg-black/80 backdrop-blur-xl px-6 py-2 rounded-full border border-white/10 shadow-2xl">
+        {/* NETWORK */}
+        <div className="flex items-center gap-2 text-[9px] font-black uppercase text-white tracking-widest">
+          <Wifi className={cn("w-3.5 h-3.5", status.online ? "text-green-500" : "text-red-500")} />
           <span>Cloud</span>
         </div>
         
-        {/* AUTO-DETECTION STATUS DISPLAY */}
-        <div className="flex items-center gap-2 px-2 border-l border-white/10">
+        {/* PRINTER AUTO-DETECTION */}
+        <div className="flex items-center gap-2 border-l border-white/10 pl-6">
           {status.printerConnected ? (
-            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-green-400">
-              <CheckCircle2 className="w-3 h-3" />
-              <span>✅ Printer Connected</span>
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase text-green-400">
+              <CheckCircle2 className="w-4 h-4" />
+              <span>Printer Ready</span>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase text-red-500">
-              <AlertCircle className="w-3 h-3" />
-              <span>❌ Printer Disconnected</span>
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase text-red-500 animate-pulse">
+              <AlertCircle className="w-4 h-4" />
+              <span>Printer Offline</span>
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-1 text-[8px] font-black uppercase text-white tracking-tighter">
-          <Usb className={cn("w-2.5 h-2.5", status.usbHub ? "text-blue-400" : "text-white/20")} />
-          <span>Hub Active</span>
+        {/* UGREEN HUB / LEXAR */}
+        <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
+          <Usb className={cn("w-3.5 h-3.5", status.usbHub ? "text-blue-400" : "text-white/20")} />
+          <span className={status.lexarUsb ? "text-blue-400" : "text-white/40"}>
+            {status.lexarUsb ? "Lexar Mounted" : "Hub Active"}
+          </span>
         </div>
-        <div className="flex items-center gap-1 text-[8px] font-black uppercase text-white tracking-tighter">
-          <Banknote className={cn("w-2.5 h-2.5", status.billAcceptor ? "text-green-500" : "text-white/20")} />
-          <span>Bill Acc: {status.billAcceptor ? "LINKED" : "OFFLINE"}</span>
-        </div>
-        <div className="flex items-center gap-1 text-[8px] font-black uppercase text-white tracking-tighter">
-          <Database className={cn("w-2.5 h-2.5", parseInt(status.storagePercent) > 80 ? "text-red-500" : "text-blue-400")} />
+
+        {/* STORAGE / CACHE */}
+        <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
+          <Database className={cn("w-3.5 h-3.5", parseInt(status.storagePercent) > 80 ? "text-red-500" : "text-blue-400")} />
           <span>Cache: {status.storagePercent}%</span>
+        </div>
+
+        {/* BILL ACCEPTOR */}
+        <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
+          <Banknote className={cn("w-3.5 h-3.5", status.billAcceptor ? "text-green-500" : "text-white/20")} />
+          <span className={status.billAcceptor ? "text-green-500" : "text-white/40"}>
+            {status.billAcceptor ? "Cash Ready" : "Bill Acc Offline"}
+          </span>
         </div>
       </div>
       
-      <div className="flex items-center gap-2 opacity-20">
-        <ShieldCheck className="w-2.5 h-2.5 text-green-500" />
-        <span className="text-[8px] font-black uppercase tracking-widest text-white">Honor Pad X10 Security Active</span>
+      <div className="flex items-center gap-3 bg-black/40 px-4 py-1.5 rounded-full border border-white/5 opacity-50">
+        <Activity className="w-3 h-3 text-primary animate-pulse" />
+        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white">System Diagnostics Active</span>
       </div>
     </div>
   );

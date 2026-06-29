@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -96,7 +97,7 @@ export default function KioskPage() {
     }
   }, [selectedCameraId]);
 
-  // Privacy Auto-Delete Listener: Purge NO consent photos after successful scan/download
+  // Privacy Auto-Delete Listener
   useEffect(() => {
     if (currentSessionId && promoConsent === false && uploadStatus === 'complete') {
       const { db } = initializeFirebase();
@@ -397,28 +398,28 @@ export default function KioskPage() {
         
         <AdminAuthDialog isOpen={isAdminDialogOpen} onClose={() => setIsAdminDialogOpen(false)} onAuthSuccess={() => setIsOwnerMode(true)} />
         {isOwnerMode && (
-          <AdminControls 
-            currentStatus={appState}
-            onJumpTo={setAppState}
-            onReset={resetSession}
-            onExitOwnerMode={() => setIsOwnerMode(false)}
-            hasPackage={!!packageSelected}
-            onSimulateCash={(amount) => setPaymentReceived(prev => prev + amount)}
-            onBypassPayment={(pkg) => { setPackageSelected(pkg); setPaymentReceived(pkg); setAppState("setup"); }}
-            usbStatus={usbHandle ? "connected" : "disconnected"}
-            onSetupUsb={setupUsb}
-            onSetupBillAcceptor={() => {}}
-            isDevMode={true}
-            onToggleDevMode={() => {}}
-            cameras={availableCameras}
-            selectedCameraId={selectedCameraId}
-            onSelectCamera={setSelectedCameraId}
-          />
+          <>
+            <AdminControls 
+              currentStatus={appState}
+              onJumpTo={setAppState}
+              onReset={resetSession}
+              onExitOwnerMode={() => setIsOwnerMode(false)}
+              hasPackage={!!packageSelected}
+              onSimulateCash={(amount) => setPaymentReceived(prev => prev + amount)}
+              onBypassPayment={(pkg) => { setPackageSelected(pkg); setPaymentReceived(pkg); setAppState("setup"); }}
+              usbStatus={usbHandle ? "connected" : "disconnected"}
+              onSetupUsb={setupUsb}
+              onSetupBillAcceptor={() => {}}
+              isDevMode={true}
+              onToggleDevMode={() => {}}
+              cameras={availableCameras}
+              selectedCameraId={selectedCameraId}
+              onSelectCamera={setSelectedCameraId}
+            />
+            <HealthMonitor />
+          </>
         )}
         
-        {/* Only show Health Monitor icons and diag status in Owner Mode */}
-        {isOwnerMode && <HealthMonitor />}
-
         {appState === "welcome" && (
           <div className="flex flex-col items-center w-full h-full animate-in fade-in duration-1000">
             <div className="flex-1 flex flex-col items-center justify-center relative">
@@ -433,18 +434,18 @@ export default function KioskPage() {
               </div>
 
               {isOwnerMode && (
-                <div className="absolute top-4 left-4 bg-black/80 border border-primary p-4 rounded-xl space-y-2 z-[100] animate-in slide-in-from-left-4">
+                <div className="absolute top-4 left-4 bg-black/80 border border-primary p-6 rounded-[2rem] space-y-3 z-[100] animate-in slide-in-from-left-4 backdrop-blur-xl">
                   <div className="flex items-center gap-2 mb-2 border-b border-white/20 pb-2">
                     <Activity className="w-4 h-4 text-primary" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-primary">System Diagnostics</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-primary">Owner Diagnostics</span>
                   </div>
-                  <div className="grid grid-cols-1 gap-1 text-[8px] font-bold uppercase italic tracking-tighter">
-                    <div className="flex justify-between gap-4"><span>Photo Saved =</span> <span className={cn(getLogStatus('SESSION', 'Photo Saved') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('SESSION', 'Photo Saved')}</span></div>
-                    <div className="flex justify-between gap-4"><span>Session Created =</span> <span className={cn(getLogStatus('SESSION', 'Session Created') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('SESSION', 'Session Created')}</span></div>
-                    <div className="flex justify-between gap-4"><span>QR Generated =</span> <span className={cn(getLogStatus('QR', 'QR Generated') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('QR', 'QR Generated')}</span></div>
-                    <div className="flex justify-between gap-4"><span>QR Scanned =</span> <span className={cn(getLogStatus('QR', 'Retrieval page opened') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('QR', 'Retrieval page opened')}</span></div>
-                    <div className="flex justify-between gap-4"><span>Photo Displayed =</span> <span className={cn(getLogStatus('QR', 'Photo Displayed') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('QR', 'Photo Displayed')}</span></div>
-                    <div className="flex justify-between gap-4"><span>Download Available =</span> <span className={cn(getLogStatus('QR', 'Download Available') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('QR', 'Download Available')}</span></div>
+                  <div className="grid grid-cols-1 gap-1.5 text-[9px] font-bold uppercase italic tracking-tighter">
+                    <div className="flex justify-between gap-6"><span>Photo Saved =</span> <span className={cn(getLogStatus('SESSION', 'Photo Saved') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('SESSION', 'Photo Saved')}</span></div>
+                    <div className="flex justify-between gap-6"><span>Session Created =</span> <span className={cn(getLogStatus('SESSION', 'Session Created') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('SESSION', 'Session Created')}</span></div>
+                    <div className="flex justify-between gap-6"><span>QR Generated =</span> <span className={cn(getLogStatus('QR', 'QR Generated') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('QR', 'QR Generated')}</span></div>
+                    <div className="flex justify-between gap-6"><span>QR Scanned =</span> <span className={cn(getLogStatus('QR', 'Retrieval page opened') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('QR', 'Retrieval page opened')}</span></div>
+                    <div className="flex justify-between gap-6"><span>Photo Displayed =</span> <span className={cn(getLogStatus('QR', 'Photo Displayed') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('QR', 'Photo Displayed')}</span></div>
+                    <div className="flex justify-between gap-6"><span>Download Available =</span> <span className={cn(getLogStatus('QR', 'Download Available') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('QR', 'Download Available')}</span></div>
                   </div>
                 </div>
               )}

@@ -9,7 +9,7 @@ import { AdminControls } from "@/components/kiosk/admin-controls";
 import { HealthMonitor } from "@/components/kiosk/health-monitor";
 import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
-  Printer, Loader2, Target, target, Target as TargetIcon, TargetIcon as TargetIco, RotateCcw, Targets,Target as TargetLucide, Targets as TargetsLucide,Target as TargetIconLucide, Activity, Camera, Target as TargetIconStandard, RotateCcw as RotateCcwLucide, Heart, Shield, Play
+  Printer, Loader2, Target, RotateCcw, Activity, Camera, Heart, Shield, Play, Download
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -152,33 +152,28 @@ export default function KioskPage() {
       } catch (e: any) {
         KioskLogger.log('error', 'PRINT', 'Android Spooler Rejection.', 'FAILED', e.message);
       }
-    }, 1500);
+    }, 500); // Reduced delay for faster handoff
   }, []);
 
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
+    // 1. PRE-CALCULATE IDS & URLS FOR OPTIMISTIC UI
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
-    setCurrentSessionId(sessionId);
-
     const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
+    setCurrentSessionId(sessionId);
+    
     const { storage, db } = initializeFirebase();
 
-    try {
-      await setDoc(doc(db, "photos", sessionId), {
-        id: sessionId,
-        storagePath: `photos/${sessionId}.jpg`,
-        timestamp: serverTimestamp(),
-        isDownloaded: false,
-        promoConsent: promoConsent,
-        status: 'uploading'
-      });
-      KioskLogger.log('info', 'SESSION', 'Session Created.', 'SUCCESS');
-    } catch (err: any) {
-      KioskLogger.log('error', 'SESSION', 'Session Created.', 'FAILED', err.message);
-      setUploadStatus("error");
-      return;
-    }
+    // 2. IMMEDIATE FIRESTORE RECORD CREATION (CRITICAL FOR SCAN SPEED)
+    setDoc(doc(db, "photos", sessionId), {
+      id: sessionId,
+      storagePath: `photos/${sessionId}.jpg`,
+      timestamp: serverTimestamp(),
+      isDownloaded: false,
+      promoConsent: promoConsent,
+      status: 'uploading'
+    });
 
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1600;
@@ -199,12 +194,11 @@ export default function KioskPage() {
         img.src = photo;
         await new Promise(resolve => img.onload = resolve);
         
-        // APPLY SELECTED BEAUTY FILTER TO EXPORT CANVAS
         if (selectedFilter.filter) {
           ctx.filter = selectedFilter.filter;
         }
         ctx.drawImage(img, slot.x + offsetX, slot.y, slot.w, slot.h);
-        ctx.filter = 'none'; // RESET FILTER
+        ctx.filter = 'none';
       }
       
       const footerY = 2200;
@@ -227,34 +221,32 @@ export default function KioskPage() {
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
       
-      try {
-        await SessionStore.savePhotoLocally(sessionId, blob);
-        KioskLogger.log('info', 'SESSION', 'Photo Saved.', 'SUCCESS');
-      } catch (err: any) {
-        KioskLogger.log('error', 'SESSION', 'Photo Saved.', 'FAILED', err.message);
-      }
-      
-      setUploadStatus("uploading");
+      // 3. IMMEDIATE PRINT SIGNAL (FIRST PRIORITY)
+      initiatePrint(blob); 
+      KioskLogger.log('info', 'PRINT', 'Signal Sent to NokoPrint.', 'SUCCESS');
+
+      // 4. IMMEDIATE LOCAL SAVE
+      SessionStore.savePhotoLocally(sessionId, blob);
+      KioskLogger.log('info', 'SESSION', 'Photo Saved Locally.', 'SUCCESS');
+
+      // 5. OPTIMISTIC QR GENERATION (ZERO WAIT)
+      setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
+      setUploadStatus("complete"); // Show "Complete" UI immediately
+      KioskLogger.log('info', 'QR', 'QR Generated Optimistically.', 'SUCCESS');
+
+      // 6. BACKGROUND CLOUD UPLOAD (NON-BLOCKING)
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
-      
       uploadBytes(photoRef, blob).then(async () => {
         await updateDoc(doc(db, "photos", sessionId), { status: 'complete' });
-        setUploadStatus("complete");
-        
-        setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-        KioskLogger.log('info', 'QR', 'QR Generated.', 'SUCCESS');
-        
-        initiatePrint(blob); 
-        
-        if (promoConsent && usbHandle) {
-          SessionStore.saveToUsb(usbHandle, sessionId, blob).then(success => {
-            if (success) KioskLogger.log('info', 'HARDWARE', 'Backup to Lexar USB complete.', 'SUCCESS');
-          });
-        }
+        KioskLogger.log('info', 'CLOUD', 'HD Cloud Sync Complete.', 'SUCCESS');
       }).catch((err: any) => {
-        KioskLogger.log('error', 'CLOUD', 'Cloud Upload Failed.', 'FAILED', err.message);
-        setUploadStatus("error");
+        KioskLogger.log('error', 'CLOUD', 'Cloud Upload Delayed.', 'FAILED', err.message);
       });
+
+      // 7. BACKGROUND USB BACKUP
+      if (promoConsent && usbHandle) {
+        SessionStore.saveToUsb(usbHandle, sessionId, blob);
+      }
     }, 'image/jpeg', 0.9);
   }, [selectedBlueprint, capturedPhotos, selectedQuote, originUrl, initiatePrint, promoConsent, usbHandle, selectedFilter]);
 
@@ -301,7 +293,6 @@ export default function KioskPage() {
     for (let i = startIdx; i < endIdx; i++) {
       setCurrentShotIndex(i);
       
-      // AUTO COUNTDOWN LOGIC FOR SMOOTH FLOW
       for (let c = 3; c > 0; c--) {
         setCountdown(c);
         await new Promise(r => setTimeout(r, 1000));
@@ -339,7 +330,6 @@ export default function KioskPage() {
     if (context) {
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
-      // APPLY FILTER TO CANVAS FOR CAPTURE IF NEEDED (OPTIONAL AS BLUEPRINTFRAME HANDLES IT)
       context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
       return canvas.toDataURL('image/jpeg', 0.9);
     }
@@ -617,14 +607,14 @@ export default function KioskPage() {
                     : "bg-white/5 text-white/20 border-white/10 opacity-50"
                 )}
                >
-                 <TargetLucide className="w-5 h-5" /> {selectedRetakeIndex !== null ? `Retake Selected Photo` : "Select Slot to Retake"}
+                 <Target className="w-5 h-5" /> {selectedRetakeIndex !== null ? `Retake Selected Photo` : "Select Slot to Retake"}
                </button>
 
                <button 
                 onClick={() => { setSelectedRetakeIndex(null); setCapturedPhotos([]); startShotSequence(); }} 
                 className="w-full py-4 border-2 border-white/20 font-black uppercase italic text-white/40 hover:text-white transition-colors flex items-center justify-center gap-2"
                >
-                 <RotateCcwLucide className="w-4 h-4" /> Retake All Photos
+                 <RotateCcw className="w-4 h-4" /> Retake All Photos
                </button>
             </div>
           </div>
@@ -772,13 +762,11 @@ export default function KioskPage() {
                 <div className="aspect-square w-full bg-white p-8 rounded-[2.5rem] flex items-center justify-center shadow-2xl">
                   {softCopyQrUrl ? <img src={softCopyQrUrl} alt="Scan to save" className="w-full h-full" /> : <Loader2 className="w-16 h-16 animate-spin text-primary" />}
                 </div>
-                {uploadStatus === "complete" ? (
-                  <button onClick={() => setAppState("thankyou")} className="w-full bg-primary py-8 text-2xl font-black uppercase italic rounded-3xl shadow-xl active:scale-95 transition-transform">COMPLETE SESSION</button>
-                ) : (
-                  <div className="flex items-center gap-3 py-6">
-                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                    <span className="text-xs font-black uppercase text-white/40 italic">Syncing HD to Cloud...</span>
-                  </div>
+                
+                {softCopyQrUrl && (
+                  <button onClick={() => setAppState("thankyou")} className="w-full bg-primary py-8 text-2xl font-black uppercase italic rounded-3xl shadow-xl active:scale-95 transition-transform flex items-center justify-center gap-3">
+                    <Download className="w-6 h-6" /> COMPLETE SESSION
+                  </button>
                 )}
              </div>
           </div>
@@ -806,3 +794,4 @@ export default function KioskPage() {
     </KioskLayout>
   );
 }
+

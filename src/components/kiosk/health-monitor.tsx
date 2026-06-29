@@ -29,6 +29,7 @@ export function HealthMonitor() {
     const queue = SessionStore.getSyncQueue();
     
     try {
+      // 1. Check Camera
       const devices = await navigator.mediaDevices.enumerateDevices();
       const hasCam = devices.some(d => d.kind === 'videoinput');
       
@@ -37,6 +38,7 @@ export function HealthMonitor() {
       let detectedLexar = false;
       let hasSerial = false;
 
+      // 2. Check WebUSB Devices (UGREEN Hub Handshake)
       if (typeof navigator !== 'undefined') {
         if ('usb' in navigator) {
           try {
@@ -47,9 +49,11 @@ export function HealthMonitor() {
               const name = (device.productName || "").toLowerCase();
               const manufacturer = (device.manufacturerName || "").toLowerCase();
               
+              // Detect Epson or generic printer profiles
               if (name.includes('epson') || name.includes('printer') || manufacturer.includes('epson')) {
                 detectedPrinter = true;
               }
+              // Detect Lexar or generic mass storage
               if (name.includes('lexar') || name.includes('usb') || name.includes('storage')) {
                 detectedLexar = true;
               }
@@ -59,6 +63,7 @@ export function HealthMonitor() {
           }
         }
         
+        // 3. Check Serial (Bill Acceptor)
         if ('serial' in navigator) {
           try {
             // @ts-ignore
@@ -95,6 +100,7 @@ export function HealthMonitor() {
       window.addEventListener('online', checkHealth);
       window.addEventListener('offline', checkHealth);
       
+      // Listen for hardware plug/unplug events
       if ('usb' in navigator) {
         const handleHardwareChange = (event: USBConnectionEvent) => {
           const deviceName = event.device.productName || 'Unknown Device';

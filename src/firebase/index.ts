@@ -1,3 +1,4 @@
+
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { 
   initializeFirestore, 
@@ -21,7 +22,7 @@ export function initializeFirebase() {
     // Enable error-only logging for stable kiosk performance
     setLogLevel('error');
 
-    // Enable IndexedDB Persistence for offline resiliency
+    // Enable IndexedDB Persistence for offline resiliency (Crucial for Honor Pad Kiosk)
     db = initializeFirestore(app, {
       localCache: persistentLocalCache({ 
         tabManager: persistentMultipleTabManager() 

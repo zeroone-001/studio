@@ -291,7 +291,6 @@ export default function KioskPage() {
       setCurrentShotIndex(i);
       
       // 1. POSE PERIOD (2 SECONDS)
-      // The customer sees the full-screen live feed without any overlay
       setCountdown(null);
       await new Promise(r => setTimeout(r, 2000));
       

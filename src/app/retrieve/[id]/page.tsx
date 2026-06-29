@@ -96,6 +96,7 @@ export default function RetrievePage() {
       document.body.removeChild(a);
       KioskLogger.log('info', 'QR', 'Download triggered.', 'SUCCESS');
     } catch (e) {
+      // Mobile fallback if manual blob download fails
       window.open(imageUrl, '_blank');
       KioskLogger.log('warn', 'QR', 'Fallback download triggered.', 'SUCCESS');
     }

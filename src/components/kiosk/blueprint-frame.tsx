@@ -165,10 +165,10 @@ export const BlueprintFrame = React.memo(({
       </div>
 
       <div 
-        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-between items-center py-4 px-6"
+        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col justify-between items-center py-2 px-6"
         style={{ height: '8.33%' }}
       >
-        <div className="w-full border-t border-black/10 mb-2"></div>
+        <div className="w-full border-t border-black/10 mb-1"></div>
         
         <div className="flex-1 flex items-center justify-center w-full px-2 text-center">
           {quoteText && (
@@ -178,7 +178,7 @@ export const BlueprintFrame = React.memo(({
           )}
         </div>
 
-        <div className="w-full flex justify-between items-end pb-2 border-t border-black/5 pt-2">
+        <div className="w-full flex justify-between items-end pb-1 border-t border-black/5 pt-1">
           <div className="flex flex-col items-start leading-none">
              <span className="font-headline font-black italic uppercase text-black flex items-center gap-1" style={{ fontSize: isStrip ? '12px' : '20px' }}>
                <span>JNL</span>

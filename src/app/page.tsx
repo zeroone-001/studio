@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -43,7 +42,6 @@ export default function KioskPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const printIframeRef = useRef<HTMLIFrameElement>(null);
-  const triggerResolveRef = useRef<(() => void) | null>(null);
 
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
@@ -66,7 +64,6 @@ export default function KioskPage() {
   const [usbHandle, setUsbHandle] = useState<FileSystemDirectoryHandle | null>(null);
   
   const [currentShotIndex, setCurrentShotIndex] = useState(0);
-  const [waitingForTrigger, setWaitingForTrigger] = useState(false);
   
   const exportTriggeredRef = useRef(false);
   const [originUrl, setOriginUrl] = useState("https://jnl-studio-booth.web.app");
@@ -116,7 +113,6 @@ export default function KioskPage() {
   }, [currentSessionId, promoConsent, uploadStatus]);
 
   const initiatePrint = useCallback((blob: Blob) => {
-    // RUNTIME DIAGNOSTICS FOR AUTO-PRINT SIGNAL
     KioskLogger.log('info', 'PRINT', 'Signal Generation Started.', 'PENDING');
     
     if (!printIframeRef.current) {
@@ -146,7 +142,6 @@ export default function KioskPage() {
     
     KioskLogger.log('info', 'PRINT', 'Print Request Generated & Intent Created.', 'SUCCESS');
 
-    // HANDOVER TO SYSTEM PRINT (Interpreted by NokoPrint)
     setTimeout(() => {
       try {
         iframe.contentWindow?.focus();
@@ -267,7 +262,6 @@ export default function KioskPage() {
     setSelectedRetakeIndex(null);
     setPromoConsent(null);
     setCurrentShotIndex(0);
-    setWaitingForTrigger(false);
   }, []);
 
   const startShotSequence = async () => {
@@ -276,25 +270,21 @@ export default function KioskPage() {
     
     setAppState("capturing");
     
-    const startIdx = selectedRetakeIndex !== null ? selectedRetakeIndex : photos.length;
+    const startIdx = selectedRetakeIndex !== null ? selectedRetakeIndex : 0;
     const endIdx = selectedRetakeIndex !== null ? selectedRetakeIndex + 1 : totalShots;
 
     for (let i = startIdx; i < endIdx; i++) {
       setCurrentShotIndex(i);
-      setWaitingForTrigger(true);
       
-      await new Promise<void>((resolve) => {
-        triggerResolveRef.current = resolve;
-      });
-      
-      setWaitingForTrigger(false);
-      
+      // Automatic 3-2-1 Countdown
       for (let c = 3; c > 0; c--) {
         setCountdown(c);
         await new Promise(r => setTimeout(r, 1000));
       }
+      
       setCountdown(null);
       setIsProcessing(true);
+      
       const shot = takePhoto();
       if (shot) {
         if (selectedRetakeIndex !== null) {
@@ -304,8 +294,14 @@ export default function KioskPage() {
         }
         setCapturedPhotos([...photos]);
       }
-      await new Promise(r => setTimeout(r, 600)); 
+      
+      await new Promise(r => setTimeout(r, 800)); 
       setIsProcessing(false);
+      
+      // Short delay before starting the next automatic countdown
+      if (i < endIdx - 1) {
+        await new Promise(r => setTimeout(r, 1000));
+      }
     }
     
     setSelectedRetakeIndex(null);
@@ -465,7 +461,6 @@ export default function KioskPage() {
                    <video ref={videoRef} autoPlay playsInline muted className={cn("absolute inset-0 w-full h-full object-cover", selectedFilter.class)} />
                 </div>
                 <div className="flex flex-col items-center gap-4">
-                  <p className="text-[10px] font-black uppercase italic tracking-widest text-white/40">Check your pose & select choices to continue</p>
                   <NeonButton 
                     disabled={!selectedBlueprint}
                     onClick={() => setAppState("test-camera")} 
@@ -473,6 +468,7 @@ export default function KioskPage() {
                   >
                     NEXT
                   </NeonButton>
+                  <p className="text-[10px] font-black uppercase italic tracking-widest text-white/40">Check your pose & select choices to continue</p>
                 </div>
              </div>
           </div>
@@ -482,7 +478,7 @@ export default function KioskPage() {
           <div className="w-full h-full max-w-7xl flex flex-col items-center justify-center px-8 py-10 space-y-8">
              <div className="text-center space-y-2">
                 <h2 className="font-headline font-black text-5xl italic uppercase text-primary">ADJUST YOUR POSE</h2>
-                <p className="text-white/40 font-black uppercase italic tracking-widest">Get ready for your session!</p>
+                <p className="text-white/40 font-black uppercase italic tracking-widest">Get ready for your automatic session!</p>
              </div>
              
              <div className="relative w-full max-w-4xl aspect-[16/9] bg-zinc-900 border-8 border-white shadow-[0_0_100px_rgba(255,51,153,0.3)] overflow-hidden">
@@ -500,22 +496,9 @@ export default function KioskPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
              <video ref={videoRef} autoPlay playsInline muted className={cn("w-full h-full object-cover", selectedFilter.class)} />
              
-             {waitingForTrigger && (
-               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 animate-in fade-in duration-300">
-                 <div className="text-center space-y-4 mb-8">
-                   <h2 className="text-6xl font-black italic text-white uppercase tracking-tighter drop-shadow-lg">
-                     READY FOR SHOT {currentShotIndex + 1}?
-                   </h2>
-                   <p className="text-white/60 text-xl font-black uppercase italic tracking-widest">Check your pose & group positioning</p>
-                 </div>
-                 <NeonButton 
-                   onClick={() => triggerResolveRef.current?.()} 
-                   className="px-24 py-12 text-4xl shadow-[0_0_50px_rgba(255,51,153,0.5)] active:scale-90"
-                 >
-                   TAKE SHOT
-                 </NeonButton>
-               </div>
-             )}
+             <div className="absolute top-10 left-10 z-[70] bg-black/60 px-6 py-3 border border-primary">
+                <span className="text-2xl font-black italic uppercase text-primary">SHOT {currentShotIndex + 1} OF {packageSelected === 50 ? 3 : 6}</span>
+             </div>
 
              {countdown !== null && (
                <div className="absolute inset-0 flex items-center justify-center bg-black/20">

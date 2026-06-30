@@ -25,8 +25,6 @@ interface BlueprintFrameProps {
   onUpdateSticker?: (id: string, updates: Partial<PlacedSticker>) => void;
   onRemoveSticker?: (id: string) => void;
   onSelectSticker?: (id: string) => void;
-  onBringToFront?: (id: string) => void;
-  onSendToBack?: (id: string) => void;
   onDuplicateSticker?: (sticker: PlacedSticker) => void;
   onSelectSlot?: (index: number) => void;
   selectedSlotIndex?: number | null;
@@ -45,8 +43,6 @@ export const BlueprintFrame = React.memo(({
   onUpdateSticker,
   onRemoveSticker,
   onSelectSticker,
-  onBringToFront,
-  onSendToBack,
   onDuplicateSticker,
   onSelectSlot,
   selectedSlotIndex = null,
@@ -148,8 +144,6 @@ export const BlueprintFrame = React.memo(({
                 onUpdate={(id, up) => onUpdateSticker?.(id, up)}
                 onDelete={(id) => onRemoveSticker?.(id)}
                 onSelect={(id) => onSelectSticker?.(id)}
-                onBringToFront={(id) => onBringToFront?.(id)}
-                onSendToBack={(id) => onSendToBack?.(id)}
                 onDuplicate={(st) => onDuplicateSticker?.(st)}
               />
             );

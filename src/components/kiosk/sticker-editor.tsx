@@ -1,13 +1,13 @@
 
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { 
   STICKER_DEFS, 
   PlacedSticker 
 } from "@/lib/kiosk/constants";
-import { X, RotateCw, Maximize2, Layers, Copy, FlipHorizontal, FlipVertical, ArrowDown } from "lucide-react";
+import { X, RotateCw, Maximize2, Copy } from "lucide-react";
 
 interface StickerEditorProps {
   sticker: PlacedSticker;
@@ -15,8 +15,6 @@ interface StickerEditorProps {
   onUpdate: (id: string, updates: Partial<PlacedSticker>) => void;
   onDelete: (id: string) => void;
   onSelect: (id: string) => void;
-  onBringToFront: (id: string) => void;
-  onSendToBack: (id: string) => void;
   onDuplicate: (sticker: PlacedSticker) => void;
   canvasRect: DOMRect | null;
 }
@@ -27,8 +25,6 @@ export const StickerEditor = React.memo(({
   onUpdate, 
   onDelete, 
   onSelect,
-  onBringToFront,
-  onSendToBack,
   onDuplicate,
   canvasRect 
 }: StickerEditorProps) => {
@@ -42,8 +38,6 @@ export const StickerEditor = React.memo(({
     y: sticker.y,
     size: sticker.size,
     rotation: sticker.rotation,
-    flipX: sticker.flipX || false,
-    flipY: sticker.flipY || false
   });
 
   const interactionType = useRef<'drag' | 'rotate' | 'resize' | null>(null);
@@ -57,8 +51,6 @@ export const StickerEditor = React.memo(({
         y: sticker.y,
         size: sticker.size,
         rotation: sticker.rotation,
-        flipX: sticker.flipX || false,
-        flipY: sticker.flipY || false
       });
     }
   }, [sticker, isInteracting]);
@@ -97,16 +89,6 @@ export const StickerEditor = React.memo(({
     startValue.current = { ...localTransform, angle: 0 };
   };
 
-  const handleFlipX = (e: React.PointerEvent) => {
-    e.stopPropagation();
-    onUpdate(sticker.id, { flipX: !localTransform.flipX });
-  };
-
-  const handleFlipY = (e: React.PointerEvent) => {
-    e.stopPropagation();
-    onUpdate(sticker.id, { flipY: !localTransform.flipY });
-  };
-
   useEffect(() => {
     if (!isInteracting) return;
 
@@ -119,8 +101,8 @@ export const StickerEditor = React.memo(({
         
         setLocalTransform(prev => ({
           ...prev,
-          x: Math.max(2, Math.min(98, startValue.current.x + dx)),
-          y: Math.max(2, Math.min(98, startValue.current.y + dy))
+          x: Math.max(0, Math.min(100, startValue.current.x + dx)),
+          y: Math.max(0, Math.min(100, startValue.current.y + dy))
         }));
       }
 
@@ -178,90 +160,59 @@ export const StickerEditor = React.memo(({
   return (
     <div
       className={cn(
-        "absolute pointer-events-auto touch-none group",
-        isSelected ? "z-[100]" : "z-40"
+        "absolute pointer-events-auto touch-none select-none",
+        isSelected ? "z-[1000]" : "z-40"
       )}
       style={{
         left: `${localTransform.x}%`,
         top: `${localTransform.y}%`,
         width: `${localTransform.size}%`,
         aspectRatio: "1/1",
-        transform: `translate3d(-50%, -50%, 0) rotate(${localTransform.rotation}deg) scaleX(${localTransform.flipX ? -1 : 1}) scaleY(${localTransform.flipY ? -1 : 1})`,
+        transform: `translate3d(-50%, -50%, 0) rotate(${localTransform.rotation}deg)`,
         willChange: isInteracting ? "transform, left, top, width" : "auto",
-        zIndex: isSelected ? 1000 : sticker.zIndex
       }}
       onPointerDown={handlePointerDown}
     >
       <div className={cn(
-        "w-full h-full transition-shadow duration-200",
-        isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded-lg animate-neon-pulse shadow-[0_0_25px_rgba(255,51,153,0.7)]"
+        "w-full h-full transition-all duration-200",
+        isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded-lg animate-neon-pulse shadow-[0_0_20px_rgba(255,51,153,0.5)]"
       )}>
         <StickerIcon className={cn("w-full h-full drop-shadow-lg", def.color)} />
       </div>
 
       {isSelected && (
         <>
-          {/* Main Controls - Top Row */}
-          <button
-            onPointerDown={(e) => { e.stopPropagation(); onDelete(sticker.id); }}
-            className="absolute -top-10 -right-10 w-12 h-12 bg-red-500 rounded-full flex items-center justify-center text-white shadow-2xl border-2 border-white active:scale-90 z-[110]"
-          >
-            <X className="w-6 h-6" strokeWidth={4} />
-          </button>
-
+          {/* TOP LEFT: COPY */}
           <button
             onPointerDown={(e) => { e.stopPropagation(); onDuplicate(sticker); }}
-            className="absolute -top-10 left-1/2 -translate-x-1/2 w-12 h-12 bg-indigo-500 rounded-full flex items-center justify-center text-white shadow-2xl border-2 border-white active:scale-90 z-[110]"
+            className="absolute -top-5 -left-5 w-10 h-10 bg-zinc-950/80 rounded-full flex items-center justify-center text-indigo-400 shadow-xl border border-white/20 active:scale-90 z-[1100] transition-transform"
           >
-            <Copy className="w-6 h-6" strokeWidth={3} />
+            <Copy className="w-5 h-5" strokeWidth={2.5} />
           </button>
 
+          {/* TOP RIGHT: DELETE */}
+          <button
+            onPointerDown={(e) => { e.stopPropagation(); onDelete(sticker.id); }}
+            className="absolute -top-5 -right-5 w-10 h-10 bg-zinc-950/80 rounded-full flex items-center justify-center text-red-500 shadow-xl border border-white/20 active:scale-90 z-[1100] transition-transform"
+          >
+            <X className="w-5 h-5" strokeWidth={3} />
+          </button>
+
+          {/* BOTTOM LEFT: ROTATE */}
           <div
             onPointerDown={handleRotateStart}
-            className="absolute -top-10 -left-10 w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-2xl border-2 border-white cursor-pointer active:scale-90 z-[110]"
+            className="absolute -bottom-5 -left-5 w-10 h-10 bg-zinc-950/80 rounded-full flex items-center justify-center text-blue-400 shadow-xl border border-white/20 cursor-pointer active:scale-90 z-[1100] transition-transform"
           >
-            <RotateCw className="w-6 h-6" strokeWidth={3} />
+            <RotateCw className="w-5 h-5" strokeWidth={2.5} />
           </div>
 
-          {/* Resize Control - Bottom Right */}
+          {/* BOTTOM RIGHT: RESIZE */}
           <div
             onPointerDown={handleResizeStart}
-            className="absolute -bottom-10 -right-10 w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white shadow-2xl border-2 border-white cursor-se-resize active:scale-90 z-[110]"
+            className="absolute -bottom-5 -right-5 w-10 h-10 bg-zinc-950/80 rounded-full flex items-center justify-center text-primary shadow-xl border border-white/20 cursor-se-resize active:scale-90 z-[1100] transition-transform"
           >
-            <Maximize2 className="w-6 h-6" strokeWidth={3} />
+            <Maximize2 className="w-5 h-5" strokeWidth={2.5} />
           </div>
-
-          {/* Layer Controls - Bottom Row */}
-          <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 flex gap-2">
-            <button
-              onPointerDown={(e) => { e.stopPropagation(); onBringToFront(sticker.id); }}
-              className="w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center text-white shadow-xl border-2 border-white active:scale-90"
-              title="Bring to Front"
-            >
-              <Layers className="w-5 h-5" strokeWidth={3} />
-            </button>
-            <button
-              onPointerDown={(e) => { e.stopPropagation(); onSendToBack(sticker.id); }}
-              className="w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center text-white shadow-xl border-2 border-white active:scale-90"
-              title="Send to Back"
-            >
-              <ArrowDown className="w-5 h-5" strokeWidth={3} />
-            </button>
-          </div>
-
-          {/* Flip Controls - Middle Sides */}
-          <button
-            onPointerDown={handleFlipX}
-            className="absolute top-1/2 -left-10 -translate-y-1/2 w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-white shadow-xl border-2 border-white active:scale-90 z-[110]"
-          >
-            <FlipHorizontal className="w-5 h-5" strokeWidth={3} />
-          </button>
-          <button
-            onPointerDown={handleFlipY}
-            className="absolute top-1/2 -right-10 -translate-y-1/2 w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-white shadow-xl border-2 border-white active:scale-90 z-[110]"
-          >
-            <FlipVertical className="w-5 h-5" strokeWidth={3} />
-          </button>
         </>
       )}
     </div>

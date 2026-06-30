@@ -168,29 +168,29 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* FOOTER AREA */}
+      {/* FOOTER AREA - RE-BALANCED FOR SCALE */}
       <div 
         className="absolute left-0 right-0 bottom-0 bg-white z-[60] flex flex-col items-center px-4"
         style={{ height: '8.33%' }}
       >
-        <div className="w-full border-t border-black/10 mt-1"></div>
+        <div className="w-full border-t border-black/5 mt-2"></div>
         
-        <div className="flex-1 flex items-center justify-center w-full px-2 text-center overflow-hidden">
+        <div className="flex-1 flex items-center justify-center w-full px-2 text-center overflow-hidden py-1">
           {quoteText && (
-            <p className="font-bold text-black italic text-center leading-tight line-clamp-2" style={{ fontSize: isStrip ? '12px' : '20px' }}>
+            <p className="font-bold text-black italic text-center leading-tight line-clamp-2" style={{ fontSize: isStrip ? '11px' : '18px' }}>
               "{quoteText}"
             </p>
           )}
         </div>
 
-        <div className="w-full flex justify-between items-end pb-2 border-t border-black/5 pt-1">
+        <div className="w-full flex justify-between items-end pb-3 pt-1 border-t border-black/5">
           <div className="flex flex-col items-start leading-none">
-             <span className="font-headline font-black italic uppercase text-black flex items-center gap-1" style={{ fontSize: isStrip ? '10px' : '16px' }}>
+             <span className="font-headline font-black italic uppercase text-black flex items-center gap-1" style={{ fontSize: isStrip ? '9px' : '14px' }}>
                <span>JNL</span>
                <span className="text-[#FF3399]">STUDIO</span>
              </span>
           </div>
-          <span className="font-bold uppercase tracking-widest text-black/40" style={{ fontSize: isStrip ? '8px' : '12px' }}>{displayDate}</span>
+          <span className="font-bold uppercase tracking-widest text-black/30" style={{ fontSize: isStrip ? '7px' : '11px' }}>{displayDate}</span>
         </div>
       </div>
     </div>

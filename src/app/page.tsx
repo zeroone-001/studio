@@ -136,7 +136,6 @@ export default function KioskPage() {
     
     KioskLogger.log('info', 'PRINT', 'Intent Created.', 'SUCCESS');
 
-    // Android Handshake: Ensure iframe is focused before printing
     setTimeout(() => {
       try {
         iframe.contentWindow?.focus();
@@ -166,6 +165,8 @@ export default function KioskPage() {
     ctx.fillRect(0, 0, 1600, 2400);
 
     const isStrip = selectedBlueprint.package === 50;
+    const STRIP_W = isStrip ? 800 : 1600;
+
     const drawContent = async (offsetX: number) => {
       for (let i = 0; i < selectedBlueprint.slots.length; i++) {
         const slot = selectedBlueprint.slots[i];
@@ -175,10 +176,13 @@ export default function KioskPage() {
         img.src = photo;
         await new Promise(resolve => img.onload = resolve);
         
+        const sX = isStrip ? slot.x / 2 : slot.x;
+        const sW = isStrip ? slot.w / 2 : slot.w;
+
         if (selectedFilter.filter) {
           ctx.filter = selectedFilter.filter;
         }
-        ctx.drawImage(img, slot.x + offsetX, slot.y, slot.w, slot.h);
+        ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
         ctx.filter = 'none';
       }
       
@@ -197,8 +201,8 @@ export default function KioskPage() {
         stickerImg.src = url;
         await new Promise(resolve => stickerImg.onload = resolve);
 
-        const targetW = (s.size / 100) * (isStrip ? 800 : 1600);
-        const targetX = (s.x / 100) * (isStrip ? 800 : 1600) + offsetX;
+        const targetW = (s.size / 100) * STRIP_W;
+        const targetX = (s.x / 100) * STRIP_W + offsetX;
         const targetY = (s.y / 100) * 2400;
 
         ctx.save();
@@ -212,21 +216,22 @@ export default function KioskPage() {
       
       const footerY = 2200;
       ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(offsetX, footerY, 1600, 200);
-      
-      // EXPORT FONT SCALING FIX
+      ctx.fillRect(offsetX, footerY, STRIP_W, 200);
+
+      // BALANCED FOOTER TYPOGRAPHY
       ctx.fillStyle = '#000000';
       ctx.textAlign = 'center';
-      ctx.font = 'bold 36px Inter, sans-serif';
-      ctx.fillText(`"${selectedQuote.text}"`, offsetX + (isStrip ? 400 : 800), footerY + 80);
+      ctx.font = 'bold 32px Inter, sans-serif';
+      ctx.fillText(`"${selectedQuote.text}"`, offsetX + (STRIP_W / 2), footerY + 90);
       
       ctx.textAlign = 'left';
-      ctx.font = '900 28px Inter, sans-serif';
-      ctx.fillText('JNL STUDIO', offsetX + 60, footerY + 165);
+      ctx.font = '900 24px Inter, sans-serif';
+      ctx.fillText('JNL STUDIO', offsetX + 60, footerY + 180);
       
       ctx.textAlign = 'right';
-      ctx.font = 'bold 24px Inter, sans-serif';
-      ctx.fillText(new Date().toLocaleDateString(), offsetX + (isStrip ? 740 : 1540), footerY + 165);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.font = 'bold 20px Inter, sans-serif';
+      ctx.fillText(new Date().toLocaleDateString(), offsetX + STRIP_W - 60, footerY + 180);
     };
 
     if (isStrip) { await drawContent(0); await drawContent(800); } else { await drawContent(0); }
@@ -234,15 +239,12 @@ export default function KioskPage() {
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
       
-      // Step 1: Local Save (Highest Priority)
       const saveOk = await SessionStore.savePhotoLocally(sessionId, blob);
       setRuntimeStatus(prev => ({ ...prev, photoSaved: saveOk ? 'SUCCESS' : 'FAILED' }));
 
-      // Step 2: Initiate Print Immediately
       initiatePrint(blob);
       setAppState("printing");
 
-      // Step 3: Create Cloud Record
       setUploadStatus("uploading");
       const docRef = doc(db, "photos", sessionId);
       const sessionData = {
@@ -257,13 +259,10 @@ export default function KioskPage() {
       setDoc(docRef, sessionData)
         .then(() => {
           setRuntimeStatus(prev => ({ ...prev, sessionCreated: 'SUCCESS' }));
-          
-          // Step 4: Display QR Optimistically
           const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
           setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
           setRuntimeStatus(prev => ({ ...prev, qrGenerated: 'SUCCESS' }));
 
-          // Step 5: Background Upload
           const photoRef = ref(storage, `photos/${sessionId}.jpg`);
           uploadBytes(photoRef, blob).then(async () => {
             await updateDoc(docRef, { status: 'complete' });
@@ -353,7 +352,6 @@ export default function KioskPage() {
       setCurrentShotIndex(i);
       setCountdown(null);
       
-      // Wait for customer to pose before starting countdown
       await new Promise(r => setTimeout(r, 1000));
       
       for (let c = 3; c > 0; c--) {
@@ -664,7 +662,7 @@ export default function KioskPage() {
                 )}
               </div>
             </div>
-            <NeonButton onClick={() => setAppState("printing")} className="w-full max-w-lg py-8 text-2xl">PROCEED TO PRINT</NeonButton>
+            <NeonButton onClick={() => setAppState("printing")} className="w-full max-lg py-8 text-2xl">PROCEED TO PRINT</NeonButton>
           </div>
         )}
 
@@ -675,7 +673,6 @@ export default function KioskPage() {
                 <Progress value={printProgress} className="h-6 bg-white/10" />
              </div>
 
-             {/* Facebook Consent Dialog - Shows during printing */}
              {promoConsent === null && (
                <div className="bg-black/90 border-4 border-primary p-10 flex flex-col items-center space-y-8 rounded-[4rem] w-[600px] shadow-[0_0_50px_rgba(255,51,153,0.3)] animate-in zoom-in-95">
                  <div className="space-y-4 text-center">

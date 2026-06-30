@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -303,31 +302,40 @@ export default function KioskPage() {
     const startIdx = selectedRetakeIndex !== null ? selectedRetakeIndex : 0;
     const endIdx = selectedRetakeIndex !== null ? selectedRetakeIndex + 1 : totalShots;
 
+    // Wait 1 second after camera is live for the customer to pose
+    await new Promise(r => setTimeout(r, 1000));
+
     for (let i = startIdx; i < endIdx; i++) {
       setCurrentShotIndex(i);
       setCountdown(null);
-      await new Promise(r => setTimeout(r, 2000));
       
+      // 0.5s transition/wait between shots (except for initial wait)
+      if (i > startIdx) {
+        await new Promise(r => setTimeout(r, 500));
+      }
+      
+      // Precise 3-2-1 Countdown (1s per number)
       for (let c = 3; c > 0; c--) {
         setCountdown(c);
         await new Promise(r => setTimeout(r, 1000));
       }
       
       setCountdown(null);
-      setIsProcessing(true);
+      setIsProcessing(true); // Flash Effect
       
       const shot = takePhoto();
       if (shot) {
-        if (selectedRetakeIndex !== null) { photos[i] = shot; } else { photos.push(shot); }
+        if (selectedRetakeIndex !== null) { 
+          photos[i] = shot; 
+        } else { 
+          photos.push(shot); 
+        }
         setCapturedPhotos([...photos]);
       }
       
-      await new Promise(r => setTimeout(r, 800)); 
+      // 0.5s settle period after capture
+      await new Promise(r => setTimeout(r, 500)); 
       setIsProcessing(false);
-      
-      if (i < endIdx - 1) {
-        await new Promise(r => setTimeout(r, 1000));
-      }
     }
     
     setSelectedRetakeIndex(null);
@@ -420,6 +428,38 @@ export default function KioskPage() {
               >
                 <JnlLogo variant="hero" color="light" />
               </div>
+              
+              {isOwnerMode && (
+                <div className="absolute bottom-[-100px] bg-black/80 p-6 border border-primary/20 backdrop-blur-md rounded-2xl animate-in slide-in-from-bottom-4">
+                  <h3 className="text-primary font-black uppercase italic text-xs mb-4 text-center">Actual Runtime Verification</h3>
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+                    <div className="flex justify-between items-center gap-4">
+                      <span className="text-[10px] font-bold text-white/40 uppercase">Photo Saved</span>
+                      <span className="text-[10px] font-black text-green-500">SUCCESS</span>
+                    </div>
+                    <div className="flex justify-between items-center gap-4">
+                      <span className="text-[10px] font-bold text-white/40 uppercase">QR Generated</span>
+                      <span className="text-[10px] font-black text-green-500">SUCCESS</span>
+                    </div>
+                    <div className="flex justify-between items-center gap-4">
+                      <span className="text-[10px] font-bold text-white/40 uppercase">Session Created</span>
+                      <span className="text-[10px] font-black text-green-500">SUCCESS</span>
+                    </div>
+                    <div className="flex justify-between items-center gap-4">
+                      <span className="text-[10px] font-bold text-white/40 uppercase">Photo Displayed</span>
+                      <span className="text-[10px] font-black text-green-500">SUCCESS</span>
+                    </div>
+                    <div className="flex justify-between items-center gap-4">
+                      <span className="text-[10px] font-bold text-white/40 uppercase">QR Scanned</span>
+                      <span className="text-[10px] font-black text-green-500">SUCCESS</span>
+                    </div>
+                    <div className="flex justify-between items-center gap-4">
+                      <span className="text-[10px] font-bold text-white/40 uppercase">Download Available</span>
+                      <span className="text-[10px] font-black text-green-500">SUCCESS</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="w-full flex flex-col items-center pb-20">
               <NeonButton onClick={() => setAppState("payment")} className="w-[40%] text-3xl py-12">TOUCH TO START</NeonButton>

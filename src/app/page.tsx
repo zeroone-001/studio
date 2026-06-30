@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -187,9 +188,10 @@ export default function KioskPage() {
         if (!def) continue;
         
         const stickerImg = new Image();
-        const svgString = document.querySelector(`[data-sticker-id="${s.id}"] svg`)?.outerHTML;
-        if (!svgString) continue;
-        
+        const svgElement = document.querySelector(`[data-sticker-id="${s.id}"] svg`);
+        if (!svgElement) continue;
+
+        const svgString = new XMLSerializer().serializeToString(svgElement);
         const svgBlob = new Blob([svgString], {type: 'image/svg+xml;charset=utf-8'});
         const url = URL.createObjectURL(svgBlob);
         stickerImg.src = url;
@@ -211,16 +213,20 @@ export default function KioskPage() {
       const footerY = 2200;
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(offsetX, footerY, 1600, 200);
+      
+      // EXPORT FONT SCALING FIX
       ctx.fillStyle = '#000000';
-      ctx.font = 'bold 32px Inter, sans-serif';
       ctx.textAlign = 'center';
+      ctx.font = 'bold 36px Inter, sans-serif';
       ctx.fillText(`"${selectedQuote.text}"`, offsetX + (isStrip ? 400 : 800), footerY + 80);
+      
       ctx.textAlign = 'left';
-      ctx.font = 'black 48px Inter, sans-serif';
-      ctx.fillText('JNL STUDIO', offsetX + 80, footerY + 160);
+      ctx.font = '900 28px Inter, sans-serif';
+      ctx.fillText('JNL STUDIO', offsetX + 60, footerY + 165);
+      
       ctx.textAlign = 'right';
-      ctx.font = 'bold 32px Inter, sans-serif';
-      ctx.fillText(new Date().toLocaleDateString(), offsetX + (isStrip ? 720 : 1520), footerY + 160);
+      ctx.font = 'bold 24px Inter, sans-serif';
+      ctx.fillText(new Date().toLocaleDateString(), offsetX + (isStrip ? 740 : 1540), footerY + 165);
     };
 
     if (isStrip) { await drawContent(0); await drawContent(800); } else { await drawContent(0); }

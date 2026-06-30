@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -10,7 +9,7 @@ import { KioskLogger } from "@/lib/kiosk/logger";
 /**
  * Health Monitor component.
  * Automatically detects hardware state (Camera, UGreen Hub, Printer, Bill Acceptor).
- * Optimized for Honor Pad X10 via UGreen 7-in-1 Hub using WebUSB for device monitoring.
+ * Optimized for Honor Pad X10 via UGreen 7-in-1 Hub.
  */
 export function HealthMonitor() {
   const [status, setStatus] = useState({
@@ -24,22 +23,17 @@ export function HealthMonitor() {
     lexarUsb: false
   });
 
-  const checkHealth = useCallback(async () => {
+  const checkHardware = useCallback(async () => {
     const stats = SessionStore.getStorageStats();
-    const queue = SessionStore.getSyncQueue();
     
     try {
-      // 1. Check Camera
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const hasCam = devices.some(d => d.kind === 'videoinput');
-      
       let detectedPrinter = false;
       let detectedHub = false;
       let detectedLexar = false;
       let hasSerial = false;
 
-      // 2. Check WebUSB Devices (UGREEN Hub Handshake)
       if (typeof navigator !== 'undefined') {
+        // 1. WebUSB Detection (UGREEN Hub Handshake)
         if ('usb' in navigator) {
           try {
             const usbDevices = await navigator.usb.getDevices();
@@ -49,12 +43,12 @@ export function HealthMonitor() {
               const name = (device.productName || "").toLowerCase();
               const manufacturer = (device.manufacturerName || "").toLowerCase();
               
-              // Detect Epson or generic printer profiles (L210)
-              if (name.includes('epson') || name.includes('l210') || name.includes('printer') || manufacturer.includes('epson')) {
+              // Epson L210 Signature Detection
+              if (name.includes('epson') || name.includes('l210') || manufacturer.includes('epson')) {
                 detectedPrinter = true;
               }
-              // Detect Lexar or generic mass storage
-              if (name.includes('lexar') || name.includes('usb') || name.includes('storage')) {
+              // Lexar Signature Detection
+              if (name.includes('lexar') || name.includes('mass storage')) {
                 detectedLexar = true;
               }
             });
@@ -63,7 +57,7 @@ export function HealthMonitor() {
           }
         }
         
-        // 3. Check Serial (Bill Acceptor)
+        // 2. Serial (Bill Acceptor)
         if ('serial' in navigator) {
           try {
             // @ts-ignore
@@ -80,38 +74,26 @@ export function HealthMonitor() {
         online: typeof navigator !== 'undefined' ? navigator.onLine : true,
         storage: `${stats.usedMB}MB`,
         storagePercent: stats.percent,
-        syncPending: queue.length,
         printerConnected: detectedPrinter,
         usbHub: detectedHub,
         lexarUsb: detectedLexar,
         billAcceptor: hasSerial
       }));
 
-    } catch (e) {
-      // Silent retry on hardware failure
-    }
+    } catch (e) {}
   }, []);
 
   useEffect(() => {
-    const interval = setInterval(checkHealth, 3000);
-    checkHealth();
+    const interval = setInterval(checkHardware, 3000);
+    checkHardware();
 
     if (typeof window !== 'undefined') {
-      window.addEventListener('online', checkHealth);
-      window.addEventListener('offline', checkHealth);
+      window.addEventListener('online', checkHardware);
+      window.addEventListener('offline', checkHardware);
       
-      // Listen for hardware plug/unplug events
       if ('usb' in navigator) {
-        const handleHardwareChange = (event: USBConnectionEvent) => {
-          const deviceName = event.device.productName || 'Unknown Device';
-          const type = event.type === 'connect' ? 'Linked' : 'Unlinked';
-          KioskLogger.log(
-            event.type === 'connect' ? 'info' : 'warn', 
-            'HARDWARE', 
-            `Hardware ${type}: ${deviceName}`,
-            'SUCCESS'
-          );
-          checkHealth();
+        const handleHardwareChange = () => {
+          checkHardware();
         };
 
         try {
@@ -128,18 +110,16 @@ export function HealthMonitor() {
     }
 
     return () => clearInterval(interval);
-  }, [checkHealth]);
+  }, [checkHardware]);
 
   return (
     <div className="fixed bottom-4 left-6 right-6 z-[60] flex justify-between items-center pointer-events-none select-none animate-in fade-in slide-in-from-bottom-4">
       <div className="flex items-center gap-6 pointer-events-auto bg-black/80 backdrop-blur-xl px-6 py-2 rounded-full border border-white/10 shadow-2xl">
-        {/* NETWORK */}
         <div className="flex items-center gap-2 text-[9px] font-black uppercase text-white tracking-widest">
           <Wifi className={cn("w-3.5 h-3.5", status.online ? "text-green-500" : "text-red-500")} />
           <span>Cloud</span>
         </div>
         
-        {/* PRINTER AUTO-DETECTION */}
         <div className="flex items-center gap-2 border-l border-white/10 pl-6">
           {status.printerConnected ? (
             <div className="flex items-center gap-2 text-[10px] font-black uppercase text-green-400">
@@ -154,7 +134,6 @@ export function HealthMonitor() {
           )}
         </div>
 
-        {/* UGREEN HUB / LEXAR */}
         <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
           <Usb className={cn("w-3.5 h-3.5", status.usbHub ? "text-blue-400" : "text-white/20")} />
           <span className={status.lexarUsb ? "text-blue-400" : "text-white/40"}>
@@ -162,24 +141,22 @@ export function HealthMonitor() {
           </span>
         </div>
 
-        {/* STORAGE / CACHE */}
         <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
           <Database className={cn("w-3.5 h-3.5", parseInt(status.storagePercent) > 80 ? "text-red-500" : "text-blue-400")} />
           <span>Cache: {status.storagePercent}%</span>
         </div>
 
-        {/* BILL ACCEPTOR */}
         <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
           <Banknote className={cn("w-3.5 h-3.5", status.billAcceptor ? "text-green-500" : "text-white/20")} />
           <span className={status.billAcceptor ? "text-green-500" : "text-white/40"}>
-            {status.billAcceptor ? "Cash Ready" : "Bill Acc Offline"}
+            {status.billAcceptor ? "Cash Ready" : "Hardware Issue"}
           </span>
         </div>
       </div>
       
       <div className="flex items-center gap-3 bg-black/40 px-4 py-1.5 rounded-full border border-white/5 opacity-50">
         <Activity className="w-3 h-3 text-primary animate-pulse" />
-        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white">System Diagnostics Active</span>
+        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white">System Monitoring Active</span>
       </div>
     </div>
   );

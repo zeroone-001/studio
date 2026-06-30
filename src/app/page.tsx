@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -9,7 +8,7 @@ import { AdminControls } from "@/components/kiosk/admin-controls";
 import { HealthMonitor } from "@/components/kiosk/health-monitor";
 import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
-  Printer, Loader2, Target, RotateCcw, Activity, Camera, Heart, Shield, Play, Download
+  Printer, Loader2, Target, RotateCcw, Activity, Camera, Heart, Shield, Play, Download, CheckCircle2, AlertCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -19,7 +18,9 @@ import { SessionStore } from "@/lib/kiosk/persistence";
 import { KioskLogger } from "@/lib/kiosk/logger";
 import { initializeFirebase } from "@/firebase";
 import { ref, uploadBytes } from "firebase/storage";
-import { doc, setDoc, serverTimestamp, updateDoc, onSnapshot } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 import { 
   SessionState, 
   FILTERS, 
@@ -57,17 +58,24 @@ export default function KioskPage() {
   const [logoTapCount, setLogoTapCount] = useState(0);
   const [currentSessionId, setCurrentSessionId] = useState("");
   const [softCopyQrUrl, setSoftCopyQrUrl] = useState("");
-  const [fbQrUrl] = useState(`https://www.facebook.com/share/1UUtaRzzMB/`);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "complete" | "error">("idle");
   const [promoConsent, setPromoConsent] = useState<boolean | null>(null);
   const [usbHandle, setUsbHandle] = useState<FileSystemDirectoryHandle | null>(null);
   
   const [currentShotIndex, setCurrentShotIndex] = useState(0);
+  const [isCapturingReady, setIsCapturingReady] = useState(false);
   
   const exportTriggeredRef = useRef(false);
   const [originUrl, setOriginUrl] = useState("https://jnl-studio-booth.web.app");
 
-  // Payment Auto-Detection
+  // Status indicators for Owner Mode
+  const [runtimeStatus, setRuntimeStatus] = useState({
+    photoSaved: 'PENDING',
+    sessionCreated: 'PENDING',
+    qrGenerated: 'PENDING',
+    cloudSync: 'PENDING'
+  });
+
   useEffect(() => {
     if (appState === "payment") {
       if (paymentReceived === 50) {
@@ -127,6 +135,7 @@ export default function KioskPage() {
     
     KioskLogger.log('info', 'PRINT', 'Intent Created.', 'SUCCESS');
 
+    // Android Handshake: Ensure iframe is focused before printing
     setTimeout(() => {
       try {
         iframe.contentWindow?.focus();
@@ -136,13 +145,12 @@ export default function KioskPage() {
       } catch (e: any) {
         KioskLogger.log('error', 'PRINT', 'Spooler Rejection.', 'FAILED', e.message);
       }
-    }, 500); 
+    }, 1000); 
   }, []);
 
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
-    const startTime = Date.now();
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
     
@@ -158,7 +166,6 @@ export default function KioskPage() {
 
     const isStrip = selectedBlueprint.package === 50;
     const drawContent = async (offsetX: number) => {
-      // Draw Photos
       for (let i = 0; i < selectedBlueprint.slots.length; i++) {
         const slot = selectedBlueprint.slots[i];
         const photo = capturedPhotos[i];
@@ -174,7 +181,6 @@ export default function KioskPage() {
         ctx.filter = 'none';
       }
       
-      // Draw Stickers (Sorted by Z-Index)
       const sortedStickers = [...placedStickers].sort((a, b) => a.zIndex - b.zIndex);
       for (const s of sortedStickers) {
         const def = STICKER_DEFS.find(d => d.id === s.type);
@@ -222,37 +228,57 @@ export default function KioskPage() {
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
       
+      // Step 1: Local Save (Highest Priority)
       const saveOk = await SessionStore.savePhotoLocally(sessionId, blob);
-      KioskLogger.log('info', 'SESSION', `Local Save: ${saveOk ? 'SUCCESS' : 'FAILED'}`, saveOk ? 'SUCCESS' : 'FAILED');
+      setRuntimeStatus(prev => ({ ...prev, photoSaved: saveOk ? 'SUCCESS' : 'FAILED' }));
 
+      // Step 2: Initiate Print Immediately
       initiatePrint(blob);
       setAppState("printing");
 
-      const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
-      setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-      
+      // Step 3: Create Cloud Record
       setUploadStatus("uploading");
-      
-      const sessionCreatePromise = setDoc(doc(db, "photos", sessionId), {
+      const docRef = doc(db, "photos", sessionId);
+      const sessionData = {
         id: sessionId,
         storagePath: `photos/${sessionId}.jpg`,
         timestamp: serverTimestamp(),
         isDownloaded: false,
         promoConsent: null,
         status: 'uploading'
-      });
+      };
 
-      const photoRef = ref(storage, `photos/${sessionId}.jpg`);
-      uploadBytes(photoRef, blob).then(async () => {
-        await updateDoc(doc(db, "photos", sessionId), { status: 'complete' });
-        setUploadStatus("complete");
-      }).catch(e => {
-        setUploadStatus("error");
-      });
+      setDoc(docRef, sessionData)
+        .then(() => {
+          setRuntimeStatus(prev => ({ ...prev, sessionCreated: 'SUCCESS' }));
+          
+          // Step 4: Display QR Optimistically
+          const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
+          setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
+          setRuntimeStatus(prev => ({ ...prev, qrGenerated: 'SUCCESS' }));
 
-      await sessionCreatePromise;
+          // Step 5: Background Upload
+          const photoRef = ref(storage, `photos/${sessionId}.jpg`);
+          uploadBytes(photoRef, blob).then(async () => {
+            await updateDoc(docRef, { status: 'complete' });
+            setUploadStatus("complete");
+            setRuntimeStatus(prev => ({ ...prev, cloudSync: 'SUCCESS' }));
+          }).catch(e => {
+            setUploadStatus("error");
+            setRuntimeStatus(prev => ({ ...prev, cloudSync: 'FAILED' }));
+          });
+        })
+        .catch(async (e) => {
+          const permissionError = new FirestorePermissionError({
+            path: docRef.path,
+            operation: 'create',
+            requestResourceData: sessionData
+          });
+          errorEmitter.emit('permission-error', permissionError);
+          setRuntimeStatus(prev => ({ ...prev, sessionCreated: 'FAILED' }));
+        });
       
-    }, 'image/jpeg', 0.9);
+    }, 'image/jpeg', 0.95);
   }, [selectedBlueprint, capturedPhotos, selectedQuote, originUrl, initiatePrint, selectedFilter, placedStickers]);
 
   const addSticker = (type: string) => {
@@ -299,6 +325,12 @@ export default function KioskPage() {
     setSelectedRetakeIndex(null);
     setPromoConsent(null);
     setCurrentShotIndex(0);
+    setRuntimeStatus({
+      photoSaved: 'PENDING',
+      sessionCreated: 'PENDING',
+      qrGenerated: 'PENDING',
+      cloudSync: 'PENDING'
+    });
   }, []);
 
   const startShotSequence = async () => {
@@ -306,16 +338,17 @@ export default function KioskPage() {
     const photos: string[] = capturedPhotos.length > 0 ? [...capturedPhotos] : [];
     
     setAppState("capturing");
+    setIsCapturingReady(false);
     await new Promise(r => setTimeout(r, 1000));
+    setIsCapturingReady(true);
 
     for (let i = (selectedRetakeIndex !== null ? selectedRetakeIndex : 0); 
          i < (selectedRetakeIndex !== null ? selectedRetakeIndex + 1 : totalShots); i++) {
       setCurrentShotIndex(i);
       setCountdown(null);
       
-      if (i > (selectedRetakeIndex !== null ? selectedRetakeIndex : 0)) {
-        await new Promise(r => setTimeout(r, 500));
-      }
+      // Wait for customer to pose before starting countdown
+      await new Promise(r => setTimeout(r, 1000));
       
       for (let c = 3; c > 0; c--) {
         setCountdown(c);
@@ -347,7 +380,7 @@ export default function KioskPage() {
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
       context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-      return canvas.toDataURL('image/jpeg', 0.9);
+      return canvas.toDataURL('image/jpeg', 0.95);
     }
     return null;
   };
@@ -426,17 +459,15 @@ export default function KioskPage() {
               </div>
               
               {isOwnerMode && (
-                <div className="absolute bottom-[-100px] bg-black/80 p-6 border border-primary/20 backdrop-blur-md rounded-2xl animate-in slide-in-from-bottom-4">
+                <div className="absolute top-[120%] bg-black/80 p-6 border border-primary/20 backdrop-blur-md rounded-2xl animate-in slide-in-from-bottom-4 w-[320px]">
                   <h3 className="text-primary font-black uppercase italic text-xs mb-4 text-center">Actual Runtime Verification</h3>
-                  <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-                    <div className="flex justify-between items-center gap-4">
-                      <span className="text-[10px] font-bold text-white/40 uppercase">Photo Saved</span>
-                      <span className="text-[10px] font-black text-green-500">SUCCESS</span>
-                    </div>
-                    <div className="flex justify-between items-center gap-4">
-                      <span className="text-[10px] font-bold text-white/40 uppercase">QR Generated</span>
-                      <span className="text-[10px] font-black text-green-500">SUCCESS</span>
-                    </div>
+                  <div className="grid grid-cols-1 gap-y-3">
+                    {Object.entries(runtimeStatus).map(([key, val]) => (
+                      <div key={key} className="flex justify-between items-center px-2">
+                        <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{key.replace(/([A-Z])/g, ' $1')}</span>
+                        <span className={cn("text-[10px] font-black italic", val === 'SUCCESS' ? "text-green-500" : val === 'FAILED' ? "text-red-500" : "text-white/20")}>{val}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -516,9 +547,11 @@ export default function KioskPage() {
                className="absolute inset-0 w-full h-full object-cover"
                style={{ filter: selectedFilter.filter }}
              />
-             <div className="absolute top-10 left-10 z-[120] bg-black/60 px-6 py-3 border border-primary backdrop-blur-md">
-                <span className="text-2xl font-black italic uppercase text-primary">SHOT {currentShotIndex + 1} OF {packageSelected === 50 ? 3 : 6}</span>
-             </div>
+             {isCapturingReady && (
+               <div className="absolute top-10 left-10 z-[120] bg-black/60 px-6 py-3 border border-primary backdrop-blur-md">
+                  <span className="text-2xl font-black italic uppercase text-primary">SHOT {currentShotIndex + 1} OF {packageSelected === 50 ? 3 : 6}</span>
+               </div>
+             )}
              {countdown !== null && (
                <div className="absolute inset-0 flex items-center justify-center bg-black/20 z-[110]">
                  <span className="text-[25rem] font-black italic text-white animate-bounce drop-shadow-[0_0_50px_rgba(255,51,153,0.8)]">{countdown}</span>
@@ -635,7 +668,29 @@ export default function KioskPage() {
                 <h2 className="font-headline font-black text-6xl italic uppercase text-primary">Printing...</h2>
                 <Progress value={printProgress} className="h-6 bg-white/10" />
              </div>
-             {softCopyQrUrl && (
+
+             {/* Facebook Consent Dialog - Shows during printing */}
+             {promoConsent === null && (
+               <div className="bg-black/90 border-4 border-primary p-10 flex flex-col items-center space-y-8 rounded-[4rem] w-[600px] shadow-[0_0_50px_rgba(255,51,153,0.3)] animate-in zoom-in-95">
+                 <div className="space-y-4 text-center">
+                   <h3 className="text-2xl font-black italic uppercase text-primary">Share Your Photo?</h3>
+                   <p className="text-white/60 text-xs font-bold uppercase">May we post your photo on our Facebook page and portfolio?</p>
+                   <div className="pt-4 border-t border-white/10">
+                     <p className="text-white/40 text-[10px] font-black italic">MAAARI BA NAMING I-POST ANG IYONG LARAWAN SA AMING FACEBOOK PAGE AT PORTFOLIO?</p>
+                   </div>
+                 </div>
+                 <div className="grid grid-cols-2 gap-4 w-full">
+                    <button onClick={() => setPromoConsent(true)} className="py-6 border-2 border-green-500 bg-green-500/10 text-green-500 font-black italic uppercase rounded-2xl flex items-center justify-center gap-2">
+                      <CheckCircle2 className="w-5 h-5" /> YES / OO
+                    </button>
+                    <button onClick={() => setPromoConsent(false)} className="py-6 border-2 border-red-500 bg-red-500/10 text-red-500 font-black italic uppercase rounded-2xl flex items-center justify-center gap-2">
+                      <AlertCircle className="w-5 h-5" /> NO / HINDI
+                    </button>
+                 </div>
+               </div>
+             )}
+
+             {promoConsent !== null && softCopyQrUrl && (
                <div className="bg-white/5 border-2 border-white/10 p-10 flex flex-col items-center space-y-8 rounded-[4rem] w-[450px]">
                  <h3 className="text-3xl font-black italic uppercase text-primary">HD SOFT COPY</h3>
                  <div className="aspect-square w-full bg-white p-8 rounded-[2.5rem] flex items-center justify-center shadow-2xl">

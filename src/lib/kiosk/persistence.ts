@@ -1,7 +1,7 @@
 
 /**
  * @fileOverview Session persistence and Hybrid Sync Queue for JNL Studio Kiosk.
- * Optimized for Honor Pad X10 local storage and lifecycle management.
+ * Optimized for Honor Pad X10 local storage and microSD archive lifecycle management.
  */
 
 export interface KioskSession {
@@ -17,22 +17,13 @@ export interface KioskSession {
   isDownloaded: boolean;
 }
 
-export interface SyncItem {
-  id: string;
-  type: 'photo' | 'log' | 'session' | 'usb_sync';
-  data: any;
-  timestamp: number;
-  retryCount: number;
-  status: 'pending' | 'synced' | 'failed';
-}
-
 const STORAGE_KEY = 'jnl_kiosk_current_session';
 const SYNC_QUEUE_KEY = 'jnl_kiosk_sync_queue';
 const DB_NAME = 'JNL_Studio_Kiosk_DB';
 const STORE_NAME = 'photos';
 
 export const SessionStore = {
-  // Initialize IndexedDB for high-performance large photo storage (Honor Pad Gallery)
+  // Initialize IndexedDB for high-performance large photo storage
   initDB: (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
       if (typeof window === 'undefined') return reject('IndexedDB not available');
@@ -48,7 +39,7 @@ export const SessionStore = {
     });
   },
 
-  // Save photo to IndexedDB for instant local persistence (Local Gallery)
+  // Save photo to IndexedDB for instant local persistence
   savePhotoLocally: async (id: string, blob: Blob): Promise<boolean> => {
     try {
       if (typeof window === 'undefined') return false;
@@ -66,10 +57,9 @@ export const SessionStore = {
     }
   },
 
-  // Save specifically to the Lexar USB Drive in the "JNL POST" folder for YES consent
+  // Permanent Archive to Lexar microSD (microSD is mapped via Directory Picker)
   saveToUsb: async (handle: FileSystemDirectoryHandle, id: string, blob: Blob) => {
     try {
-      // Access or create 'JNL POST' folder structure on Lexar USB
       const studioFolder = await handle.getDirectoryHandle('JNL POST', { create: true });
       const fileHandle = await studioFolder.getFileHandle(`${id}.jpg`, { create: true });
       const writable = await fileHandle.createWritable();
@@ -77,12 +67,12 @@ export const SessionStore = {
       await writable.close();
       return true;
     } catch (e) {
-      console.error('USB Backup Failed', e);
+      console.error('microSD Archive Failed', e);
       return false;
     }
   },
 
-  // Cleanup logic: Automatically delete local temporary copy for NO consent photos
+  // Cleanup temporary local copy for sessions that shouldn't be archived
   cleanupSession: async (id: string) => {
     try {
       if (typeof window === 'undefined') return;
@@ -95,58 +85,6 @@ export const SessionStore = {
       });
     } catch (e) {
       console.error('Cleanup Error', e);
-    }
-  },
-
-  save: (session: Partial<KioskSession>) => {
-    try {
-      if (typeof window === 'undefined') return;
-      const existing = SessionStore.load();
-      const updated = {
-        ...existing,
-        ...session,
-        timestamp: Date.now(),
-        id: existing?.id || `sess_${Date.now()}`,
-        isSynced: existing?.isSynced || false,
-        isUsbBackedUp: existing?.isUsbBackedUp || false,
-        isDownloaded: existing?.isDownloaded || false
-      } as KioskSession;
-      
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    } catch (e) {
-      console.error('Session Save Error', e);
-    }
-  },
-
-  load: (): KioskSession | null => {
-    try {
-      if (typeof window === 'undefined') return null;
-      const data = localStorage.getItem(STORAGE_KEY);
-      if (!data) return null;
-      const session = JSON.parse(data) as KioskSession;
-      // Stale sessions (12h) are cleared
-      if (Date.now() - session.timestamp > 12 * 60 * 60 * 1000) {
-        SessionStore.clear();
-        return null;
-      }
-      return session;
-    } catch (e) {
-      return null;
-    }
-  },
-
-  clear: () => {
-    if (typeof window === 'undefined') return;
-    localStorage.removeItem(STORAGE_KEY);
-  },
-
-  getSyncQueue: (): SyncItem[] => {
-    try {
-      if (typeof window === 'undefined') return [];
-      const data = localStorage.getItem(SYNC_QUEUE_KEY);
-      return data ? JSON.parse(data) : [];
-    } catch (e) {
-      return [];
     }
   },
 

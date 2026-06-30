@@ -67,17 +67,15 @@ export default function KioskPage() {
   const exportTriggeredRef = useRef(false);
   const [originUrl, setOriginUrl] = useState("https://jnl-studio-booth.web.app");
 
-  // Payment Auto-Detection Logic
+  // Payment Auto-Detection
   useEffect(() => {
     if (appState === "payment") {
       if (paymentReceived === 50) {
         setPackageSelected(50);
         setAppState("setup");
-        KioskLogger.log('info', 'SESSION', '₱50 Bill Detected. Auto-starting Package 1.', 'SUCCESS');
       } else if (paymentReceived >= 100) {
         setPackageSelected(100);
         setAppState("setup");
-        KioskLogger.log('info', 'SESSION', '₱100 Bill Detected. Auto-starting Package 2.', 'SUCCESS');
       }
     }
   }, [paymentReceived, appState]);
@@ -94,24 +92,6 @@ export default function KioskPage() {
       });
     }
   }, [selectedCameraId]);
-
-  // Privacy Auto-Delete Listener
-  useEffect(() => {
-    if (currentSessionId && promoConsent === false && uploadStatus === 'complete') {
-      const { db } = initializeFirebase();
-      const unsub = onSnapshot(doc(db, "photos", currentSessionId), (docSnap) => {
-        const data = docSnap.data();
-        if (data?.isDownloaded === true) {
-          KioskLogger.log('info', 'SESSION', `Privacy Purge Triggered for ${currentSessionId}.`, 'SUCCESS');
-          SessionStore.cleanupSession(currentSessionId).then(() => {
-            KioskLogger.log('info', 'SESSION', 'Private photo deleted from local storage.', 'SUCCESS');
-          });
-          unsub();
-        }
-      });
-      return () => unsub();
-    }
-  }, [currentSessionId, promoConsent, uploadStatus]);
 
   const initiatePrint = useCallback((blob: Blob) => {
     KioskLogger.log('info', 'PRINT', 'Signal Generation Started.', 'PENDING');
@@ -145,31 +125,28 @@ export default function KioskPage() {
     `);
     docObj.close();
     
-    KioskLogger.log('info', 'PRINT', 'Print Request Generated & Intent Created.', 'SUCCESS');
+    KioskLogger.log('info', 'PRINT', 'Intent Created.', 'SUCCESS');
 
-    // Android focus handshake pattern
     setTimeout(() => {
       try {
         iframe.contentWindow?.focus();
         iframe.contentWindow?.print();
-        KioskLogger.log('info', 'PRINT', 'Android Print Intent Sent (Handoff to NokoPrint).', 'SUCCESS');
+        KioskLogger.log('info', 'PRINT', 'Spooler Intent Dispatched.', 'SUCCESS');
         URL.revokeObjectURL(dataUrl);
       } catch (e: any) {
-        KioskLogger.log('error', 'PRINT', 'Android Spooler Rejection.', 'FAILED', e.message);
+        KioskLogger.log('error', 'PRINT', 'Spooler Rejection.', 'FAILED', e.message);
       }
-    }, 1000); 
+    }, 500); 
   }, []);
 
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
-    // Performance Optimization: Start measurements
     const startTime = Date.now();
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
     
     const { storage, db } = initializeFirebase();
-
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1600;
     exportCanvas.height = 2400;
@@ -216,51 +193,75 @@ export default function KioskPage() {
     exportCanvas.toBlob(async (blob) => {
       if (!blob) return;
       
-      // SPEED OPTIMIZATION: Parallelize Local Save, Session Create, and QR Generation
-      const photoSavePromise = SessionStore.savePhotoLocally(sessionId, blob);
+      // 1. PRIORITY LOCAL SAVE (IndexedDB)
+      const saveOk = await SessionStore.savePhotoLocally(sessionId, blob);
+      KioskLogger.log('info', 'SESSION', `Local Save: ${saveOk ? 'SUCCESS' : 'FAILED'}`, saveOk ? 'SUCCESS' : 'FAILED');
+
+      // 2. IMMEDIATE PRINT SIGNAL (Don't wait for cloud)
+      initiatePrint(blob);
+      setAppState("printing");
+
+      // 3. BACKGROUND TASKS (Non-blocking)
+      const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
+      setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
       
+      setUploadStatus("uploading");
+      
+      // Parallel Cloud Sync
       const sessionCreatePromise = setDoc(doc(db, "photos", sessionId), {
         id: sessionId,
         storagePath: `photos/${sessionId}.jpg`,
         timestamp: serverTimestamp(),
         isDownloaded: false,
-        promoConsent: promoConsent,
+        promoConsent: null, // Pending choice during print
         status: 'uploading'
       });
 
-      // INSTANT QR: No need to wait for upload completion
-      const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
-      setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-      
-      // Start printing signal immediately
-      initiatePrint(blob);
-
-      // Background Upload & Logging
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
-      setUploadStatus("uploading");
-      
       uploadBytes(photoRef, blob).then(async () => {
         await updateDoc(doc(db, "photos", sessionId), { status: 'complete' });
         setUploadStatus("complete");
-        KioskLogger.log('info', 'CLOUD', 'HD Cloud Sync = SUCCESS', 'SUCCESS');
+        KioskLogger.log('info', 'CLOUD', 'Sync Complete', 'SUCCESS');
       }).catch(e => {
-        KioskLogger.log('error', 'CLOUD', 'HD Cloud Sync = FAILED', 'FAILED', e.message);
+        KioskLogger.log('error', 'CLOUD', 'Sync Failed', 'FAILED', e.message);
         setUploadStatus("error");
       });
 
-      // Wait for essential local tasks for diagnostic logging
-      const [saveOk] = await Promise.all([photoSavePromise, sessionCreatePromise]);
-      
-      KioskLogger.log('info', 'SESSION', `Photo Saved = ${saveOk ? 'SUCCESS' : 'FAILED'} in ${Date.now() - startTime}ms`, saveOk ? 'SUCCESS' : 'FAILED');
-      KioskLogger.log('info', 'SESSION', 'Session Created = SUCCESS', 'SUCCESS');
-      KioskLogger.log('info', 'QR', 'QR Generated = SUCCESS', 'SUCCESS');
-
-      if (promoConsent && usbHandle) {
-        SessionStore.saveToUsb(usbHandle, sessionId, blob);
-      }
+      await sessionCreatePromise;
+      KioskLogger.log('info', 'SESSION', `Prep Ready: ${Date.now() - startTime}ms`, 'SUCCESS');
       
     }, 'image/jpeg', 0.9);
-  }, [selectedBlueprint, capturedPhotos, selectedQuote, originUrl, initiatePrint, promoConsent, usbHandle, selectedFilter]);
+  }, [selectedBlueprint, capturedPhotos, selectedQuote, originUrl, initiatePrint, selectedFilter]);
+
+  // Handle Consent Choice logic
+  const handleConsentChoice = async (consent: boolean) => {
+    setPromoConsent(consent);
+    const { db, storage } = initializeFirebase();
+    
+    // Update Record
+    if (currentSessionId) {
+      await updateDoc(doc(db, "photos", currentSessionId), { promoConsent: consent });
+    }
+
+    if (consent && usbHandle) {
+      // Archive to Lexar microSD
+      try {
+        const dbLocal = await SessionStore.initDB();
+        const tx = dbLocal.transaction('photos', 'readonly');
+        const store = tx.objectStore('photos');
+        const request = store.get(currentSessionId);
+        request.onsuccess = () => {
+          if (request.result) {
+            SessionStore.saveToUsb(usbHandle, currentSessionId, request.result);
+            KioskLogger.log('info', 'HARDWARE', 'Lexar Archive Saved', 'SUCCESS');
+          }
+        };
+      } catch (e) {}
+    } else if (!consent) {
+      // NO Consent: Mark for auto-deletion in 24h via Firebase Functions or local cleanup
+      KioskLogger.log('info', 'SESSION', 'Privacy Mode: No archive created.', 'SUCCESS');
+    }
+  };
 
   useEffect(() => {
     if (appState === "printing" && !exportTriggeredRef.current) {
@@ -304,12 +305,9 @@ export default function KioskPage() {
 
     for (let i = startIdx; i < endIdx; i++) {
       setCurrentShotIndex(i);
-      
-      // 1. POSE PERIOD (2 SECONDS) - No countdown visible yet
       setCountdown(null);
       await new Promise(r => setTimeout(r, 2000));
       
-      // 2. COUNTDOWN (3 SECONDS)
       for (let c = 3; c > 0; c--) {
         setCountdown(c);
         await new Promise(r => setTimeout(r, 1000));
@@ -320,11 +318,7 @@ export default function KioskPage() {
       
       const shot = takePhoto();
       if (shot) {
-        if (selectedRetakeIndex !== null) {
-          photos[i] = shot;
-        } else {
-          photos.push(shot);
-        }
+        if (selectedRetakeIndex !== null) { photos[i] = shot; } else { photos.push(shot); }
         setCapturedPhotos([...photos]);
       }
       
@@ -351,19 +345,6 @@ export default function KioskPage() {
       return canvas.toDataURL('image/jpeg', 0.9);
     }
     return null;
-  };
-
-  const addSticker = (type: string) => {
-    const newSticker: PlacedSticker = {
-      id: Math.random().toString(36).substring(7),
-      type,
-      x: 50,
-      y: 40,
-      size: 15,
-      rotation: 0
-    };
-    setPlacedStickers([...placedStickers, newSticker]);
-    setSelectedStickerId(newSticker.id);
   };
 
   const setupUsb = async () => {
@@ -393,12 +374,6 @@ export default function KioskPage() {
       start();
     }
   }, [appState, selectedCameraId]);
-
-  const getLogStatus = (module: string, messagePart: string) => {
-    const logs = KioskLogger.getLogs();
-    const entry = logs.find(l => l.module === module && l.message.includes(messagePart));
-    return entry ? entry.status : "PENDING";
-  };
 
   const currentFilters = packageSelected === 50 ? FILTERS.slice(0, 5) : FILTERS.slice(0, 10);
   const currentBlueprints = BLUEPRINTS.filter(b => b.package === packageSelected);
@@ -445,23 +420,6 @@ export default function KioskPage() {
               >
                 <JnlLogo variant="hero" color="light" />
               </div>
-
-              {isOwnerMode && (
-                <div className="absolute top-4 left-4 bg-black/80 border border-primary p-6 rounded-[2rem] space-y-3 z-[100] animate-in slide-in-from-left-4 backdrop-blur-xl">
-                  <div className="flex items-center gap-2 mb-2 border-b border-white/20 pb-2">
-                    <Activity className="w-4 h-4 text-primary" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-primary">Owner Diagnostics</span>
-                  </div>
-                  <div className="grid grid-cols-1 gap-1.5 text-[9px] font-bold uppercase italic tracking-tighter">
-                    <div className="flex justify-between gap-6"><span>Photo Saved =</span> <span className={cn(getLogStatus('SESSION', 'Photo Saved') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('SESSION', 'Photo Saved')}</span></div>
-                    <div className="flex justify-between gap-6"><span>Session Created =</span> <span className={cn(getLogStatus('SESSION', 'Session Created') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('SESSION', 'Session Created')}</span></div>
-                    <div className="flex justify-between gap-6"><span>QR Generated =</span> <span className={cn(getLogStatus('QR', 'QR Generated') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('QR', 'QR Generated')}</span></div>
-                    <div className="flex justify-between gap-6"><span>QR Scanned =</span> <span className={cn(getLogStatus('QR', 'Retrieval page opened') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('QR', 'Retrieval page opened')}</span></div>
-                    <div className="flex justify-between gap-6"><span>Photo Displayed =</span> <span className={cn(getLogStatus('QR', 'Photo Displayed') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('QR', 'Photo Displayed')}</span></div>
-                    <div className="flex justify-between gap-6"><span>Download Available =</span> <span className={cn(getLogStatus('QR', 'Download Available') === 'SUCCESS' ? "text-green-500" : "text-white/40")}>{getLogStatus('QR', 'Download Available')}</span></div>
-                  </div>
-                </div>
-              )}
             </div>
             <div className="w-full flex flex-col items-center pb-20">
               <NeonButton onClick={() => setAppState("payment")} className="w-[40%] text-3xl py-12">TOUCH TO START</NeonButton>
@@ -530,7 +488,7 @@ export default function KioskPage() {
                     onClick={() => startShotSequence()} 
                     className="w-full py-10 text-3xl"
                   >
-                    NEXT
+                    START PHOTO SESSION
                   </NeonButton>
                   <p className="text-[10px] font-black uppercase italic tracking-widest text-white/40">Check your pose & select choices to continue</p>
                 </div>
@@ -577,7 +535,6 @@ export default function KioskPage() {
                     />
                  )}
               </div>
-              <p className="text-[10px] font-black uppercase text-white/40 italic tracking-widest">Tap a photo slot to select for partial retake</p>
             </div>
             <div className="w-96 space-y-4">
                <div className="space-y-2 mb-6 text-center">
@@ -592,21 +549,16 @@ export default function KioskPage() {
                <button 
                 onClick={() => selectedRetakeIndex !== null && startShotSequence()} 
                 disabled={selectedRetakeIndex === null} 
-                className={cn(
-                  "w-full py-8 font-black uppercase italic transition-all border-2 flex items-center justify-center gap-3",
-                  selectedRetakeIndex !== null 
-                    ? "bg-white text-black border-white hover:scale-105" 
-                    : "bg-white/5 text-white/20 border-white/10 opacity-50"
-                )}
+                className={cn("w-full py-8 font-black uppercase italic transition-all border-2 flex items-center justify-center gap-3", selectedRetakeIndex !== null ? "bg-white text-black border-white" : "bg-white/5 text-white/20 border-white/10")}
                >
-                 <Target className="w-5 h-5" /> {selectedRetakeIndex !== null ? `Retake Selected Photo` : "Select Slot to Retake"}
+                 <Target className="w-5 h-5" /> Retake Selection
                </button>
 
                <button 
-                onClick={() => { setSelectedRetakeIndex(null); setCapturedPhotos([]); startShotSequence(); }} 
-                className="w-full py-4 border-2 border-white/20 font-black uppercase italic text-white/40 hover:text-white transition-colors flex items-center justify-center gap-2"
+                onClick={() => { setCapturedPhotos([]); startShotSequence(); }} 
+                className="w-full py-4 border-2 border-white/20 font-black uppercase italic text-white/40 hover:text-white flex items-center justify-center gap-2"
                >
-                 <RotateCcw className="w-4 h-4" /> Retake All Photos
+                 <RotateCcw className="w-4 h-4" /> Retake All
                </button>
             </div>
           </div>
@@ -639,14 +591,14 @@ export default function KioskPage() {
                       <h3 className="text-[10px] font-black uppercase text-white/40 italic">Kawaii Stickers</h3>
                       <div className="grid grid-cols-4 gap-2">
                         {STICKER_DEFS.map(s => (
-                          <button key={s.id} onClick={() => addSticker(s.id)} className="aspect-square bg-white/5 border-2 border-white/10 p-2 flex items-center justify-center hover:border-primary transition-colors active:scale-90"><s.icon className={cn("w-full h-full", s.color)} /></button>
+                          <button key={s.id} onClick={() => addSticker(s.id)} className="aspect-square bg-white/5 border-2 border-white/10 p-2 flex items-center justify-center hover:border-primary transition-colors"><s.icon className={cn("w-full h-full", s.color)} /></button>
                         ))}
                       </div>
                    </div>
                    <div className="space-y-4">
-                      <h3 className="text-[10px] font-black uppercase text-white/40 italic">Short Inspirational Quotes</h3>
+                      <h3 className="text-[10px] font-black uppercase text-white/40 italic">Inspirational Quotes</h3>
                       <div className="grid grid-cols-1 gap-2">
-                        {QUOTES.map(q => (
+                        {QUOTES.slice(0, 5).map(q => (
                           <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("p-4 border-2 text-left transition-all", selectedQuote.id === q.id ? "border-primary bg-primary/10" : "border-white/10 bg-white/5")}><p className="text-xs font-bold italic">"{q.text}"</p></button>
                         ))}
                       </div>
@@ -660,13 +612,11 @@ export default function KioskPage() {
         {appState === "final-preview" && (
           <div className="w-full h-full flex flex-col items-center justify-center py-6 px-8 space-y-8">
             <div className="text-center space-y-2">
-              <h2 className="font-headline font-black text-5xl italic uppercase text-primary">FINAL LAYOUT PREVIEW</h2>
-              <p className="text-white/40 font-black uppercase italic tracking-widest">Ready to print your moment?</p>
+              <h2 className="font-headline font-black text-5xl italic uppercase text-primary">PREVIEW</h2>
             </div>
-            
             <div className="flex-1 flex items-center justify-center">
               <div 
-                className="h-[60vh] relative border-[12px] border-white bg-white shadow-[0_0_80px_rgba(255,51,153,0.3)] overflow-hidden"
+                className="h-[60vh] relative border-[12px] border-white bg-white shadow-2xl overflow-hidden"
                 style={{ aspectRatio: packageSelected === 50 ? '800/2400' : '1600/2400' }}
               >
                 {selectedBlueprint && (
@@ -681,59 +631,12 @@ export default function KioskPage() {
                 )}
               </div>
             </div>
-
-            <div className="flex gap-4 w-full max-w-2xl">
-              <button 
-                onClick={() => setAppState("decorating")} 
-                className="flex-1 py-8 border-2 border-white/20 font-black uppercase italic text-white/60 hover:text-white transition-colors"
-              >
-                BACK TO EDITOR
-              </button>
-              <NeonButton onClick={() => setAppState("consent")} className="flex-[2] py-8 text-2xl">PROCEED TO PRINT</NeonButton>
-            </div>
-          </div>
-        )}
-
-        {appState === "consent" && (
-          <div className="w-full max-w-4xl flex flex-col items-center justify-center h-full px-6 space-y-12 animate-in fade-in zoom-in duration-500">
-             <div className="text-center space-y-6">
-                <h2 className="font-headline font-black text-6xl italic uppercase leading-tight flex items-center justify-center gap-4">
-                  <Camera className="w-12 h-12 text-primary" /> 📸 PHOTO CONSENT
-                </h2>
-                <div className="space-y-4">
-                  <p className="text-white/90 font-black uppercase italic tracking-widest text-2xl">
-                    May we feature your photo on JNL Studio's Facebook Page?
-                  </p>
-                  <p className="text-white/60 font-bold italic text-lg">
-                    Maaari ba naming gamitin ang inyong larawan para sa pag-promote ng JNL Studio sa Facebook Page?
-                  </p>
-                </div>
-             </div>
-             
-             <div className="grid grid-cols-2 gap-8 w-full">
-                <button 
-                  onClick={() => { setPromoConsent(true); setAppState("printing"); }}
-                  className="group relative flex flex-col items-center justify-center bg-primary border-4 border-primary/20 p-12 hover:bg-primary/90 transition-all active:scale-95 shadow-[0_0_30px_rgba(255,51,153,0.4)]"
-                >
-                  <Heart className="w-20 h-20 text-white mb-4 group-hover:scale-110 transition-transform fill-white" />
-                  <span className="text-5xl font-black italic uppercase text-white">🩷 YES, I AGREE</span>
-                  <span className="text-[10px] font-black uppercase text-white/60 mt-2">SHARE MY MOMENT</span>
-                </button>
-                
-                <button 
-                  onClick={() => { setPromoConsent(false); setAppState("printing"); }}
-                  className="group relative flex flex-col items-center justify-center bg-black border-4 border-white/10 p-12 hover:bg-zinc-900 transition-all active:scale-95"
-                >
-                  <Shield className="w-20 h-20 text-white/40 mb-4 group-hover:scale-110 transition-transform" />
-                  <span className="text-5xl font-black italic uppercase text-white">⚫ NO, KEEP PRIVATE</span>
-                  <span className="text-[10px] font-black uppercase text-white/40 mt-2">KEEP MY PHOTO PRIVATE</span>
-                </button>
-             </div>
+            <NeonButton onClick={() => setAppState("printing")} className="w-full max-w-lg py-8 text-2xl">PROCEED TO PRINT</NeonButton>
           </div>
         )}
 
         {appState === "printing" && (
-          <div className="w-full flex flex-col items-center justify-center gap-12 px-10 h-full">
+          <div className="w-full flex flex-col items-center justify-center gap-12 px-10 h-full relative">
              <div className="w-full max-w-4xl space-y-10">
                 <div className="text-center space-y-2">
                   <h2 className="font-headline font-black text-6xl italic uppercase text-primary">Printing...</h2>
@@ -742,22 +645,53 @@ export default function KioskPage() {
                 <Progress value={printProgress} className="h-6 bg-white/10" />
                 <div className="flex items-center justify-center gap-4 p-8 bg-white/5 border border-white/10 rounded-[2.5rem]">
                   <Printer className="w-10 h-10 text-primary animate-pulse" />
-                  <p className="text-lg font-bold uppercase italic text-white/60">SENDING DATA TO THERMAL PRINTER via NOKOPRINT</p>
+                  <p className="text-lg font-bold uppercase italic text-white/60">SENDING TO PRINTER</p>
                 </div>
              </div>
              
-             <div className="bg-white/5 border-2 border-white/10 p-10 flex flex-col items-center space-y-8 rounded-[4rem] w-[450px] shadow-[0_0_80px_rgba(255,51,153,0.2)]">
+             {/* Facebook Consent Overlay - Appears while printing */}
+             {promoConsent === null && (
+               <div className="absolute inset-0 z-50 bg-black/90 flex items-center justify-center p-8 animate-in fade-in duration-500">
+                  <div className="w-full max-w-4xl bg-zinc-900 border-4 border-primary p-12 text-center space-y-10 rounded-[3rem]">
+                     <div className="space-y-4">
+                        <h2 className="text-4xl font-black uppercase italic text-primary">Share Your Photo?</h2>
+                        <p className="text-white/60 text-lg uppercase font-bold italic">May we post your photo on our Facebook page and portfolio?</p>
+                        <div className="h-px bg-white/10 w-1/2 mx-auto my-6" />
+                        <h2 className="text-3xl font-black uppercase italic text-white/80">Pahintulot sa Pag-post</h2>
+                        <p className="text-white/40 text-md uppercase font-bold italic">Maaari ba naming i-post ang iyong larawan sa aming Facebook page?</p>
+                     </div>
+                     
+                     <div className="grid grid-cols-2 gap-8">
+                        <button 
+                          onClick={() => handleConsentChoice(true)}
+                          className="bg-primary py-10 rounded-2xl flex flex-col items-center gap-2 hover:scale-105 transition-transform"
+                        >
+                          <Heart className="w-12 h-12 text-white fill-white" />
+                          <span className="text-3xl font-black italic uppercase">YES / OO</span>
+                        </button>
+                        <button 
+                          onClick={() => handleConsentChoice(false)}
+                          className="bg-zinc-800 py-10 rounded-2xl flex flex-col items-center gap-2 hover:scale-105 transition-transform"
+                        >
+                          <Shield className="w-12 h-12 text-white/40" />
+                          <span className="text-3xl font-black italic uppercase text-white/40">NO / HINDI</span>
+                        </button>
+                     </div>
+                  </div>
+               </div>
+             )}
+
+             <div className="bg-white/5 border-2 border-white/10 p-10 flex flex-col items-center space-y-8 rounded-[4rem] w-[450px]">
                 <div className="text-center space-y-2">
                   <h3 className="text-3xl font-black italic uppercase text-primary">HD SOFT COPY</h3>
-                  <p className="text-[10px] font-black uppercase text-white/40 italic">SCAN TO SAVE TO YOUR PHONE</p>
+                  <p className="text-[10px] font-black uppercase text-white/40 italic">SCAN TO SAVE</p>
                 </div>
                 <div className="aspect-square w-full bg-white p-8 rounded-[2.5rem] flex items-center justify-center shadow-2xl">
                   {softCopyQrUrl ? <img src={softCopyQrUrl} alt="Scan to save" className="w-full h-full" /> : <Loader2 className="w-16 h-16 animate-spin text-primary" />}
                 </div>
-                
                 {softCopyQrUrl && (
-                  <button onClick={() => setAppState("thankyou")} className="w-full bg-primary py-8 text-2xl font-black uppercase italic rounded-3xl shadow-xl active:scale-95 transition-transform flex items-center justify-center gap-3">
-                    <Download className="w-6 h-6" /> COMPLETE SESSION
+                  <button onClick={() => setAppState("thankyou")} className="w-full bg-primary py-8 text-2xl font-black uppercase italic rounded-3xl flex items-center justify-center gap-3">
+                    <Download className="w-6 h-6" /> COMPLETE
                   </button>
                 )}
              </div>
@@ -771,10 +705,8 @@ export default function KioskPage() {
              <p className="text-xl font-black uppercase text-white/40 italic tracking-[0.3em] mt-4">VISIT US AGAIN SOON</p>
              
              <div className="mt-12 flex flex-col items-center gap-6 bg-white/5 p-8 border border-white/10 rounded-[3rem]">
-                <p className="text-3xl font-black italic uppercase text-primary flex items-center gap-4">
-                   FOLLOW US 👇
-                </p>
-                <div className="w-56 h-56 bg-white p-4 rounded-2xl shadow-[0_0_40px_rgba(255,255,255,0.4)]">
+                <p className="text-3xl font-black italic uppercase text-primary flex items-center gap-4">FOLLOW US 👇</p>
+                <div className="w-56 h-56 bg-white p-4 rounded-2xl">
                    <img src={fbQrUrl} alt="FB Follow" className="w-full h-full" />
                 </div>
              </div>

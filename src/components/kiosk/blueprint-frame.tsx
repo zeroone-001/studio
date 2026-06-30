@@ -26,6 +26,8 @@ interface BlueprintFrameProps {
   onRemoveSticker?: (id: string) => void;
   onSelectSticker?: (id: string) => void;
   onBringToFront?: (id: string) => void;
+  onSendToBack?: (id: string) => void;
+  onDuplicateSticker?: (sticker: PlacedSticker) => void;
   onSelectSlot?: (index: number) => void;
   selectedSlotIndex?: number | null;
 }
@@ -44,6 +46,8 @@ export const BlueprintFrame = React.memo(({
   onRemoveSticker,
   onSelectSticker,
   onBringToFront,
+  onSendToBack,
+  onDuplicateSticker,
   onSelectSlot,
   selectedSlotIndex = null,
 }: BlueprintFrameProps) => {
@@ -145,6 +149,8 @@ export const BlueprintFrame = React.memo(({
                 onDelete={(id) => onRemoveSticker?.(id)}
                 onSelect={(id) => onSelectSticker?.(id)}
                 onBringToFront={(id) => onBringToFront?.(id)}
+                onSendToBack={(id) => onSendToBack?.(id)}
+                onDuplicate={(st) => onDuplicateSticker?.(st)}
               />
             );
           }
@@ -158,7 +164,8 @@ export const BlueprintFrame = React.memo(({
                 top: `${s.y}%`,
                 width: `${s.size}%`,
                 aspectRatio: "1/1",
-                transform: `translate(-50%, -50%) rotate(${s.rotation}deg)`,
+                transform: `translate(-50%, -50%) rotate(${s.rotation}deg) scaleX(${s.flipX ? -1 : 1}) scaleY(${s.flipY ? -1 : 1})`,
+                zIndex: s.zIndex
               }}
             >
               <StickerIcon className={cn("w-full h-full drop-shadow-md", def.color)} />
@@ -167,9 +174,9 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* TIGHTENED FOOTER AREA */}
+      {/* FOOTER AREA */}
       <div 
-        className="absolute left-0 right-0 bottom-0 bg-white z-50 flex flex-col items-center px-6"
+        className="absolute left-0 right-0 bottom-0 bg-white z-[60] flex flex-col items-center px-6"
         style={{ height: '8.33%' }}
       >
         <div className="w-full border-t border-black/10 mt-1"></div>

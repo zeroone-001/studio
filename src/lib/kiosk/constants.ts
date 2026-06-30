@@ -21,16 +21,15 @@ export interface PlacedSticker {
   y: number; 
   size: number;
   rotation: number;
+  flipX?: boolean;
+  flipY?: boolean;
+  zIndex: number;
 }
 
 /**
  * BEAUTY FILTERS - ENHANCED QUALITY
- * Optimized for Honor Pad X10 camera and skin-tone preservation.
- * Strictly maintains 5 filters for ₱50 and 10 for ₱100.
- * Added 'filter' property for direct CSS application to Video and Canvas.
  */
 export const FILTERS = [
-  // BASE 5 FILTERS (₱50 Package)
   { 
     id: "natural", 
     label: "NATURAL BEAUTY", 
@@ -61,8 +60,6 @@ export const FILTERS = [
     class: "sepia-[0.35] brightness-[1.1] saturate-[1.25]",
     filter: "sepia(0.35) brightness(1.1) saturate(1.25) contrast(1.05)"
   },
-  
-  // ADDITIONAL 5 FILTERS (Total 10 for ₱100 Package)
   { 
     id: "cool", 
     label: "COOL TONE", 
@@ -152,62 +149,117 @@ export const QUOTES = [
 ];
 
 export const STICKER_DEFS = [
-  // --- HEARTS ---
+  // --- HEARTS (1-10) ---
   { id: "heart_puffy", label: "Puffy", icon: Kawaii.PuffyHeart, color: "text-pink-400" },
   { id: "heart_ribbon", label: "Ribbon", icon: Kawaii.RibbonHeart, color: "text-pink-300" },
   { id: "heart_double", label: "Double", icon: Kawaii.DoubleHeart, color: "text-red-300" },
   { id: "heart_sparkle", label: "Sparkle", icon: Kawaii.SparkleHeart, color: "text-pink-500" },
   { id: "heart_winged", label: "Winged", icon: Kawaii.WingedHeart, color: "text-pink-200" },
-  { id: "heart_simple1", label: "Soft", icon: Kawaii.CuteHeartIcon, color: "text-rose-300" },
-  { id: "heart_simple2", label: "Rose", icon: Kawaii.CuteHeartIcon, color: "text-rose-400" },
-  { id: "heart_simple3", label: "Ruby", icon: Kawaii.CuteHeartIcon, color: "text-red-500" },
+  { id: "heart_jelly", label: "Jelly", icon: Kawaii.CuteHeartIcon, color: "text-rose-300" },
+  { id: "heart_glass", label: "Glass", icon: Kawaii.CuteHeartIcon, color: "text-rose-400" },
+  { id: "heart_glow", label: "Glow", icon: Kawaii.CuteHeartIcon, color: "text-red-500" },
+  { id: "heart_pearl", label: "Pearl", icon: Kawaii.CuteHeartIcon, color: "text-pink-50" },
+  { id: "heart_aura", label: "Aura", icon: Kawaii.CuteHeartIcon, color: "text-indigo-300" },
 
-  // --- ANIMALS ---
-  { id: "ani_bunny", label: "Bunny", icon: Kawaii.KawaiiBunny, color: "text-zinc-400" },
-  { id: "ani_bear", label: "Teddy", icon: Kawaii.TeddyBear, color: "text-amber-700" },
-  { id: "ani_panda", label: "Panda", icon: Kawaii.KawaiiPanda, color: "text-zinc-800" },
-  { id: "ani_cat", label: "Cat", icon: Kawaii.KawaiiCat, color: "text-zinc-500" },
-  { id: "ani_frog", label: "Frog", icon: Kawaii.KawaiiFrog, color: "text-green-400" },
-  { id: "ani_chick", label: "Chick", icon: Kawaii.KawaiiChick, color: "text-yellow-400" },
-  { id: "ani_penguin", label: "Pengu", icon: Kawaii.KawaiiPenguin, color: "text-zinc-900" },
-  { id: "ani_fox", label: "Fox", icon: Kawaii.KawaiiFox, color: "text-orange-500" },
-  { id: "ani_koala", label: "Koala", icon: Kawaii.KawaiiKoala, color: "text-slate-400" },
-  { id: "ani_pig", label: "Piggy", icon: Kawaii.KawaiiPig, color: "text-pink-200" },
+  // --- BOWS & COQUETTE (11-20) ---
+  { id: "bow_pink", label: "Pink Bow", icon: Kawaii.CoquetteBow, color: "text-pink-300" },
+  { id: "bow_red", label: "Red Bow", icon: Kawaii.CoquetteBow, color: "text-red-500" },
+  { id: "bow_white", label: "White Bow", icon: Kawaii.CoquetteBow, color: "text-white" },
+  { id: "bow_lace", label: "Lace Bow", icon: Kawaii.CoquetteBow, color: "text-pink-100" },
+  { id: "bow_velvet", label: "Velvet Bow", icon: Kawaii.CoquetteBow, color: "text-rose-900" },
+  { id: "ribbon_swirl", label: "Swirl", icon: Kawaii.RibbonHeart, color: "text-pink-400" },
+  { id: "lace_trim", label: "Lace", icon: Kawaii.PuffyHeart, color: "text-white/40" },
+  { id: "bow_satin", label: "Satin", icon: Kawaii.CoquetteBow, color: "text-amber-100" },
+  { id: "bow_mint", label: "Mint", icon: Kawaii.CoquetteBow, color: "text-emerald-100" },
+  { id: "bow_lilac", label: "Lilac", icon: Kawaii.CoquetteBow, color: "text-purple-200" },
 
-  // --- FOOD ---
-  { id: "food_sushi", label: "Sushi", icon: Kawaii.SushiSticker, color: "" },
-  { id: "food_icecream", label: "Cone", icon: Kawaii.IceCreamSticker, color: "" },
-  { id: "food_boba", label: "Boba", icon: Kawaii.BobaSticker, color: "" },
-  { id: "food_donut", label: "Donut", icon: Kawaii.DonutSticker, color: "" },
-  { id: "food_cupcake", label: "Cake", icon: Kawaii.CupcakeSticker, color: "" },
-  { id: "food_pizza", label: "Pizza", icon: Kawaii.PizzaSticker, color: "" },
-  { id: "food_strawberry", label: "Berry", icon: Kawaii.StrawberrySticker, color: "" },
-  { id: "food_cherry", label: "Cherry", icon: Kawaii.CherrySticker, color: "" },
-  { id: "food_peach", label: "Peach", icon: Kawaii.PeachSticker, color: "" },
-  { id: "food_milk", label: "Milk", icon: Kawaii.MilkSticker, color: "" },
+  // --- ANIMALS: BUNNY & TEDDY (21-35) ---
+  { id: "ani_bunny_hi", label: "Hi Bunny", icon: Kawaii.KawaiiBunny, color: "text-zinc-100" },
+  { id: "ani_bunny_love", label: "Love Bunny", icon: Kawaii.KawaiiBunny, color: "text-pink-100" },
+  { id: "ani_bear_cuddle", label: "Cuddle Bear", icon: Kawaii.TeddyBear, color: "text-amber-200" },
+  { id: "ani_bear_sleepy", label: "Sleepy Bear", icon: Kawaii.TeddyBear, color: "text-amber-700" },
+  { id: "ani_panda_puffy", label: "Panda", icon: Kawaii.KawaiiPanda, color: "text-zinc-800" },
+  { id: "ani_cat_kawaii", label: "Kawaii Cat", icon: Kawaii.KawaiiCat, color: "text-zinc-100" },
+  { id: "ani_cat_black", label: "Black Cat", icon: Kawaii.KawaiiCat, color: "text-zinc-900" },
+  { id: "ani_frog_hop", label: "Froggie", icon: Kawaii.KawaiiFrog, color: "text-green-300" },
+  { id: "ani_chick_egg", label: "Chick", icon: Kawaii.KawaiiChick, color: "text-yellow-200" },
+  { id: "ani_pengu_ice", label: "Penguin", icon: Kawaii.KawaiiPenguin, color: "text-blue-900" },
+  { id: "ani_fox_tail", label: "Fox", icon: Kawaii.KawaiiFox, color: "text-orange-400" },
+  { id: "ani_koala_leaf", label: "Koala", icon: Kawaii.KawaiiKoala, color: "text-slate-300" },
+  { id: "ani_piggy_pink", label: "Piggy", icon: Kawaii.KawaiiPig, color: "text-pink-100" },
+  { id: "ani_ducky", label: "Ducky", icon: Kawaii.KawaiiChick, color: "text-yellow-400" },
+  { id: "ani_puppy", label: "Puppy", icon: Kawaii.TeddyBear, color: "text-stone-300" },
 
-  // --- AESTHETIC ---
-  { id: "aes_cloud", label: "Cloud", icon: Kawaii.KawaiiCloud, color: "text-blue-50" },
-  { id: "aes_sparkle", label: "Sparkle", icon: Kawaii.PastelSparkle, color: "text-yellow-300" },
-  { id: "aes_rainbow", label: "Rainbow", icon: Kawaii.RainbowSticker, color: "" },
-  { id: "aes_star", label: "Star", icon: Kawaii.KawaiiStar, color: "text-yellow-400" },
-  { id: "aes_star2", label: "Star2", icon: Kawaii.CuteStarIcon, color: "text-amber-300" },
-  { id: "aes_planet", label: "Planet", icon: Kawaii.PlanetSticker, color: "text-purple-300" },
-  { id: "aes_crystal", label: "Crystal", icon: Kawaii.CrystalSticker, color: "text-cyan-200" },
-  { id: "aes_moon", label: "Moon", icon: Kawaii.MoonSticker, color: "text-yellow-100" },
-  { id: "aes_flower", label: "Flower", icon: Kawaii.FlowerSticker, color: "" },
-  { id: "aes_clover", label: "Clover", icon: Kawaii.CloverSticker, color: "" },
-  { id: "aes_sun", label: "Sun", icon: Kawaii.SunSticker, color: "" },
+  // --- NATURE: STARS & CLOUDS (36-50) ---
+  { id: "aes_cloud_soft", label: "Soft Cloud", icon: Kawaii.KawaiiCloud, color: "text-white" },
+  { id: "aes_cloud_pink", label: "Pink Cloud", icon: Kawaii.KawaiiCloud, color: "text-pink-50" },
+  { id: "aes_sparkle_gold", label: "Gold Star", icon: Kawaii.PastelSparkle, color: "text-yellow-200" },
+  { id: "aes_sparkle_white", label: "Sparkle", icon: Kawaii.PastelSparkle, color: "text-white" },
+  { id: "aes_star_twinkle", label: "Twinkle", icon: Kawaii.KawaiiStar, color: "text-yellow-100" },
+  { id: "aes_star_puffy", label: "Puffy Star", icon: Kawaii.CuteStarIcon, color: "text-amber-200" },
+  { id: "aes_moon_dream", label: "Moon", icon: Kawaii.MoonSticker, color: "text-yellow-50" },
+  { id: "aes_planet_cute", label: "Saturn", icon: Kawaii.PlanetSticker, color: "text-purple-200" },
+  { id: "aes_rainbow_pastel", label: "Rainbow", icon: Kawaii.RainbowSticker, color: "" },
+  { id: "aes_crystal_ice", label: "Crystal", icon: Kawaii.CrystalSticker, color: "text-cyan-100" },
+  { id: "aes_flower_daisy", label: "Daisy", icon: Kawaii.FlowerSticker, color: "text-white" },
+  { id: "aes_flower_sakura", label: "Sakura", icon: Kawaii.FlowerSticker, color: "text-pink-200" },
+  { id: "aes_clover_lucky", label: "Clover", icon: Kawaii.CloverSticker, color: "text-green-400" },
+  { id: "aes_sun_bright", label: "Sun", icon: Kawaii.SunSticker, color: "text-orange-200" },
+  { id: "aes_butterfly", label: "Butterfly", icon: Kawaii.WingedHeart, color: "text-indigo-200" },
 
-  // --- TEXT ---
-  { id: "txt_slay", label: "Slay", icon: Kawaii.SlayText, color: "" },
-  { id: "txt_cutie", label: "Cutie", icon: Kawaii.CutieText, color: "" },
-  { id: "txt_besties", label: "Besties", icon: Kawaii.BestiesText, color: "" },
-  { id: "txt_love", label: "Love", icon: Kawaii.LoveText, color: "" },
-  { id: "txt_happy", label: "Happy", icon: Kawaii.HappyText, color: "" },
-  { id: "txt_smile", label: "Smile", icon: Kawaii.SmileText, color: "" },
-  { id: "txt_wow", label: "Wow", icon: Kawaii.WowText, color: "" },
-  { id: "txt_hello", label: "Hello", icon: Kawaii.HelloText, color: "" },
-  { id: "txt_queen", label: "Queen", icon: Kawaii.QueenText, color: "" },
-  { id: "txt_cool", label: "Cool", icon: Kawaii.CoolText, color: "" },
+  // --- FOOD & DRINK (51-70) ---
+  { id: "food_boba_milk", label: "Boba", icon: Kawaii.BobaSticker, color: "" },
+  { id: "food_strawberry_red", label: "Berry", icon: Kawaii.StrawberrySticker, color: "" },
+  { id: "food_cake_slice", label: "Cake", icon: Kawaii.CupcakeSticker, color: "" },
+  { id: "food_donut_glaze", label: "Donut", icon: Kawaii.DonutSticker, color: "" },
+  { id: "food_icecream_pink", label: "Ice Cream", icon: Kawaii.IceCreamSticker, color: "" },
+  { id: "food_sushi_tuna", label: "Sushi", icon: Kawaii.SushiSticker, color: "" },
+  { id: "food_pizza_slice", label: "Pizza", icon: Kawaii.PizzaSticker, color: "" },
+  { id: "food_cherry_twin", label: "Cherry", icon: Kawaii.CherrySticker, color: "" },
+  { id: "food_peach_soft", label: "Peach", icon: Kawaii.PeachSticker, color: "" },
+  { id: "food_milk_carton", label: "Milk", icon: Kawaii.MilkSticker, color: "" },
+  { id: "food_coffee_cup", label: "Coffee", icon: Kawaii.BobaSticker, color: "text-amber-800" },
+  { id: "food_cookie", label: "Cookie", icon: Kawaii.DonutSticker, color: "text-amber-600" },
+  { id: "food_bread", label: "Bread", icon: Kawaii.TeddyBear, color: "text-orange-200" },
+  { id: "food_juice", label: "Juice", icon: Kawaii.MilkSticker, color: "text-orange-300" },
+  { id: "food_honey", label: "Honey", icon: Kawaii.KawaiiStar, color: "text-amber-500" },
+  { id: "food_pancake", label: "Pancake", icon: Kawaii.DonutSticker, color: "text-amber-200" },
+  { id: "food_croissant", label: "Croissant", icon: Kawaii.KawaiiCloud, color: "text-orange-200" },
+  { id: "food_ramen", label: "Ramen", icon: Kawaii.SushiSticker, color: "text-yellow-100" },
+  { id: "food_dango", label: "Dango", icon: Kawaii.FlowerSticker, color: "text-green-100" },
+  { id: "food_melon", label: "Melon", icon: Kawaii.KawaiiFrog, color: "text-green-200" },
+
+  // --- KOREAN TEXT & SLANG (71-90) ---
+  { id: "txt_slay_kr", label: "Slay", icon: Kawaii.SlayText, color: "" },
+  { id: "txt_cutie_kr", label: "Cutie", icon: Kawaii.CutieText, color: "" },
+  { id: "txt_besties_kr", label: "Besties", icon: Kawaii.BestiesText, color: "" },
+  { id: "txt_love_kr", label: "Love", icon: Kawaii.LoveText, color: "" },
+  { id: "txt_happy_kr", label: "Happy", icon: Kawaii.HappyText, color: "" },
+  { id: "txt_smile_kr", label: "Smile", icon: Kawaii.SmileText, color: "" },
+  { id: "txt_wow_kr", label: "Wow", icon: Kawaii.WowText, color: "" },
+  { id: "txt_hello_kr", label: "Hello", icon: Kawaii.HelloText, color: "" },
+  { id: "txt_queen_kr", label: "Queen", icon: Kawaii.QueenText, color: "" },
+  { id: "txt_cool_kr", label: "Cool", icon: Kawaii.CoolText, color: "" },
+  { id: "txt_kitsch", label: "Kitsch", icon: Kawaii.SlayText, color: "text-purple-400" },
+  { id: "txt_mood", label: "Mood", icon: Kawaii.CutieText, color: "text-blue-400" },
+  { id: "txt_vibes", label: "Vibes", icon: Kawaii.BestiesText, color: "text-emerald-400" },
+  { id: "txt_daily", label: "Daily", icon: Kawaii.HelloText, color: "text-stone-400" },
+  { id: "txt_xoxo", label: "XOXO", icon: Kawaii.LoveText, color: "text-rose-400" },
+  { id: "txt_swag", label: "Swag", icon: Kawaii.QueenText, color: "text-black" },
+  { id: "txt_pretty", label: "Pretty", icon: Kawaii.CutieText, color: "text-pink-400" },
+  { id: "txt_angel", label: "Angel", icon: Kawaii.WowText, color: "text-blue-100" },
+  { id: "txt_glow", label: "Glow", icon: Kawaii.SmileText, color: "text-yellow-400" },
+  { id: "txt_lucky", label: "Lucky", icon: Kawaii.HappyText, color: "text-green-500" },
+
+  // --- ACCESSORIES: WINGS, CROWN, CAMERA (91-100) ---
+  { id: "acc_wings_angel", label: "Angel Wings", icon: Kawaii.WingedHeart, color: "text-white" },
+  { id: "acc_wings_devil", label: "Devil Wings", icon: Kawaii.WingedHeart, color: "text-red-900" },
+  { id: "acc_crown_gold", label: "Gold Crown", icon: Kawaii.QueenText, color: "text-yellow-500" },
+  { id: "acc_polaroid", label: "Polaroid", icon: Kawaii.CrystalSticker, color: "text-white" },
+  { id: "acc_camera", label: "Camera", icon: Kawaii.CrystalSticker, color: "text-zinc-400" },
+  { id: "acc_glasses", label: "Glass", icon: Kawaii.DoubleHeart, color: "text-black" },
+  { id: "acc_sparkles", label: "Stars", icon: Kawaii.PastelSparkle, color: "text-white" },
+  { id: "acc_notes", label: "Music", icon: Kawaii.KawaiiStar, color: "text-indigo-400" },
+  { id: "acc_heart_ring", label: "Ring", icon: Kawaii.DoubleHeart, color: "text-amber-400" },
+  { id: "acc_bday_hat", label: "Bday", icon: Kawaii.KawaiiCloud, color: "text-pink-300" },
 ];

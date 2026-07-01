@@ -49,8 +49,10 @@ export const BlueprintFrame = React.memo(({
 }: BlueprintFrameProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [canvasRect, setCanvasRect] = useState<DOMRect | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     if (containerRef.current) {
       setCanvasRect(containerRef.current.getBoundingClientRect());
     }
@@ -65,9 +67,10 @@ export const BlueprintFrame = React.memo(({
   const STRIP_W = isStrip ? 800 : CANVAS_W;
 
   const displayDate = useMemo(() => {
+    if (!mounted) return "";
     if (dateText) return dateText;
     return new Date().toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
-  }, [dateText]);
+  }, [dateText, mounted]);
 
   const renderStripContent = (offsetX: number = 0, isSecondCopy: boolean = false) => (
     <div 

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -644,7 +645,7 @@ export default function KioskPage() {
                    <div className="space-y-4">
                       <h3 className="text-[10px] font-black uppercase text-white/40 italic">Quotes</h3>
                       <div className="grid grid-cols-1 gap-2">
-                        {QUOTES.slice(0, 5).map(q => (
+                        {QUOTES.map(q => (
                           <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("p-4 border-2 text-left transition-all", selectedQuote.id === q.id ? "border-primary bg-primary/10" : "border-white/10 bg-white/5")}><p className="text-xs font-bold italic">"{q.text}"</p></button>
                         ))}
                       </div>

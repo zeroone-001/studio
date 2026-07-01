@@ -9,11 +9,13 @@ import {
   Trash2,
   CheckCircle2,
   FolderOpen,
-  Usb,
   Cpu,
   Share2,
   AlertCircle,
-  Loader2
+  Loader2,
+  ExternalLink,
+  ShieldCheck,
+  Layout
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
@@ -48,6 +50,9 @@ interface AdminControlsProps {
     navigatorShareResolved: string;
     navigatorShareRejected: string;
     nokoprintOpened: string;
+    secureContext: string;
+    topLevelContext: string;
+    userAgent: string;
     lastErrorMessage: string;
   };
 }
@@ -57,46 +62,16 @@ export function AdminControls({
   onJumpTo, 
   onReset, 
   onExitOwnerMode,
-  onSimulateCash,
-  onBypassPayment,
-  usbStatus,
   onSetupUsb,
+  usbStatus,
   runtimeStatus
 }: AdminControlsProps) {
   const [view, setView] = useState<'main' | 'logs' | 'diag'>('main');
-  const [intentStatus, setIntentStatus] = useState("checking");
   const logs = KioskLogger.getLogs();
 
-  useEffect(() => {
-    if (typeof navigator !== 'undefined') {
-      if (navigator.share && navigator.canShare) {
-        setIntentStatus("READY");
-      } else {
-        setIntentStatus("UNSUPPORTED");
-      }
-    }
-  }, []);
-
-  const handleTestIntent = async () => {
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        KioskLogger.log('info', 'PRINT', 'Testing Android Share Intent...', 'PENDING');
-        const canvas = document.createElement('canvas');
-        canvas.width = 100;
-        canvas.height = 100;
-        canvas.toBlob(async (blob) => {
-          if (!blob) return;
-          const file = new File([blob], 'test.jpg', { type: 'image/jpeg' });
-          await navigator.share({
-            files: [file],
-            title: 'Test Intent',
-            text: 'Testing NokoPrint Bridge'
-          });
-          KioskLogger.log('info', 'PRINT', 'Test Intent Dispatched.', 'SUCCESS');
-        }, 'image/jpeg');
-      } catch (e: any) {
-        KioskLogger.log('warn', 'PRINT', 'Test Intent Aborted.', 'FAILED', e.message);
-      }
+  const handleBreakout = () => {
+    if (typeof window !== 'undefined') {
+      window.open(window.location.href, '_blank');
     }
   };
 
@@ -120,12 +95,12 @@ export function AdminControls({
                   <Activity className="w-3 h-3" /> PRINT PIPELINE (LIVE)
                 </h3>
                 <div className="grid grid-cols-1 gap-1">
-                  {Object.entries(runtimeStatus).filter(([k]) => k !== 'lastErrorMessage').map(([key, val]) => (
+                  {Object.entries(runtimeStatus).filter(([k]) => !['userAgent', 'lastErrorMessage'].includes(k)).map(([key, val]) => (
                     <div key={key} className="flex justify-between items-center px-1">
                       <span className="text-[7px] font-bold text-white/40 uppercase tracking-widest">{key.replace(/([A-Z])/g, ' $1')}</span>
                       <div className="flex items-center gap-1">
-                        {val === 'SUCCESS' ? <CheckCircle2 className="w-2.5 h-2.5 text-green-500" /> : val === 'FAILED' ? <AlertCircle className="w-2.5 h-2.5 text-red-500" /> : <Loader2 className="w-2.5 h-2.5 text-white/10 animate-spin" />}
-                        <span className={cn("text-[8px] font-black italic", val === 'SUCCESS' ? "text-green-500" : val === 'FAILED' ? "text-red-500" : "text-white/20")}>{val}</span>
+                        {val === 'SUCCESS' || val === 'YES' ? <CheckCircle2 className="w-2.5 h-2.5 text-green-500" /> : val === 'FAILED' || val === 'NO' ? <AlertCircle className="w-2.5 h-2.5 text-red-500" /> : <Loader2 className="w-2.5 h-2.5 text-white/10 animate-spin" />}
+                        <span className={cn("text-[8px] font-black italic", val === 'SUCCESS' || val === 'YES' ? "text-green-500" : val === 'FAILED' || val === 'NO' ? "text-red-500" : "text-white/20")}>{val}</span>
                       </div>
                     </div>
                   ))}
@@ -136,6 +111,15 @@ export function AdminControls({
                   )}
                 </div>
               </div>
+            )}
+
+            {runtimeStatus?.topLevelContext === 'NO' && (
+              <button 
+                onClick={handleBreakout}
+                className="w-full py-4 text-[10px] font-black uppercase flex items-center justify-center gap-2 border-2 bg-amber-500/20 border-amber-500/40 text-amber-500 animate-pulse"
+              >
+                <ExternalLink className="w-4 h-4" /> RELAUNCH AS TOP LEVEL (FIX PRINTING)
+              </button>
             )}
 
             <div className="space-y-2">
@@ -189,23 +173,35 @@ export function AdminControls({
           <div className="space-y-4">
              <div className="space-y-2">
                 <label className="text-[8px] font-black uppercase text-white/40 flex items-center gap-2">
-                  <Cpu className="w-3 h-3" /> System Components
+                  <ShieldCheck className="w-3 h-3" /> Browser Environment
                 </label>
                 <div className="bg-black/40 border border-white/10 p-3 space-y-3">
                    <div className="flex justify-between items-center">
-                     <span className="text-[9px] font-bold text-white/40 uppercase">Android Share Intent</span>
-                     <span className={cn("text-[9px] font-black italic", intentStatus === 'READY' ? "text-green-500" : "text-red-500")}>{intentStatus}</span>
+                     <span className="text-[9px] font-bold text-white/40 uppercase">Secure Context</span>
+                     <span className={cn("text-[9px] font-black italic", runtimeStatus?.secureContext === 'YES' ? "text-green-500" : "text-red-500")}>{runtimeStatus?.secureContext}</span>
                    </div>
+                   <div className="flex justify-between items-center">
+                     <span className="text-[9px] font-bold text-white/40 uppercase">Top Level Window</span>
+                     <span className={cn("text-[9px] font-black italic", runtimeStatus?.topLevelContext === 'YES' ? "text-green-500" : "text-red-500")}>{runtimeStatus?.topLevelContext}</span>
+                   </div>
+                   <div className="flex flex-col gap-1 mt-2 border-t border-white/5 pt-2">
+                     <span className="text-[7px] font-bold text-white/20 uppercase">User Agent</span>
+                     <span className="text-[7px] font-mono text-white/40 break-all">{runtimeStatus?.userAgent}</span>
+                   </div>
+                </div>
+             </div>
+
+             <div className="space-y-2">
+                <label className="text-[8px] font-black uppercase text-white/40 flex items-center gap-2">
+                  <Cpu className="w-3 h-3" /> Storage & Hardware
+                </label>
+                <div className="bg-black/40 border border-white/10 p-3 space-y-3">
                    <div className="flex justify-between items-center">
                      <span className="text-[9px] font-bold text-white/40 uppercase">Lexar Storage</span>
                      <span className={cn("text-[9px] font-black italic", usbStatus === 'connected' ? "text-green-500" : "text-white/20")}>{usbStatus.toUpperCase()}</span>
                    </div>
                 </div>
              </div>
-
-             <button onClick={handleTestIntent} className="w-full py-4 text-[10px] font-black uppercase flex items-center justify-center gap-2 border-2 bg-primary/20 border-primary/40 text-primary hover:bg-primary/30">
-               <Share2 className="w-4 h-4" /> TEST ANDROID INTENT
-             </button>
 
              <button onClick={onSetupUsb} className={cn("w-full py-4 text-[10px] font-black uppercase flex items-center justify-center gap-2 border-2", usbStatus === 'connected' ? "bg-blue-500 border-blue-400 text-white" : "bg-white/5 border-white/10 text-white/60")}>
               {usbStatus === 'connected' ? <CheckCircle2 className="w-4 h-4" /> : <FolderOpen className="w-4 h-4" />}

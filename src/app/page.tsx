@@ -9,7 +9,7 @@ import { AdminControls } from "@/components/kiosk/admin-controls";
 import { HealthMonitor } from "@/components/kiosk/health-monitor";
 import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
-  Target, Activity, CheckCircle2, AlertCircle, Loader2
+  Target, CheckCircle2, AlertCircle, Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -84,8 +84,22 @@ export default function KioskPage() {
     navigatorShareResolved: 'PENDING',
     navigatorShareRejected: 'PENDING',
     nokoprintOpened: 'PENDING',
+    secureContext: 'CHECKING',
+    topLevelContext: 'CHECKING',
+    userAgent: '',
     lastErrorMessage: ''
   });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setRuntimeStatus(prev => ({
+        ...prev,
+        secureContext: window.isSecureContext ? 'YES' : 'NO',
+        topLevelContext: window.self === window.top ? 'YES' : 'NO',
+        userAgent: navigator.userAgent
+      }));
+    }
+  }, []);
 
   useEffect(() => {
     if (appState === "payment") {
@@ -355,7 +369,8 @@ export default function KioskPage() {
     setPromoConsent(null);
     setCurrentShotIndex(0);
     setPreparedBlob(null);
-    setRuntimeStatus({
+    setRuntimeStatus(prev => ({
+      ...prev,
       photoGenerated: 'PENDING',
       blobCreated: 'PENDING',
       photoSaved: 'PENDING',
@@ -369,7 +384,7 @@ export default function KioskPage() {
       navigatorShareRejected: 'PENDING',
       nokoprintOpened: 'PENDING',
       lastErrorMessage: ''
-    });
+    }));
   }, []);
 
   const startShotSequence = async () => {

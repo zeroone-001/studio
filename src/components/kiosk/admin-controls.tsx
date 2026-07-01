@@ -11,7 +11,8 @@ import {
   FolderOpen,
   Usb,
   Cpu,
-  Share2
+  Share2,
+  AlertCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
@@ -33,6 +34,15 @@ interface AdminControlsProps {
   cameras?: MediaDeviceInfo[];
   selectedCameraId?: string;
   onSelectCamera?: (id: string) => void;
+  runtimeStatus?: {
+    photoGenerated: string;
+    blobCreated: string;
+    photoSaved: string;
+    intentTriggered: string;
+    intentAcknowledged: string;
+    cloudSync: string;
+    sessionCreated: string;
+  };
 }
 
 export function AdminControls({ 
@@ -43,7 +53,8 @@ export function AdminControls({
   onSimulateCash,
   onBypassPayment,
   usbStatus,
-  onSetupUsb
+  onSetupUsb,
+  runtimeStatus
 }: AdminControlsProps) {
   const [view, setView] = useState<'main' | 'logs' | 'diag'>('main');
   const [intentStatus, setIntentStatus] = useState("checking");
@@ -96,6 +107,25 @@ export function AdminControls({
 
         {view === 'main' && (
           <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 scrollbar-hide">
+            {runtimeStatus && (
+              <div className="bg-white/5 border border-primary/20 p-3 rounded-lg space-y-2">
+                <h3 className="text-[8px] font-black uppercase text-primary italic mb-2 flex items-center gap-2">
+                  <Activity className="w-3 h-3" /> Runtime Verification
+                </h3>
+                <div className="grid grid-cols-1 gap-1">
+                  {Object.entries(runtimeStatus).map(([key, val]) => (
+                    <div key={key} className="flex justify-between items-center px-1">
+                      <span className="text-[7px] font-bold text-white/40 uppercase tracking-widest">{key.replace(/([A-Z])/g, ' $1')}</span>
+                      <div className="flex items-center gap-1">
+                        {val === 'SUCCESS' ? <CheckCircle2 className="w-2.5 h-2.5 text-green-500" /> : val === 'FAILED' ? <AlertCircle className="w-2.5 h-2.5 text-red-500" /> : <Loader2 className="w-2.5 h-2.5 text-white/10 animate-spin" />}
+                        <span className={cn("text-[8px] font-black italic", val === 'SUCCESS' ? "text-green-500" : val === 'FAILED' ? "text-red-500" : "text-white/20")}>{val}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <label className="text-[8px] font-black uppercase text-white/40">State Navigation</label>
               <div className="grid grid-cols-2 gap-2">
@@ -111,14 +141,6 @@ export function AdminControls({
                      Jump: {state}
                    </button>
                  ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[8px] font-black uppercase text-white/40">Testing</label>
-              <div className="grid grid-cols-2 gap-2">
-                 <button onClick={() => onBypassPayment(50)} className="bg-primary/20 border border-primary/40 py-2 text-[9px] font-black uppercase hover:bg-primary/30">₱50 Test</button>
-                 <button onClick={() => onBypassPayment(100)} className="bg-primary/20 border border-primary/40 py-2 text-[9px] font-black uppercase hover:bg-primary/30">₱100 Test</button>
               </div>
             </div>
 

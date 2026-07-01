@@ -72,11 +72,13 @@ export default function KioskPage() {
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
 
   const [runtimeStatus, setRuntimeStatus] = useState({
+    photoGenerated: 'PENDING',
+    blobCreated: 'PENDING',
     photoSaved: 'PENDING',
-    sessionCreated: 'PENDING',
-    qrGenerated: 'PENDING',
+    intentTriggered: 'PENDING',
+    intentAcknowledged: 'PENDING',
     cloudSync: 'PENDING',
-    printJob: 'PENDING'
+    sessionCreated: 'PENDING'
   });
 
   useEffect(() => {
@@ -110,6 +112,7 @@ export default function KioskPage() {
    */
   const initiatePrint = useCallback(async (blob: Blob) => {
     KioskLogger.log('info', 'PRINT', 'User Gesture Activated. Requesting Intent...', 'PENDING');
+    setRuntimeStatus(prev => ({ ...prev, intentTriggered: 'SUCCESS' }));
     
     const file = new File([blob], `JNL_Studio_${Date.now()}.jpg`, { type: 'image/jpeg' });
 
@@ -122,14 +125,14 @@ export default function KioskPage() {
           text: 'Open with NokoPrint'
         });
         KioskLogger.log('info', 'PRINT', 'System Intent Acknowledged.', 'SUCCESS');
-        setRuntimeStatus(prev => ({ ...prev, printJob: 'SUCCESS' }));
+        setRuntimeStatus(prev => ({ ...prev, intentAcknowledged: 'SUCCESS' }));
       } catch (e: any) {
         KioskLogger.log('warn', 'PRINT', 'Intent Canceled or Rejected.', 'FAILED', e.message);
-        setRuntimeStatus(prev => ({ ...prev, printJob: 'FAILED' }));
+        setRuntimeStatus(prev => ({ ...prev, intentAcknowledged: 'FAILED' }));
       }
     } else {
       KioskLogger.log('error', 'PRINT', 'Share API or File Intent not supported in this browser context.', 'FAILED');
-      setRuntimeStatus(prev => ({ ...prev, printJob: 'FAILED' }));
+      setRuntimeStatus(prev => ({ ...prev, intentTriggered: 'FAILED' }));
     }
   }, []);
 
@@ -223,9 +226,12 @@ export default function KioskPage() {
 
     if (isStrip) { await drawContent(0); await drawContent(800); } else { await drawContent(0); }
 
+    setRuntimeStatus(prev => ({ ...prev, photoGenerated: 'SUCCESS' }));
+
     exportCanvas.toBlob((blob) => {
       if (blob) {
         setPreparedBlob(blob);
+        setRuntimeStatus(prev => ({ ...prev, blobCreated: 'SUCCESS' }));
         KioskLogger.log('info', 'SESSION', 'Print buffer ready for immediate dispatch.', 'SUCCESS');
       }
       setIsPreparingPrint(false);
@@ -257,7 +263,6 @@ export default function KioskPage() {
         setRuntimeStatus(prev => ({ ...prev, sessionCreated: 'SUCCESS' }));
         const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
         setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-        setRuntimeStatus(prev => ({ ...prev, qrGenerated: 'SUCCESS' }));
 
         const photoRef = ref(storage, `photos/${sessionId}.jpg`);
         uploadBytes(photoRef, blob).then(async () => {
@@ -326,11 +331,13 @@ export default function KioskPage() {
     setCurrentShotIndex(0);
     setPreparedBlob(null);
     setRuntimeStatus({
+      photoGenerated: 'PENDING',
+      blobCreated: 'PENDING',
       photoSaved: 'PENDING',
-      sessionCreated: 'PENDING',
-      qrGenerated: 'PENDING',
+      intentTriggered: 'PENDING',
+      intentAcknowledged: 'PENDING',
       cloudSync: 'PENDING',
-      printJob: 'PENDING'
+      sessionCreated: 'PENDING'
     });
   }, []);
 
@@ -401,7 +408,6 @@ export default function KioskPage() {
       start();
     }
     
-    // Automatically start pre-spooling when user enters Final Preview
     if (appState === "final-preview") {
       preSpoolPrintFile();
     }
@@ -442,6 +448,7 @@ export default function KioskPage() {
               cameras={availableCameras}
               selectedCameraId={selectedCameraId}
               onSelectCamera={setSelectedCameraId}
+              runtimeStatus={runtimeStatus}
             />
             <HealthMonitor />
           </>
@@ -459,20 +466,6 @@ export default function KioskPage() {
               >
                 <JnlLogo variant="hero" color="light" />
               </div>
-              
-              {isOwnerMode && (
-                <div className="absolute top-[120%] bg-black/80 p-6 border border-primary/20 backdrop-blur-md rounded-2xl animate-in slide-in-from-bottom-4 w-[320px]">
-                  <h3 className="text-primary font-black uppercase italic text-xs mb-4 text-center">Runtime Verification</h3>
-                  <div className="grid grid-cols-1 gap-y-3">
-                    {Object.entries(runtimeStatus).map(([key, val]) => (
-                      <div key={key} className="flex justify-between items-center px-2">
-                        <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{key.replace(/([A-Z])/g, ' $1')}</span>
-                        <span className={cn("text-[10px] font-black italic", val === 'SUCCESS' ? "text-green-500" : val === 'FAILED' ? "text-red-500" : "text-white/20")}>{val}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
             <div className="w-full flex flex-col items-center pb-20">
               <NeonButton onClick={() => setAppState("payment")} className="w-[40%] text-3xl py-12">TOUCH TO START</NeonButton>
@@ -493,7 +486,7 @@ export default function KioskPage() {
         )}
 
         {appState === "setup" && (
-          <div className="w-full h-full max-w-7xl flex flex-row gap-8 items-start py-6 px-8 overflow-hidden">
+          <div className="w-full h-full max-7xl flex flex-row gap-8 items-start py-6 px-8 overflow-hidden">
              <div className="flex-[0.4] space-y-4 overflow-y-auto pr-4 scrollbar-hide h-full pb-20">
                 <div className="space-y-4">
                   <h2 className="font-headline font-black text-2xl italic uppercase text-primary">Layout Selection</h2>
@@ -669,7 +662,6 @@ export default function KioskPage() {
             <NeonButton 
               disabled={isPreparingPrint || !preparedBlob}
               onClick={() => {
-                // EXCEPTIONALLY CRITICAL: Call intent IMMEDIATELY in response to the tap
                 if (preparedBlob) {
                   initiatePrint(preparedBlob);
                   handleCloudSync(preparedBlob);

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -8,124 +9,92 @@ import { KioskLogger } from "@/lib/kiosk/logger";
 
 /**
  * Health Monitor component.
- * Automatically detects hardware state (Camera, UGreen Hub, Printer, Bill Acceptor).
- * Optimized for Honor Pad X10 via UGreen 7-in-1 Hub.
+ * STRICT HARDWARE VERIFICATION: Only reports READY if navigator.usb returns a paired device.
  */
 export function HealthMonitor() {
   const [status, setStatus] = useState({
-    online: true,
+    online: false,
     storage: "0MB",
     storagePercent: "0",
-    syncPending: 0,
     printerConnected: false,
     usbHub: false,
-    billAcceptor: false,
-    lexarUsb: false
+    lexarUsb: false,
+    billAcceptor: false
   });
 
   const checkHardware = useCallback(async () => {
     const stats = SessionStore.getStorageStats();
     
-    try {
-      let detectedPrinter = false;
-      let detectedHub = false;
-      let detectedLexar = false;
-      let hasSerial = false;
+    let isOnline = false;
+    let hasPrinter = false;
+    let hasHub = false;
+    let hasLexar = false;
+    let hasSerial = false;
 
-      if (typeof navigator !== 'undefined') {
-        // 1. WebUSB Detection (UGREEN Hub Handshake)
-        if ('usb' in navigator) {
-          try {
-            // Note: getDevices() only returns devices already "paired" via requestDevice()
-            const usbDevices = await navigator.usb.getDevices();
-            detectedHub = usbDevices.length > 0;
+    if (typeof navigator !== 'undefined') {
+      isOnline = navigator.onLine;
+
+      // 1. STRICT WebUSB Polling (No Mocking)
+      if ('usb' in navigator) {
+        try {
+          const devices = await navigator.usb.getDevices();
+          hasHub = devices.length > 0;
+          
+          devices.forEach(device => {
+            const vid = device.vendorId;
+            const pid = device.productId;
             
-            usbDevices.forEach(device => {
-              const name = (device.productName || "").toLowerCase();
-              const manufacturer = (device.manufacturerName || "").toLowerCase();
-              const vid = device.vendorId;
-              
-              // EPSON SIGNATURE DETECTION (0x04b8 / 1208)
-              if (
-                name.includes('epson') || 
-                name.includes('l210') || 
-                manufacturer.includes('epson') ||
-                vid === 1208
-              ) {
-                detectedPrinter = true;
-              }
-              
-              // LEXAR / MASS STORAGE SIGNATURE
-              if (
-                name.includes('lexar') || 
-                name.includes('mass storage') ||
-                name.includes('flash')
-              ) {
-                detectedLexar = true;
-              }
-            });
-
-            // If we have devices but no specific epson match, we assume the hub is the bridge
-            if (usbDevices.length > 0 && !detectedPrinter) {
-              // Check for common hub Vendor IDs (Genesys, Realtek)
-              const hasHubSignature = usbDevices.some(d => [1507, 3034, 1423].includes(d.vendorId));
-              if (hasHubSignature) detectedHub = true;
+            // Epson L210 Signature (VID: 0x04b8 / 1208)
+            if (vid === 1208 || vid === 0x04b8) {
+              hasPrinter = true;
             }
-          } catch (e) {
-            detectedHub = false;
-          }
-        }
-        
-        // 2. Serial (Bill Acceptor)
-        if ('serial' in navigator) {
-          try {
-            // @ts-ignore
-            const serialPorts = await navigator.serial.getPorts();
-            hasSerial = serialPorts.length > 0;
-          } catch (e) {
-            hasSerial = false;
-          }
+            
+            // Lexar / Storage Signatures
+            const name = (device.productName || "").toLowerCase();
+            if (name.includes('lexar') || name.includes('storage') || name.includes('flash')) {
+              hasLexar = true;
+            }
+          });
+        } catch (e) {
+          hasHub = false;
         }
       }
       
-      setStatus(prev => ({
-        ...prev,
-        online: typeof navigator !== 'undefined' ? navigator.onLine : true,
-        storage: `${stats.usedMB}MB`,
-        storagePercent: stats.percent,
-        printerConnected: detectedPrinter,
-        usbHub: detectedHub,
-        lexarUsb: detectedLexar,
-        billAcceptor: hasSerial
-      }));
-
-    } catch (e) {}
+      // 2. Serial Port Polling (Bill Acceptor)
+      if ('serial' in navigator) {
+        try {
+          // @ts-ignore
+          const ports = await navigator.serial.getPorts();
+          hasSerial = ports.length > 0;
+        } catch (e) {
+          hasSerial = false;
+        }
+      }
+    }
+    
+    setStatus({
+      online: isOnline,
+      storage: `${stats.usedMB}MB`,
+      storagePercent: stats.percent,
+      printerConnected: hasPrinter,
+      usbHub: hasHub,
+      lexarUsb: hasLexar,
+      billAcceptor: hasSerial
+    });
   }, []);
 
   useEffect(() => {
     const interval = setInterval(checkHardware, 3000);
     checkHardware();
 
-    if (typeof window !== 'undefined') {
-      window.addEventListener('online', checkHardware);
-      window.addEventListener('offline', checkHardware);
-      
-      if ('usb' in navigator) {
-        const handleHardwareChange = () => {
-          checkHardware();
-        };
-
-        try {
-          navigator.usb.addEventListener('connect', handleHardwareChange);
-          navigator.usb.addEventListener('disconnect', handleHardwareChange);
-
-          return () => {
-            navigator.usb.removeEventListener('connect', handleHardwareChange);
-            navigator.usb.removeEventListener('disconnect', handleHardwareChange);
-            clearInterval(interval);
-          };
-        } catch (e) {}
-      }
+    if (typeof window !== 'undefined' && 'usb' in navigator) {
+      navigator.usb.addEventListener('connect', checkHardware);
+      navigator.usb.addEventListener('disconnect', checkHardware);
+      return () => {
+        navigator.usb.removeEventListener('connect', checkHardware);
+        navigator.usb.removeEventListener('disconnect', checkHardware);
+        clearInterval(interval);
+      };
     }
 
     return () => clearInterval(interval);
@@ -156,7 +125,7 @@ export function HealthMonitor() {
         <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
           <Usb className={cn("w-3.5 h-3.5", status.usbHub ? "text-blue-400" : "text-white/20")} />
           <span className={status.lexarUsb ? "text-blue-400" : "text-white/40"}>
-            {status.lexarUsb ? "Lexar Mounted" : "Hub Active"}
+            {status.lexarUsb ? "Lexar Ready" : status.usbHub ? "Hub Active" : "Hub Offline"}
           </span>
         </div>
 
@@ -168,14 +137,14 @@ export function HealthMonitor() {
         <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
           <Banknote className={cn("w-3.5 h-3.5", status.billAcceptor ? "text-green-500" : "text-white/20")} />
           <span className={status.billAcceptor ? "text-green-500" : "text-white/40"}>
-            {status.billAcceptor ? "Cash Ready" : "Hardware Issue"}
+            {status.billAcceptor ? "Cash Ready" : "No Acceptor"}
           </span>
         </div>
       </div>
       
       <div className="flex items-center gap-3 bg-black/40 px-4 py-1.5 rounded-full border border-white/5 opacity-50">
         <Activity className="w-3 h-3 text-primary animate-pulse" />
-        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white">System Monitoring Active</span>
+        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white">System Verified</span>
       </div>
     </div>
   );

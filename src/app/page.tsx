@@ -125,7 +125,7 @@ export default function KioskPage() {
       }
     }
 
-    // 2. FALLBACK: BROWSER PRINT FRAMEWORK
+    // 2. FALLBACK: BROWSER PRINT FRAMEWORK (Invisible but in DOM)
     if (!printIframeRef.current) {
       KioskLogger.log('error', 'PRINT', 'Handover Failed: Iframe element not found.', 'FAILED');
       return;

@@ -12,7 +12,8 @@ import {
   Usb,
   Cpu,
   Share2,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
@@ -42,6 +43,12 @@ interface AdminControlsProps {
     intentAcknowledged: string;
     cloudSync: string;
     sessionCreated: string;
+    fileCreated: string;
+    navigatorShareStarted: string;
+    navigatorShareResolved: string;
+    navigatorShareRejected: string;
+    nokoprintOpened: string;
+    lastErrorMessage: string;
   };
 }
 
@@ -110,10 +117,10 @@ export function AdminControls({
             {runtimeStatus && (
               <div className="bg-white/5 border border-primary/20 p-3 rounded-lg space-y-2">
                 <h3 className="text-[8px] font-black uppercase text-primary italic mb-2 flex items-center gap-2">
-                  <Activity className="w-3 h-3" /> Runtime Verification
+                  <Activity className="w-3 h-3" /> PRINT PIPELINE (LIVE)
                 </h3>
                 <div className="grid grid-cols-1 gap-1">
-                  {Object.entries(runtimeStatus).map(([key, val]) => (
+                  {Object.entries(runtimeStatus).filter(([k]) => k !== 'lastErrorMessage').map(([key, val]) => (
                     <div key={key} className="flex justify-between items-center px-1">
                       <span className="text-[7px] font-bold text-white/40 uppercase tracking-widest">{key.replace(/([A-Z])/g, ' $1')}</span>
                       <div className="flex items-center gap-1">
@@ -122,6 +129,11 @@ export function AdminControls({
                       </div>
                     </div>
                   ))}
+                  {runtimeStatus.lastErrorMessage && (
+                    <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 text-[7px] text-red-400 font-mono break-words">
+                      ERROR: {runtimeStatus.lastErrorMessage}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

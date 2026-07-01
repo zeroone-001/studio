@@ -78,7 +78,13 @@ export default function KioskPage() {
     intentTriggered: 'PENDING',
     intentAcknowledged: 'PENDING',
     cloudSync: 'PENDING',
-    sessionCreated: 'PENDING'
+    sessionCreated: 'PENDING',
+    fileCreated: 'PENDING',
+    navigatorShareStarted: 'PENDING',
+    navigatorShareResolved: 'PENDING',
+    navigatorShareRejected: 'PENDING',
+    nokoprintOpened: 'PENDING',
+    lastErrorMessage: ''
   });
 
   useEffect(() => {
@@ -92,6 +98,21 @@ export default function KioskPage() {
       }
     }
   }, [paymentReceived, appState]);
+
+  useEffect(() => {
+    if (appState === "printing") {
+      const interval = setInterval(() => {
+        setPrintProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            return 100;
+          }
+          return prev + 2;
+        });
+      }, 100);
+      return () => clearInterval(interval);
+    }
+  }, [appState]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -112,27 +133,31 @@ export default function KioskPage() {
    */
   const initiatePrint = useCallback(async (blob: Blob) => {
     KioskLogger.log('info', 'PRINT', 'User Gesture Activated. Requesting Intent...', 'PENDING');
-    setRuntimeStatus(prev => ({ ...prev, intentTriggered: 'SUCCESS' }));
+    setRuntimeStatus(prev => ({ ...prev, intentTriggered: 'SUCCESS', navigatorShareStarted: 'SUCCESS' }));
     
-    const file = new File([blob], `JNL_Studio_${Date.now()}.jpg`, { type: 'image/jpeg' });
+    try {
+      const file = new File([blob], `JNL_Studio_${Date.now()}.jpg`, { type: 'image/jpeg' });
+      setRuntimeStatus(prev => ({ ...prev, fileCreated: 'SUCCESS' }));
 
-    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         KioskLogger.log('trace', 'PRINT', `Dispatching ${file.size} bytes to Android System...`, 'PENDING');
+        
         await navigator.share({
           files: [file],
           title: 'JNL Studio Portrait',
           text: 'Open with NokoPrint'
         });
+        
         KioskLogger.log('info', 'PRINT', 'System Intent Acknowledged.', 'SUCCESS');
-        setRuntimeStatus(prev => ({ ...prev, intentAcknowledged: 'SUCCESS' }));
-      } catch (e: any) {
-        KioskLogger.log('warn', 'PRINT', 'Intent Canceled or Rejected.', 'FAILED', e.message);
-        setRuntimeStatus(prev => ({ ...prev, intentAcknowledged: 'FAILED' }));
+        setRuntimeStatus(prev => ({ ...prev, intentAcknowledged: 'SUCCESS', navigatorShareResolved: 'SUCCESS', nokoprintOpened: 'SUCCESS' }));
+      } else {
+        const error = 'Share API or File Intent not supported in this browser context.';
+        KioskLogger.log('error', 'PRINT', error, 'FAILED');
+        setRuntimeStatus(prev => ({ ...prev, intentTriggered: 'FAILED', navigatorShareRejected: 'FAILED', lastErrorMessage: error }));
       }
-    } else {
-      KioskLogger.log('error', 'PRINT', 'Share API or File Intent not supported in this browser context.', 'FAILED');
-      setRuntimeStatus(prev => ({ ...prev, intentTriggered: 'FAILED' }));
+    } catch (e: any) {
+      KioskLogger.log('warn', 'PRINT', 'Intent Canceled or Rejected.', 'FAILED', e.message);
+      setRuntimeStatus(prev => ({ ...prev, intentAcknowledged: 'FAILED', navigatorShareRejected: 'FAILED', lastErrorMessage: e.message }));
     }
   }, []);
 
@@ -337,7 +362,13 @@ export default function KioskPage() {
       intentTriggered: 'PENDING',
       intentAcknowledged: 'PENDING',
       cloudSync: 'PENDING',
-      sessionCreated: 'PENDING'
+      sessionCreated: 'PENDING',
+      fileCreated: 'PENDING',
+      navigatorShareStarted: 'PENDING',
+      navigatorShareResolved: 'PENDING',
+      navigatorShareRejected: 'PENDING',
+      nokoprintOpened: 'PENDING',
+      lastErrorMessage: ''
     });
   }, []);
 

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -8,7 +9,7 @@ import { AdminControls } from "@/components/kiosk/admin-controls";
 import { HealthMonitor } from "@/components/kiosk/health-monitor";
 import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
-  Printer, Loader2, Target, RotateCcw, Activity, Camera, Heart, Shield, Play, Download, CheckCircle2, AlertCircle
+  Target, Activity, CheckCircle2, AlertCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -41,7 +42,6 @@ export default function KioskPage() {
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const printIframeRef = useRef<HTMLIFrameElement>(null);
 
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
@@ -67,12 +67,12 @@ export default function KioskPage() {
   
   const [originUrl, setOriginUrl] = useState("https://jnl-studio-booth.web.app");
 
-  // Status indicators for Owner Mode
   const [runtimeStatus, setRuntimeStatus] = useState({
     photoSaved: 'PENDING',
     sessionCreated: 'PENDING',
     qrGenerated: 'PENDING',
-    cloudSync: 'PENDING'
+    cloudSync: 'PENDING',
+    printJob: 'PENDING'
   });
 
   useEffect(() => {
@@ -103,75 +103,34 @@ export default function KioskPage() {
   const initiatePrint = useCallback(async (blob: Blob) => {
     KioskLogger.log('info', 'PRINT', 'Android Intent Handshake Initiated.', 'PENDING');
     
-    // Create a File object from the blob to use with the Intent System (Web Share API)
+    // Create a File object from the blob to use with NokoPrint (Android Intent System)
     const file = new File([blob], `JNL_Studio_${Date.now()}.jpg`, { type: 'image/jpeg' });
 
-    // 1. PRIMARY: ANDROID INTENT VIA WEB SHARE API (Direct Handoff to NokoPrint)
+    // ANDROID INTENT VIA WEB SHARE API (Direct Handoff to NokoPrint)
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
-        KioskLogger.log('trace', 'PRINT', 'Attempting Android System Intent Dispatch...', 'PENDING');
+        KioskLogger.log('trace', 'PRINT', 'Dispatching Intent to Android System...', 'PENDING');
         await navigator.share({
           files: [file],
           title: 'JNL Studio Portrait',
-          text: 'Send to NokoPrint'
+          text: 'Open with NokoPrint'
         });
-        KioskLogger.log('info', 'PRINT', 'Android Intent Dispatched to System.', 'SUCCESS');
-        return; // Success: Exit early
+        KioskLogger.log('info', 'PRINT', 'Intent Received by Android.', 'SUCCESS');
+        setRuntimeStatus(prev => ({ ...prev, printJob: 'SUCCESS' }));
+        return; 
       } catch (e: any) {
-        KioskLogger.log('warn', 'PRINT', 'System Intent Canceled or Rejected.', 'FAILED', e.message);
-        // Continue to fallback
+        KioskLogger.log('warn', 'PRINT', 'Intent Aborted by User.', 'FAILED', e.message);
+        setRuntimeStatus(prev => ({ ...prev, printJob: 'FAILED' }));
       }
-    }
-
-    // 2. FALLBACK: BROWSER PRINT FRAMEWORK (Invisible but in DOM)
-    if (!printIframeRef.current) {
-      KioskLogger.log('error', 'PRINT', 'Handover Failed: Iframe element not found.', 'FAILED');
-      return;
-    }
-    
-    const iframe = printIframeRef.current;
-    const docObj = iframe.contentDocument || iframe.contentWindow?.document;
-    
-    if (!docObj) {
-      KioskLogger.log('error', 'PRINT', 'Handover Failed: Secure document handshake rejected.', 'FAILED');
-      return;
-    }
-
-    const dataUrl = URL.createObjectURL(blob);
-    KioskLogger.log('trace', 'PRINT', 'Blob URL created for legacy spooler.', 'SUCCESS');
-
-    try {
-      docObj.open();
-      docObj.write(`
-        <html>
-          <head>
-            <title>JNL Studio Print Job</title>
-            <style>
-              @page { size: 4in 6in; margin: 0; } 
-              body { margin: 0; display: flex; align-items: center; justify-content: center; background: white; width: 100vw; height: 100vh; overflow: hidden; } 
-              img { width: 100%; height: 100%; object-fit: contain; }
-            </style>
-          </head>
-          <body><img src="${dataUrl}" /></body>
-        </html>
-      `);
-      docObj.close();
-      
-      setTimeout(() => {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-        KioskLogger.log('info', 'PRINT', 'Legacy Spooler Intent Dispatched.', 'SUCCESS');
-        setTimeout(() => URL.revokeObjectURL(dataUrl), 5000);
-      }, 1000);
-    } catch (e: any) {
-      KioskLogger.log('error', 'PRINT', 'Legacy Spooler Failure.', 'FAILED', e.message);
+    } else {
+      KioskLogger.log('error', 'PRINT', 'Intent System Not Supported.', 'FAILED');
+      setRuntimeStatus(prev => ({ ...prev, printJob: 'FAILED' }));
     }
   }, []);
 
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
-    const startTime = Date.now();
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
     
@@ -262,7 +221,7 @@ export default function KioskPage() {
       const saveOk = await SessionStore.savePhotoLocally(sessionId, blob);
       setRuntimeStatus(prev => ({ ...prev, photoSaved: saveOk ? 'SUCCESS' : 'FAILED' }));
 
-      // HIGH PRIORITY: Trigger Intent immediately while gesture activation is valid
+      // Trigger Intent immediately while gesture activation is valid
       initiatePrint(blob);
 
       setUploadStatus("uploading");
@@ -354,7 +313,8 @@ export default function KioskPage() {
       photoSaved: 'PENDING',
       sessionCreated: 'PENDING',
       qrGenerated: 'PENDING',
-      cloudSync: 'PENDING'
+      cloudSync: 'PENDING',
+      printJob: 'PENDING'
     });
   }, []);
 
@@ -432,18 +392,13 @@ export default function KioskPage() {
       setUsbHandle(handle);
       KioskLogger.log('info', 'HARDWARE', 'Lexar USB Mount Successful.', 'SUCCESS');
     } catch (e: any) {
-      KioskLogger.log('error', 'HARDWARE', 'Lexar USB Mount Canceled or Failed.', 'FAILED', e.message);
+      KioskLogger.log('error', 'HARDWARE', 'Lexar USB Mount Failed.', 'FAILED', e.message);
     }
   };
 
   return (
     <KioskLayout>
       <canvas ref={canvasRef} className="hidden" />
-      <iframe 
-        ref={printIframeRef} 
-        className="fixed top-0 left-0 w-1 h-1 opacity-0 pointer-events-none z-[-1]" 
-        title="print-frame" 
-      />
       
       <div className="flex-1 w-full h-full flex flex-col items-center overflow-hidden kiosk-container safe-area-spacing landscape-container">
         
@@ -454,7 +409,7 @@ export default function KioskPage() {
               currentStatus={appState}
               onJumpTo={setAppState}
               onReset={resetSession}
-              onExitOwnerMode={() => setIsOwnerMode(false)}
+              onExitOwnerMode={() => setIsOwnerMode(true)}
               hasPackage={!!packageSelected}
               onSimulateCash={(amount) => setPaymentReceived(prev => prev + amount)}
               onBypassPayment={(pkg) => { setPackageSelected(pkg); setPaymentReceived(pkg); setAppState("setup"); }}
@@ -486,7 +441,7 @@ export default function KioskPage() {
               
               {isOwnerMode && (
                 <div className="absolute top-[120%] bg-black/80 p-6 border border-primary/20 backdrop-blur-md rounded-2xl animate-in slide-in-from-bottom-4 w-[320px]">
-                  <h3 className="text-primary font-black uppercase italic text-xs mb-4 text-center">Actual Runtime Verification</h3>
+                  <h3 className="text-primary font-black uppercase italic text-xs mb-4 text-center">Runtime Verification</h3>
                   <div className="grid grid-cols-1 gap-y-3">
                     {Object.entries(runtimeStatus).map(([key, val]) => (
                       <div key={key} className="flex justify-between items-center px-2">
@@ -687,7 +642,7 @@ export default function KioskPage() {
             <NeonButton 
               onClick={() => {
                 setAppState("printing");
-                handleFinalExport(); // Triggering directly in click handler to preserve Android Intent activation
+                handleFinalExport(); 
               }} 
               className="w-full max-lg py-8 text-2xl"
             >

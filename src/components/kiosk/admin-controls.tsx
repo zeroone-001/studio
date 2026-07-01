@@ -5,22 +5,17 @@ import React, { useState, useEffect } from "react";
 import { 
   LogOut, 
   RefreshCcw, 
-  MonitorSmartphone,
   Activity,
   Trash2,
   CheckCircle2,
   FolderOpen,
-  Layout as LayoutIcon,
-  Layers,
   Usb,
-  Cpu
+  Cpu,
+  Share2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SessionState } from "@/lib/kiosk/constants";
-import { BLUEPRINTS } from "./frame-blueprint";
-import { BlueprintFrame } from "./blueprint-frame";
 
 interface AdminControlsProps {
   currentStatus: SessionState;
@@ -48,44 +43,41 @@ export function AdminControls({
   onSimulateCash,
   onBypassPayment,
   usbStatus,
-  onSetupUsb,
-  cameras = [],
-  selectedCameraId,
-  onSelectCamera
+  onSetupUsb
 }: AdminControlsProps) {
-  const [view, setView] = useState<'main' | 'logs' | 'diag' | 'previews'>('main');
-  const [pairedDevices, setPairedDevices] = useState<USBDevice[]>([]);
+  const [view, setView] = useState<'main' | 'logs' | 'diag'>('main');
+  const [intentStatus, setIntentStatus] = useState("checking");
   const logs = KioskLogger.getLogs();
 
-  const updateDevices = async () => {
-    if ('usb' in navigator) {
-      const devices = await navigator.usb.getDevices();
-      setPairedDevices(devices);
-    }
-  };
-
   useEffect(() => {
-    updateDevices();
-    const interval = setInterval(updateDevices, 5000);
-    return () => clearInterval(interval);
+    if (typeof navigator !== 'undefined') {
+      if (navigator.share && navigator.canShare) {
+        setIntentStatus("READY");
+      } else {
+        setIntentStatus("UNSUPPORTED");
+      }
+    }
   }, []);
 
-  const handlePairHardware = async () => {
-    if (typeof navigator !== 'undefined' && 'usb' in navigator) {
+  const handleTestIntent = async () => {
+    if (typeof navigator !== 'undefined' && navigator.share) {
       try {
-        KioskLogger.log('info', 'HARDWARE', 'Requesting USB Pair Handshake.', 'PENDING');
-        // Filter for Epson (0x04b8) or Lexar
-        await navigator.usb.requestDevice({
-          filters: [
-            { vendorId: 0x04b8 }, // Epson Signature
-            { vendorId: 0x058f }, // Alcor Micro (Lexar Hubs)
-            { vendorId: 0x0781 }  // Sandisk
-          ]
-        });
-        KioskLogger.log('info', 'HARDWARE', 'USB Pair Handshake Completed.', 'SUCCESS');
-        await updateDevices();
+        KioskLogger.log('info', 'PRINT', 'Testing Android Share Intent...', 'PENDING');
+        const canvas = document.createElement('canvas');
+        canvas.width = 100;
+        canvas.height = 100;
+        canvas.toBlob(async (blob) => {
+          if (!blob) return;
+          const file = new File([blob], 'test.jpg', { type: 'image/jpeg' });
+          await navigator.share({
+            files: [file],
+            title: 'Test Intent',
+            text: 'Testing NokoPrint Bridge'
+          });
+          KioskLogger.log('info', 'PRINT', 'Test Intent Dispatched.', 'SUCCESS');
+        }, 'image/jpeg');
       } catch (e: any) {
-        KioskLogger.log('error', 'HARDWARE', 'USB Pair Rejected or Timeout.', 'FAILED', e.message);
+        KioskLogger.log('warn', 'PRINT', 'Test Intent Aborted.', 'FAILED', e.message);
       }
     }
   };
@@ -97,7 +89,7 @@ export function AdminControls({
           <div className="flex items-center gap-3">
              <button onClick={() => setView('main')} className={cn("text-[9px] font-black uppercase tracking-widest", view === 'main' ? "text-primary" : "text-white/40")}>Control</button>
              <button onClick={() => setView('logs')} className={cn("text-[9px] font-black uppercase tracking-widest", view === 'logs' ? "text-primary" : "text-white/40")}>Trace</button>
-             <button onClick={() => setView('diag')} className={cn("text-[9px] font-black uppercase tracking-widest", view === 'diag' ? "text-primary" : "text-white/40")}>Hardware</button>
+             <button onClick={() => setView('diag')} className={cn("text-[9px] font-black uppercase tracking-widest", view === 'diag' ? "text-primary" : "text-white/40")}>System</button>
           </div>
           <button onClick={onExitOwnerMode} className="text-white/40 hover:text-white"><LogOut className="w-4 h-4" /></button>
         </div>
@@ -163,24 +155,22 @@ export function AdminControls({
           <div className="space-y-4">
              <div className="space-y-2">
                 <label className="text-[8px] font-black uppercase text-white/40 flex items-center gap-2">
-                  <Cpu className="w-3 h-3" /> Paired USB Inventory
+                  <Cpu className="w-3 h-3" /> System Components
                 </label>
-                <div className="bg-black/40 border border-white/10 p-3 space-y-2 min-h-20 max-h-40 overflow-y-auto">
-                   {pairedDevices.length === 0 ? (
-                     <div className="text-[9px] italic text-white/20">No hardware paired with browser.</div>
-                   ) : (
-                     pairedDevices.map((d, i) => (
-                       <div key={i} className="text-[9px] font-mono flex flex-col border-b border-white/5 pb-2 last:border-0">
-                         <span className="text-primary font-black">{d.productName || "Unknown Device"}</span>
-                         <span className="text-white/40">VID: 0x{d.vendorId.toString(16).padStart(4, '0')} | PID: 0x{d.productId.toString(16).padStart(4, '0')}</span>
-                       </div>
-                     ))
-                   )}
+                <div className="bg-black/40 border border-white/10 p-3 space-y-3">
+                   <div className="flex justify-between items-center">
+                     <span className="text-[9px] font-bold text-white/40 uppercase">Android Share Intent</span>
+                     <span className={cn("text-[9px] font-black italic", intentStatus === 'READY' ? "text-green-500" : "text-red-500")}>{intentStatus}</span>
+                   </div>
+                   <div className="flex justify-between items-center">
+                     <span className="text-[9px] font-bold text-white/40 uppercase">Lexar Storage</span>
+                     <span className={cn("text-[9px] font-black italic", usbStatus === 'connected' ? "text-green-500" : "text-white/20")}>{usbStatus.toUpperCase()}</span>
+                   </div>
                 </div>
              </div>
 
-             <button onClick={handlePairHardware} className="w-full py-4 text-[10px] font-black uppercase flex items-center justify-center gap-2 border-2 bg-primary/20 border-primary/40 text-primary hover:bg-primary/30">
-               <Usb className="w-4 h-4" /> PAIR PRINTER / HUB
+             <button onClick={handleTestIntent} className="w-full py-4 text-[10px] font-black uppercase flex items-center justify-center gap-2 border-2 bg-primary/20 border-primary/40 text-primary hover:bg-primary/30">
+               <Share2 className="w-4 h-4" /> TEST ANDROID INTENT
              </button>
 
              <button onClick={onSetupUsb} className={cn("w-full py-4 text-[10px] font-black uppercase flex items-center justify-center gap-2 border-2", usbStatus === 'connected' ? "bg-blue-500 border-blue-400 text-white" : "bg-white/5 border-white/10 text-white/60")}>

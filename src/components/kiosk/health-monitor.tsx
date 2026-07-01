@@ -2,65 +2,53 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Wifi, Usb, Banknote, Database, CheckCircle2, AlertCircle, Activity } from "lucide-react";
+import { Wifi, Usb, Banknote, Database, CheckCircle2, AlertCircle, Activity, Share2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SessionStore } from "@/lib/kiosk/persistence";
-import { KioskLogger } from "@/lib/kiosk/logger";
 
 /**
  * Health Monitor component.
- * STRICT HARDWARE VERIFICATION: Only reports READY if navigator.usb returns a paired device.
+ * Optimized for Android Intent Printing (NokoPrint).
+ * Removes WebUSB hardware polling requirement.
  */
 export function HealthMonitor() {
   const [status, setStatus] = useState({
     online: false,
     storage: "0MB",
     storagePercent: "0",
-    printerConnected: false,
+    intentReady: false,
     usbHub: false,
-    lexarUsb: false,
     billAcceptor: false
   });
 
-  const checkHardware = useCallback(async () => {
+  const checkSystem = useCallback(async () => {
     const stats = SessionStore.getStorageStats();
     
     let isOnline = false;
-    let hasPrinter = false;
+    let shareReady = false;
     let hasHub = false;
-    let hasLexar = false;
     let hasSerial = false;
 
     if (typeof navigator !== 'undefined') {
       isOnline = navigator.onLine;
 
-      // 1. STRICT WebUSB Polling (No Mocking)
+      // 1. Verify Android Intent System (Web Share API)
+      // This is what NokoPrint uses to receive photos from the browser
+      if (navigator.share && navigator.canShare) {
+        shareReady = true;
+      }
+
+      // 2. Basic USB Hub Detection (Passive)
       if ('usb' in navigator) {
         try {
           const devices = await navigator.usb.getDevices();
           hasHub = devices.length > 0;
-          
-          devices.forEach(device => {
-            const vid = device.vendorId;
-            const pid = device.productId;
-            
-            // Epson L210 Signature (VID: 0x04b8 / 1208)
-            if (vid === 1208 || vid === 0x04b8) {
-              hasPrinter = true;
-            }
-            
-            // Lexar / Storage Signatures
-            const name = (device.productName || "").toLowerCase();
-            if (name.includes('lexar') || name.includes('storage') || name.includes('flash')) {
-              hasLexar = true;
-            }
-          });
         } catch (e) {
           hasHub = false;
         }
       }
       
-      // 2. Serial Port Polling (Bill Acceptor)
+      // 3. Serial Port Detection (Bill Acceptor)
       if ('serial' in navigator) {
         try {
           // @ts-ignore
@@ -76,29 +64,17 @@ export function HealthMonitor() {
       online: isOnline,
       storage: `${stats.usedMB}MB`,
       storagePercent: stats.percent,
-      printerConnected: hasPrinter,
+      intentReady: shareReady,
       usbHub: hasHub,
-      lexarUsb: hasLexar,
       billAcceptor: hasSerial
     });
   }, []);
 
   useEffect(() => {
-    const interval = setInterval(checkHardware, 3000);
-    checkHardware();
-
-    if (typeof window !== 'undefined' && 'usb' in navigator) {
-      navigator.usb.addEventListener('connect', checkHardware);
-      navigator.usb.addEventListener('disconnect', checkHardware);
-      return () => {
-        navigator.usb.removeEventListener('connect', checkHardware);
-        navigator.usb.removeEventListener('disconnect', checkHardware);
-        clearInterval(interval);
-      };
-    }
-
+    const interval = setInterval(checkSystem, 3000);
+    checkSystem();
     return () => clearInterval(interval);
-  }, [checkHardware]);
+  }, [checkSystem]);
 
   return (
     <div className="fixed bottom-4 left-6 right-6 z-[60] flex justify-between items-center pointer-events-none select-none animate-in fade-in slide-in-from-bottom-4">
@@ -109,23 +85,23 @@ export function HealthMonitor() {
         </div>
         
         <div className="flex items-center gap-2 border-l border-white/10 pl-6">
-          {status.printerConnected ? (
+          {status.intentReady ? (
             <div className="flex items-center gap-2 text-[10px] font-black uppercase text-green-400">
               <CheckCircle2 className="w-4 h-4" />
-              <span>Printer Ready</span>
+              <span>Print Service Ready</span>
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase text-red-500 animate-pulse">
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase text-amber-500 animate-pulse">
               <AlertCircle className="w-4 h-4" />
-              <span>Printer Offline</span>
+              <span>Checking Intents...</span>
             </div>
           )}
         </div>
 
         <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
           <Usb className={cn("w-3.5 h-3.5", status.usbHub ? "text-blue-400" : "text-white/20")} />
-          <span className={status.lexarUsb ? "text-blue-400" : "text-white/40"}>
-            {status.lexarUsb ? "Lexar Ready" : status.usbHub ? "Hub Active" : "Hub Offline"}
+          <span className={status.usbHub ? "text-blue-400" : "text-white/40"}>
+            {status.usbHub ? "Hub Active" : "Hub Standby"}
           </span>
         </div>
 
@@ -144,7 +120,7 @@ export function HealthMonitor() {
       
       <div className="flex items-center gap-3 bg-black/40 px-4 py-1.5 rounded-full border border-white/5 opacity-50">
         <Activity className="w-3 h-3 text-primary animate-pulse" />
-        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white">System Verified</span>
+        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white">Android System Verified</span>
       </div>
     </div>
   );

@@ -218,7 +218,7 @@ export default function KioskPage() {
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(offsetX, footerY, STRIP_W, 200);
 
-      // BALANCED FOOTER TYPOGRAPHY
+      // TYPOGRAPHY SCALED TO FIT LAYOUT
       ctx.fillStyle = '#000000';
       ctx.textAlign = 'center';
       ctx.font = 'bold 32px Inter, sans-serif';
@@ -242,6 +242,7 @@ export default function KioskPage() {
       const saveOk = await SessionStore.savePhotoLocally(sessionId, blob);
       setRuntimeStatus(prev => ({ ...prev, photoSaved: saveOk ? 'SUCCESS' : 'FAILED' }));
 
+      // HIGH PRIORITY: Start Printing immediately
       initiatePrint(blob);
       setAppState("printing");
 
@@ -263,6 +264,7 @@ export default function KioskPage() {
           setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
           setRuntimeStatus(prev => ({ ...prev, qrGenerated: 'SUCCESS' }));
 
+          // BACKGROUND SYNC: Cloud upload happens while user interacts with screen
           const photoRef = ref(storage, `photos/${sessionId}.jpg`);
           uploadBytes(photoRef, blob).then(async () => {
             await updateDoc(docRef, { status: 'complete' });
@@ -352,6 +354,7 @@ export default function KioskPage() {
       setCurrentShotIndex(i);
       setCountdown(null);
       
+      // POSE PERIOD: Give customer time to see themselves before countdown starts
       await new Promise(r => setTimeout(r, 1000));
       
       for (let c = 3; c > 0; c--) {
@@ -673,21 +676,24 @@ export default function KioskPage() {
                 <Progress value={printProgress} className="h-6 bg-white/10" />
              </div>
 
+             {/* ENHANCED FACEBOOK CONSENT DIALOG */}
              {promoConsent === null && (
-               <div className="bg-black/90 border-4 border-primary p-10 flex flex-col items-center space-y-8 rounded-[4rem] w-[600px] shadow-[0_0_50px_rgba(255,51,153,0.3)] animate-in zoom-in-95">
-                 <div className="space-y-4 text-center">
-                   <h3 className="text-2xl font-black italic uppercase text-primary">Share Your Photo?</h3>
-                   <p className="text-white/60 text-xs font-bold uppercase">May we post your photo on our Facebook page and portfolio?</p>
-                   <div className="pt-4 border-t border-white/10">
-                     <p className="text-white/40 text-[10px] font-black italic">MAAARI BA NAMING I-POST ANG IYONG LARAWAN SA AMING FACEBOOK PAGE AT PORTFOLIO?</p>
+               <div className="bg-black/90 border-4 border-primary p-16 flex flex-col items-center space-y-12 rounded-[5rem] w-full max-w-4xl shadow-[0_0_80px_rgba(255,51,153,0.5)] animate-in zoom-in-95 z-[150]">
+                 <div className="space-y-8 text-center">
+                   <div className="space-y-4">
+                     <h3 className="text-5xl font-black italic uppercase text-primary tracking-tight">Share Your Photo?</h3>
+                     <p className="text-white text-xl font-bold uppercase tracking-wide">May we post your photo on our Facebook page and portfolio?</p>
+                   </div>
+                   <div className="pt-8 border-t-2 border-white/10 space-y-4">
+                     <p className="text-white/60 text-lg font-black italic uppercase tracking-wider">Maaari ba naming i-post ang iyong larawan sa aming Facebook page at portfolio?</p>
                    </div>
                  </div>
-                 <div className="grid grid-cols-2 gap-4 w-full">
-                    <button onClick={() => setPromoConsent(true)} className="py-6 border-2 border-green-500 bg-green-500/10 text-green-500 font-black italic uppercase rounded-2xl flex items-center justify-center gap-2">
-                      <CheckCircle2 className="w-5 h-5" /> YES / OO
+                 <div className="grid grid-cols-2 gap-8 w-full">
+                    <button onClick={() => setPromoConsent(true)} className="py-10 border-4 border-green-500 bg-green-500/20 text-green-500 text-3xl font-black italic uppercase rounded-3xl flex items-center justify-center gap-4 transition-all active:scale-95">
+                      <CheckCircle2 className="w-10 h-10" /> YES / OO
                     </button>
-                    <button onClick={() => setPromoConsent(false)} className="py-6 border-2 border-red-500 bg-red-500/10 text-red-500 font-black italic uppercase rounded-2xl flex items-center justify-center gap-2">
-                      <AlertCircle className="w-5 h-5" /> NO / HINDI
+                    <button onClick={() => setPromoConsent(false)} className="py-10 border-4 border-red-500 bg-red-500/20 text-red-500 text-3xl font-black italic uppercase rounded-3xl flex items-center justify-center gap-4 transition-all active:scale-95">
+                      <AlertCircle className="w-10 h-10" /> NO / HINDI
                     </button>
                  </div>
                </div>

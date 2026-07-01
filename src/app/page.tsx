@@ -105,6 +105,11 @@ export default function KioskPage() {
   const initiatePrint = useCallback((blob: Blob) => {
     KioskLogger.log('info', 'PRINT', 'Spooler Handshake Initiated.', 'PENDING');
     
+    // Check User Activation State (Mobile Chrome Requirement)
+    // @ts-ignore
+    const isUserActive = navigator.userActivation?.isActive;
+    KioskLogger.log('trace', 'PRINT', `User Activation State: ${isUserActive ? 'ACTIVE' : 'INACTIVE'}`, 'SUCCESS');
+
     if (!printIframeRef.current) {
       KioskLogger.log('error', 'PRINT', 'Handover Failed: Iframe element not found in DOM.', 'FAILED');
       return;
@@ -119,35 +124,46 @@ export default function KioskPage() {
     }
 
     const dataUrl = URL.createObjectURL(blob);
-    docObj.open();
-    docObj.write(`
-      <html>
-        <head>
-          <style>
-            @page { size: 4in 6in; margin: 0; } 
-            body { margin: 0; display: flex; align-items: center; justify-content: center; background: white; width: 100vw; height: 100vh; overflow: hidden; } 
-            img { width: 100%; height: 100%; object-fit: contain; image-rendering: high-quality; }
-          </style>
-        </head>
-        <body><img src="${dataUrl}" /></body>
-      </html>
-    `);
-    docObj.close();
-    
-    // ANDROID-SPECIFIC FOCUS LOCK
-    KioskLogger.log('info', 'PRINT', 'Document Loaded. Dispatching Spooler Intent...', 'PENDING');
+    KioskLogger.log('trace', 'PRINT', 'Blob URL created and assigned to Spooler.', 'SUCCESS');
 
+    try {
+      docObj.open();
+      docObj.write(`
+        <html>
+          <head>
+            <title>JNL Studio Print Job</title>
+            <style>
+              @page { size: 4in 6in; margin: 0; } 
+              body { margin: 0; display: flex; align-items: center; justify-content: center; background: white; width: 100vw; height: 100vh; overflow: hidden; } 
+              img { width: 100%; height: 100%; object-fit: contain; image-rendering: high-quality; }
+            </style>
+          </head>
+          <body><img src="${dataUrl}" onload="window.parent.postMessage('print-ready', '*')" /></body>
+        </html>
+      `);
+      docObj.close();
+      KioskLogger.log('trace', 'PRINT', 'Spooler Document written successfully.', 'SUCCESS');
+    } catch (e: any) {
+      KioskLogger.log('error', 'PRINT', 'Document Write Error: Check Iframe Origin.', 'FAILED', e.message);
+    }
+    
+    // ANDROID-SPECIFIC FOCUS LOCK AND RETRY
     setTimeout(() => {
       try {
+        KioskLogger.log('trace', 'PRINT', 'Attempting Spooler Focus Handshake...', 'PENDING');
         iframe.contentWindow?.focus();
-        // Trigger print from the window object to ensure NokoPrint/System intercept
+        
+        // Execute print
         iframe.contentWindow?.print();
-        KioskLogger.log('info', 'PRINT', 'Spooler Intent Dispatched successfully.', 'SUCCESS');
-        URL.revokeObjectURL(dataUrl);
+        
+        KioskLogger.log('info', 'PRINT', 'Spooler Intent Dispatched.', 'SUCCESS');
+        
+        // Delay revocation to ensure spooler has read the blob
+        setTimeout(() => URL.revokeObjectURL(dataUrl), 5000);
       } catch (e: any) {
-        KioskLogger.log('error', 'PRINT', 'Android Spooler Rejection: Check Chrome permissions.', 'FAILED', e.message);
+        KioskLogger.log('error', 'PRINT', 'Android Spooler Rejection: Silent fail or block.', 'FAILED', e.message);
       }
-    }, 1500); // 1.5s delay to ensure full DOM layout before NokoPrint scan
+    }, 1500);
   }, []);
 
   const handleFinalExport = useCallback(async () => {
@@ -221,7 +237,6 @@ export default function KioskPage() {
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(offsetX, footerY, STRIP_W, 200);
 
-      // TYPOGRAPHY SCALED TO FIT LAYOUT
       ctx.fillStyle = '#000000';
       ctx.textAlign = 'center';
       ctx.font = 'bold 32px Inter, sans-serif';
@@ -267,7 +282,6 @@ export default function KioskPage() {
           setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
           setRuntimeStatus(prev => ({ ...prev, qrGenerated: 'SUCCESS' }));
 
-          // BACKGROUND SYNC: Cloud upload happens while user interacts with screen
           const photoRef = ref(storage, `photos/${sessionId}.jpg`);
           uploadBytes(photoRef, blob).then(async () => {
             await updateDoc(docRef, { status: 'complete' });
@@ -357,7 +371,6 @@ export default function KioskPage() {
       setCurrentShotIndex(i);
       setCountdown(null);
       
-      // POSE PERIOD: Give customer time to see themselves before countdown starts
       await new Promise(r => setTimeout(r, 1000));
       
       for (let c = 3; c > 0; c--) {
@@ -438,11 +451,6 @@ export default function KioskPage() {
   return (
     <KioskLayout>
       <canvas ref={canvasRef} className="hidden" />
-      {/* 
-        PRINT HANDSHAKE BRIDGE:
-        The iframe must be part of the active DOM for window.print() to work on Android Chrome.
-        We use opacity and absolute positioning instead of display:none to keep it "visible" to the engine.
-      */}
       <iframe 
         ref={printIframeRef} 
         className="fixed top-0 left-0 w-1 h-1 opacity-0 pointer-events-none z-[-1]" 
@@ -699,7 +707,6 @@ export default function KioskPage() {
                 <Progress value={printProgress} className="h-6 bg-white/10" />
              </div>
 
-             {/* ENHANCED FACEBOOK CONSENT DIALOG */}
              {promoConsent === null && (
                <div className="bg-black/90 border-4 border-primary p-16 flex flex-col items-center space-y-12 rounded-[5rem] w-full max-w-4xl shadow-[0_0_80px_rgba(255,51,153,0.5)] animate-in zoom-in-95 z-[150]">
                  <div className="space-y-8 text-center">

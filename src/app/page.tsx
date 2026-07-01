@@ -102,16 +102,32 @@ export default function KioskPage() {
     }
   }, [selectedCameraId]);
 
-  const initiatePrint = useCallback((blob: Blob) => {
-    KioskLogger.log('info', 'PRINT', 'Spooler Handshake Initiated.', 'PENDING');
+  const initiatePrint = useCallback(async (blob: Blob) => {
+    KioskLogger.log('info', 'PRINT', 'Android Intent Handshake Initiated.', 'PENDING');
     
-    // Check User Activation State (Mobile Chrome Requirement)
-    // @ts-ignore
-    const isUserActive = navigator.userActivation?.isActive;
-    KioskLogger.log('trace', 'PRINT', `User Activation State: ${isUserActive ? 'ACTIVE' : 'INACTIVE'}`, 'SUCCESS');
+    // Create a File object from the blob to use with the Intent System (Web Share API)
+    const file = new File([blob], `JNL_Studio_${Date.now()}.jpg`, { type: 'image/jpeg' });
 
+    // 1. PRIMARY: ANDROID INTENT VIA WEB SHARE API (Direct Handoff to NokoPrint)
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        KioskLogger.log('trace', 'PRINT', 'Attempting Android System Intent Dispatch...', 'PENDING');
+        await navigator.share({
+          files: [file],
+          title: 'JNL Studio Portrait',
+          text: 'Send to NokoPrint'
+        });
+        KioskLogger.log('info', 'PRINT', 'Android Intent Dispatched to System.', 'SUCCESS');
+        return; // Success: Exit early
+      } catch (e: any) {
+        KioskLogger.log('warn', 'PRINT', 'System Intent Canceled or Rejected.', 'FAILED', e.message);
+        // Continue to fallback
+      }
+    }
+
+    // 2. FALLBACK: BROWSER PRINT FRAMEWORK
     if (!printIframeRef.current) {
-      KioskLogger.log('error', 'PRINT', 'Handover Failed: Iframe element not found in DOM.', 'FAILED');
+      KioskLogger.log('error', 'PRINT', 'Handover Failed: Iframe element not found.', 'FAILED');
       return;
     }
     
@@ -124,7 +140,7 @@ export default function KioskPage() {
     }
 
     const dataUrl = URL.createObjectURL(blob);
-    KioskLogger.log('trace', 'PRINT', 'Blob URL created and assigned to Spooler.', 'SUCCESS');
+    KioskLogger.log('trace', 'PRINT', 'Blob URL created for legacy spooler.', 'SUCCESS');
 
     try {
       docObj.open();
@@ -135,35 +151,23 @@ export default function KioskPage() {
             <style>
               @page { size: 4in 6in; margin: 0; } 
               body { margin: 0; display: flex; align-items: center; justify-content: center; background: white; width: 100vw; height: 100vh; overflow: hidden; } 
-              img { width: 100%; height: 100%; object-fit: contain; image-rendering: high-quality; }
+              img { width: 100%; height: 100%; object-fit: contain; }
             </style>
           </head>
-          <body><img src="${dataUrl}" onload="window.parent.postMessage('print-ready', '*')" /></body>
+          <body><img src="${dataUrl}" /></body>
         </html>
       `);
       docObj.close();
-      KioskLogger.log('trace', 'PRINT', 'Spooler Document written successfully.', 'SUCCESS');
-    } catch (e: any) {
-      KioskLogger.log('error', 'PRINT', 'Document Write Error: Check Iframe Origin.', 'FAILED', e.message);
-    }
-    
-    // ANDROID-SPECIFIC FOCUS LOCK AND RETRY
-    setTimeout(() => {
-      try {
-        KioskLogger.log('trace', 'PRINT', 'Attempting Spooler Focus Handshake...', 'PENDING');
+      
+      setTimeout(() => {
         iframe.contentWindow?.focus();
-        
-        // Execute print
         iframe.contentWindow?.print();
-        
-        KioskLogger.log('info', 'PRINT', 'Spooler Intent Dispatched.', 'SUCCESS');
-        
-        // Delay revocation to ensure spooler has read the blob
+        KioskLogger.log('info', 'PRINT', 'Legacy Spooler Intent Dispatched.', 'SUCCESS');
         setTimeout(() => URL.revokeObjectURL(dataUrl), 5000);
-      } catch (e: any) {
-        KioskLogger.log('error', 'PRINT', 'Android Spooler Rejection: Silent fail or block.', 'FAILED', e.message);
-      }
-    }, 1500);
+      }, 1000);
+    } catch (e: any) {
+      KioskLogger.log('error', 'PRINT', 'Legacy Spooler Failure.', 'FAILED', e.message);
+    }
   }, []);
 
   const handleFinalExport = useCallback(async () => {
@@ -260,7 +264,7 @@ export default function KioskPage() {
       const saveOk = await SessionStore.savePhotoLocally(sessionId, blob);
       setRuntimeStatus(prev => ({ ...prev, photoSaved: saveOk ? 'SUCCESS' : 'FAILED' }));
 
-      // HIGH PRIORITY: Start Printing immediately after local save
+      // HIGH PRIORITY: Trigger Intent immediately
       initiatePrint(blob);
       setAppState("printing");
 

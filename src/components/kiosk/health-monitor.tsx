@@ -36,22 +36,41 @@ export function HealthMonitor() {
         // 1. WebUSB Detection (UGREEN Hub Handshake)
         if ('usb' in navigator) {
           try {
+            // Note: getDevices() only returns devices already "paired" via requestDevice()
             const usbDevices = await navigator.usb.getDevices();
             detectedHub = usbDevices.length > 0;
             
             usbDevices.forEach(device => {
               const name = (device.productName || "").toLowerCase();
               const manufacturer = (device.manufacturerName || "").toLowerCase();
+              const vid = device.vendorId;
               
-              // Epson L210 Signature Detection
-              if (name.includes('epson') || name.includes('l210') || manufacturer.includes('epson')) {
+              // EPSON SIGNATURE DETECTION (0x04b8 / 1208)
+              if (
+                name.includes('epson') || 
+                name.includes('l210') || 
+                manufacturer.includes('epson') ||
+                vid === 1208
+              ) {
                 detectedPrinter = true;
               }
-              // Lexar Signature Detection
-              if (name.includes('lexar') || name.includes('mass storage')) {
+              
+              // LEXAR / MASS STORAGE SIGNATURE
+              if (
+                name.includes('lexar') || 
+                name.includes('mass storage') ||
+                name.includes('flash')
+              ) {
                 detectedLexar = true;
               }
             });
+
+            // If we have devices but no specific epson match, we assume the hub is the bridge
+            if (usbDevices.length > 0 && !detectedPrinter) {
+              // Check for common hub Vendor IDs (Genesys, Realtek)
+              const hasHubSignature = usbDevices.some(d => [1507, 3034, 1423].includes(d.vendorId));
+              if (hasHubSignature) detectedHub = true;
+            }
           } catch (e) {
             detectedHub = false;
           }

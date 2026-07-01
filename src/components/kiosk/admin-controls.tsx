@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from "react";
@@ -11,7 +10,8 @@ import {
   CheckCircle2,
   FolderOpen,
   Layout as LayoutIcon,
-  Layers
+  Layers,
+  Usb
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
@@ -54,6 +54,26 @@ export function AdminControls({
   const [view, setView] = useState<'main' | 'logs' | 'diag' | 'previews'>('main');
   const [previewPackage, setPreviewPackage] = useState<50 | 100>(50);
   const logs = KioskLogger.getLogs();
+
+  const handlePairHardware = async () => {
+    if (typeof navigator !== 'undefined' && 'usb' in navigator) {
+      try {
+        KioskLogger.log('info', 'HARDWARE', 'Requesting USB Pair Handshake.', 'PENDING');
+        // Filter for Epson (0x04b8) or Lexar
+        await navigator.usb.requestDevice({
+          filters: [
+            { vendorId: 0x04b8 }, // Epson
+            { vendorId: 0x058f }, // Lexar Hubs
+            { vendorId: 0x0781 }  // Sandisk
+          ]
+        });
+        KioskLogger.log('info', 'HARDWARE', 'USB Pair Handshake Completed.', 'SUCCESS');
+        window.location.reload(); // Refresh to update health monitor
+      } catch (e: any) {
+        KioskLogger.log('error', 'HARDWARE', 'USB Pair Rejected or Timeout.', 'FAILED', e.message);
+      }
+    }
+  };
 
   const samplePhotos = Array(6).fill("https://picsum.photos/seed/sample/800/1200");
 
@@ -175,6 +195,10 @@ export function AdminControls({
               </Select>
             </div>
             
+            <button onClick={handlePairHardware} className="w-full py-4 text-[10px] font-black uppercase flex items-center justify-center gap-2 border-2 bg-primary/20 border-primary/40 text-primary hover:bg-primary/30">
+               <Usb className="w-4 h-4" /> PAIR PRINTER / HUB
+            </button>
+
             <button onClick={onSetupUsb} className={cn("w-full py-4 text-[10px] font-black uppercase flex items-center justify-center gap-2 border-2", usbStatus === 'connected' ? "bg-blue-500 border-blue-400 text-white" : "bg-white/5 border-white/10 text-white/60")}>
               {usbStatus === 'connected' ? <CheckCircle2 className="w-4 h-4" /> : <FolderOpen className="w-4 h-4" />}
               {usbStatus === 'connected' ? "LEXAR USB READY" : "MOUNT LEXAR STORAGE"}

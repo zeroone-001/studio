@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -422,6 +421,16 @@ export default function KioskPage() {
     }
   }, [appState, selectedCameraId]);
 
+  const handleMountUsb = async () => {
+    try {
+      const handle = await window.showDirectoryPicker();
+      setUsbHandle(handle);
+      KioskLogger.log('info', 'HARDWARE', 'Lexar USB Mount Successful.', 'SUCCESS');
+    } catch (e: any) {
+      KioskLogger.log('error', 'HARDWARE', 'Lexar USB Mount Canceled or Failed.', 'FAILED', e.message);
+    }
+  };
+
   return (
     <KioskLayout>
       <canvas ref={canvasRef} className="hidden" />
@@ -440,7 +449,7 @@ export default function KioskPage() {
               onSimulateCash={(amount) => setPaymentReceived(prev => prev + amount)}
               onBypassPayment={(pkg) => { setPackageSelected(pkg); setPaymentReceived(pkg); setAppState("setup"); }}
               usbStatus={usbHandle ? "connected" : "disconnected"}
-              onSetupUsb={() => {}}
+              onSetupUsb={handleMountUsb}
               onSetupBillAcceptor={() => {}}
               isDevMode={true}
               onToggleDevMode={() => {}}

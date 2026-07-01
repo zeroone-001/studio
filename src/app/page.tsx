@@ -66,7 +66,6 @@ export default function KioskPage() {
   const [currentShotIndex, setCurrentShotIndex] = useState(0);
   const [isCapturingReady, setIsCapturingReady] = useState(false);
   
-  const exportTriggeredRef = useRef(false);
   const [originUrl, setOriginUrl] = useState("https://jnl-studio-booth.web.app");
 
   // Status indicators for Owner Mode
@@ -264,9 +263,8 @@ export default function KioskPage() {
       const saveOk = await SessionStore.savePhotoLocally(sessionId, blob);
       setRuntimeStatus(prev => ({ ...prev, photoSaved: saveOk ? 'SUCCESS' : 'FAILED' }));
 
-      // HIGH PRIORITY: Trigger Intent immediately
+      // HIGH PRIORITY: Trigger Intent immediately while gesture activation is valid
       initiatePrint(blob);
-      setAppState("printing");
 
       setUploadStatus("uploading");
       const docRef = doc(db, "photos", sessionId);
@@ -411,19 +409,6 @@ export default function KioskPage() {
     }
     return null;
   };
-
-  useEffect(() => {
-    if (appState === "printing" && !exportTriggeredRef.current) {
-      exportTriggeredRef.current = true;
-      handleFinalExport();
-    }
-    if (appState === "welcome") {
-      exportTriggeredRef.current = false;
-      setUploadStatus("idle");
-      setPromoConsent(null);
-      setSoftCopyQrUrl("");
-    }
-  }, [appState, handleFinalExport]);
 
   useEffect(() => {
     if (appState === "setup" || appState === "capturing") {
@@ -700,7 +685,15 @@ export default function KioskPage() {
                 )}
               </div>
             </div>
-            <NeonButton onClick={() => setAppState("printing")} className="w-full max-lg py-8 text-2xl">PROCEED TO PRINT</NeonButton>
+            <NeonButton 
+              onClick={() => {
+                setAppState("printing");
+                handleFinalExport(); // Triggering directly in click handler to preserve Android Intent activation
+              }} 
+              className="w-full max-lg py-8 text-2xl"
+            >
+              PROCEED TO PRINT
+            </NeonButton>
           </div>
         )}
 

@@ -9,7 +9,7 @@ import { AdminControls } from "@/components/kiosk/admin-controls";
 import { HealthMonitor } from "@/components/kiosk/health-monitor";
 import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
-  Target, Activity, CheckCircle2, AlertCircle
+  Target, Activity, CheckCircle2, AlertCircle, Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -67,6 +67,10 @@ export default function KioskPage() {
   
   const [originUrl, setOriginUrl] = useState("https://jnl-studio-booth.web.app");
 
+  // PRINT PRE-SPOOLING SYSTEM
+  const [preparedBlob, setPreparedBlob] = useState<Blob | null>(null);
+  const [isPreparingPrint, setIsPreparingPrint] = useState(false);
+
   const [runtimeStatus, setRuntimeStatus] = useState({
     photoSaved: 'PENDING',
     sessionCreated: 'PENDING',
@@ -100,41 +104,45 @@ export default function KioskPage() {
     }
   }, [selectedCameraId]);
 
+  /**
+   * ACTUAL PRINT DISPATCH (Honor Pad X10 Android Intent)
+   * This MUST be called synchronously within a user gesture.
+   */
   const initiatePrint = useCallback(async (blob: Blob) => {
-    KioskLogger.log('info', 'PRINT', 'Android Intent Handshake Initiated.', 'PENDING');
+    KioskLogger.log('info', 'PRINT', 'User Gesture Activated. Requesting Intent...', 'PENDING');
     
-    // Create a File object from the blob to use with NokoPrint (Android Intent System)
     const file = new File([blob], `JNL_Studio_${Date.now()}.jpg`, { type: 'image/jpeg' });
 
-    // ANDROID INTENT VIA WEB SHARE API (Direct Handoff to NokoPrint)
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
-        KioskLogger.log('trace', 'PRINT', 'Dispatching Intent to Android System...', 'PENDING');
+        KioskLogger.log('trace', 'PRINT', `Dispatching ${file.size} bytes to Android System...`, 'PENDING');
         await navigator.share({
           files: [file],
           title: 'JNL Studio Portrait',
           text: 'Open with NokoPrint'
         });
-        KioskLogger.log('info', 'PRINT', 'Intent Received by Android.', 'SUCCESS');
+        KioskLogger.log('info', 'PRINT', 'System Intent Acknowledged.', 'SUCCESS');
         setRuntimeStatus(prev => ({ ...prev, printJob: 'SUCCESS' }));
-        return; 
       } catch (e: any) {
-        KioskLogger.log('warn', 'PRINT', 'Intent Aborted by User.', 'FAILED', e.message);
+        KioskLogger.log('warn', 'PRINT', 'Intent Canceled or Rejected.', 'FAILED', e.message);
         setRuntimeStatus(prev => ({ ...prev, printJob: 'FAILED' }));
       }
     } else {
-      KioskLogger.log('error', 'PRINT', 'Intent System Not Supported.', 'FAILED');
+      KioskLogger.log('error', 'PRINT', 'Share API or File Intent not supported in this browser context.', 'FAILED');
       setRuntimeStatus(prev => ({ ...prev, printJob: 'FAILED' }));
     }
   }, []);
 
-  const handleFinalExport = useCallback(async () => {
+  /**
+   * PRE-SPOOLING ENGINE
+   * Generates the high-res blob BEFORE the user clicks "Proceed to Print"
+   */
+  const preSpoolPrintFile = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
-    const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
-    setCurrentSessionId(sessionId);
-    
-    const { storage, db } = initializeFirebase();
+    setIsPreparingPrint(true);
+    KioskLogger.log('trace', 'SESSION', 'Pre-spooling print buffer...', 'PENDING');
+
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1600;
     exportCanvas.height = 2400;
@@ -215,55 +223,62 @@ export default function KioskPage() {
 
     if (isStrip) { await drawContent(0); await drawContent(800); } else { await drawContent(0); }
 
-    exportCanvas.toBlob(async (blob) => {
-      if (!blob) return;
-      
-      const saveOk = await SessionStore.savePhotoLocally(sessionId, blob);
-      setRuntimeStatus(prev => ({ ...prev, photoSaved: saveOk ? 'SUCCESS' : 'FAILED' }));
-
-      // Trigger Intent immediately while gesture activation is valid
-      initiatePrint(blob);
-
-      setUploadStatus("uploading");
-      const docRef = doc(db, "photos", sessionId);
-      const sessionData = {
-        id: sessionId,
-        storagePath: `photos/${sessionId}.jpg`,
-        timestamp: serverTimestamp(),
-        isDownloaded: false,
-        promoConsent: null,
-        status: 'uploading'
-      };
-
-      setDoc(docRef, sessionData)
-        .then(() => {
-          setRuntimeStatus(prev => ({ ...prev, sessionCreated: 'SUCCESS' }));
-          const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
-          setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-          setRuntimeStatus(prev => ({ ...prev, qrGenerated: 'SUCCESS' }));
-
-          const photoRef = ref(storage, `photos/${sessionId}.jpg`);
-          uploadBytes(photoRef, blob).then(async () => {
-            await updateDoc(docRef, { status: 'complete' });
-            setUploadStatus("complete");
-            setRuntimeStatus(prev => ({ ...prev, cloudSync: 'SUCCESS' }));
-          }).catch(e => {
-            setUploadStatus("error");
-            setRuntimeStatus(prev => ({ ...prev, cloudSync: 'FAILED' }));
-          });
-        })
-        .catch(async (e) => {
-          const permissionError = new FirestorePermissionError({
-            path: docRef.path,
-            operation: 'create',
-            requestResourceData: sessionData
-          });
-          errorEmitter.emit('permission-error', permissionError);
-          setRuntimeStatus(prev => ({ ...prev, sessionCreated: 'FAILED' }));
-        });
-      
+    exportCanvas.toBlob((blob) => {
+      if (blob) {
+        setPreparedBlob(blob);
+        KioskLogger.log('info', 'SESSION', 'Print buffer ready for immediate dispatch.', 'SUCCESS');
+      }
+      setIsPreparingPrint(false);
     }, 'image/jpeg', 0.95);
-  }, [selectedBlueprint, capturedPhotos, selectedQuote, originUrl, initiatePrint, selectedFilter, placedStickers]);
+  }, [selectedBlueprint, capturedPhotos, selectedQuote, selectedFilter, placedStickers]);
+
+  // Handle Cloud Sync & QR separately (doesn't need gesture)
+  const handleCloudSync = useCallback(async (blob: Blob) => {
+    const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
+    setCurrentSessionId(sessionId);
+    
+    const { storage, db } = initializeFirebase();
+    const saveOk = await SessionStore.savePhotoLocally(sessionId, blob);
+    setRuntimeStatus(prev => ({ ...prev, photoSaved: saveOk ? 'SUCCESS' : 'FAILED' }));
+
+    setUploadStatus("uploading");
+    const docRef = doc(db, "photos", sessionId);
+    const sessionData = {
+      id: sessionId,
+      storagePath: `photos/${sessionId}.jpg`,
+      timestamp: serverTimestamp(),
+      isDownloaded: false,
+      promoConsent: null,
+      status: 'uploading'
+    };
+
+    setDoc(docRef, sessionData)
+      .then(() => {
+        setRuntimeStatus(prev => ({ ...prev, sessionCreated: 'SUCCESS' }));
+        const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
+        setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
+        setRuntimeStatus(prev => ({ ...prev, qrGenerated: 'SUCCESS' }));
+
+        const photoRef = ref(storage, `photos/${sessionId}.jpg`);
+        uploadBytes(photoRef, blob).then(async () => {
+          await updateDoc(docRef, { status: 'complete' });
+          setUploadStatus("complete");
+          setRuntimeStatus(prev => ({ ...prev, cloudSync: 'SUCCESS' }));
+        }).catch(e => {
+          setUploadStatus("error");
+          setRuntimeStatus(prev => ({ ...prev, cloudSync: 'FAILED' }));
+        });
+      })
+      .catch(async (e) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'create',
+          requestResourceData: sessionData
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        setRuntimeStatus(prev => ({ ...prev, sessionCreated: 'FAILED' }));
+      });
+  }, [originUrl]);
 
   const addSticker = (type: string) => {
     const newSticker: PlacedSticker = {
@@ -309,6 +324,7 @@ export default function KioskPage() {
     setSelectedRetakeIndex(null);
     setPromoConsent(null);
     setCurrentShotIndex(0);
+    setPreparedBlob(null);
     setRuntimeStatus({
       photoSaved: 'PENDING',
       sessionCreated: 'PENDING',
@@ -384,7 +400,12 @@ export default function KioskPage() {
       };
       start();
     }
-  }, [appState, selectedCameraId]);
+    
+    // Automatically start pre-spooling when user enters Final Preview
+    if (appState === "final-preview") {
+      preSpoolPrintFile();
+    }
+  }, [appState, selectedCameraId, preSpoolPrintFile]);
 
   const handleMountUsb = async () => {
     try {
@@ -637,12 +658,23 @@ export default function KioskPage() {
                     isPreview={true}
                   />
                 )}
+                {isPreparingPrint && (
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center space-y-4 z-[80]">
+                    <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                    <span className="text-xs font-black uppercase italic text-primary">Pre-spooling High-Res...</span>
+                  </div>
+                )}
               </div>
             </div>
             <NeonButton 
+              disabled={isPreparingPrint || !preparedBlob}
               onClick={() => {
+                // EXCEPTIONALLY CRITICAL: Call intent IMMEDIATELY in response to the tap
+                if (preparedBlob) {
+                  initiatePrint(preparedBlob);
+                  handleCloudSync(preparedBlob);
+                }
                 setAppState("printing");
-                handleFinalExport(); 
               }} 
               className="w-full max-lg py-8 text-2xl"
             >

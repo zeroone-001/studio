@@ -140,7 +140,7 @@ export default function KioskPage() {
       setRuntimeStatus(prev => ({ ...prev, fileCreated: 'SUCCESS' }));
 
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        KioskLogger.log('trace', 'PRINT', `Dispatching ${file.size} bytes to Android System...`, 'PENDING');
+        KioskLogger.log('info', 'PRINT', `Dispatching ${file.size} bytes to Android System...`, 'PENDING');
         
         await navigator.share({
           files: [file],
@@ -539,7 +539,7 @@ export default function KioskPage() {
                 <div className="space-y-4">
                   <h2 className="font-headline font-black text-2xl italic uppercase text-primary">Beauty Filters</h2>
                   <div className="grid grid-cols-2 gap-2">
-                    {FILTERS.slice(0, 5).map(f => (
+                    {FILTERS.slice(0, packageSelected === 50 ? 5 : FILTERS.length).map(f => (
                       <button key={f.id} onClick={() => setSelectedFilter(f)} className={cn("p-4 border-2 flex flex-col bg-white/5 transition-all", selectedFilter.id === f.id ? "border-primary bg-primary/10" : "border-white/10")}>
                         <span className="text-[10px] font-black uppercase italic">{f.label}</span>
                       </button>

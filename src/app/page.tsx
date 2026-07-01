@@ -103,10 +103,10 @@ export default function KioskPage() {
   }, [selectedCameraId]);
 
   const initiatePrint = useCallback((blob: Blob) => {
-    KioskLogger.log('info', 'PRINT', 'Signal Generation Started.', 'PENDING');
+    KioskLogger.log('info', 'PRINT', 'Spooler Handshake Initiated.', 'PENDING');
     
     if (!printIframeRef.current) {
-      KioskLogger.log('error', 'PRINT', 'Handover Failed: Iframe not available.', 'FAILED');
+      KioskLogger.log('error', 'PRINT', 'Handover Failed: Iframe element not found in DOM.', 'FAILED');
       return;
     }
     
@@ -114,7 +114,7 @@ export default function KioskPage() {
     const docObj = iframe.contentDocument || iframe.contentWindow?.document;
     
     if (!docObj) {
-      KioskLogger.log('error', 'PRINT', 'Handover Failed: Document handshake failed.', 'FAILED');
+      KioskLogger.log('error', 'PRINT', 'Handover Failed: Secure document handshake rejected.', 'FAILED');
       return;
     }
 
@@ -125,8 +125,8 @@ export default function KioskPage() {
         <head>
           <style>
             @page { size: 4in 6in; margin: 0; } 
-            body { margin: 0; display: flex; align-items: center; justify-content: center; background: white; } 
-            img { width: 4in; height: 6in; object-fit: contain; }
+            body { margin: 0; display: flex; align-items: center; justify-content: center; background: white; width: 100vw; height: 100vh; overflow: hidden; } 
+            img { width: 100%; height: 100%; object-fit: contain; image-rendering: high-quality; }
           </style>
         </head>
         <body><img src="${dataUrl}" /></body>
@@ -134,23 +134,26 @@ export default function KioskPage() {
     `);
     docObj.close();
     
-    KioskLogger.log('info', 'PRINT', 'Intent Created.', 'SUCCESS');
+    // ANDROID-SPECIFIC FOCUS LOCK
+    KioskLogger.log('info', 'PRINT', 'Document Loaded. Dispatching Spooler Intent...', 'PENDING');
 
     setTimeout(() => {
       try {
         iframe.contentWindow?.focus();
+        // Trigger print from the window object to ensure NokoPrint/System intercept
         iframe.contentWindow?.print();
-        KioskLogger.log('info', 'PRINT', 'Spooler Intent Dispatched.', 'SUCCESS');
+        KioskLogger.log('info', 'PRINT', 'Spooler Intent Dispatched successfully.', 'SUCCESS');
         URL.revokeObjectURL(dataUrl);
       } catch (e: any) {
-        KioskLogger.log('error', 'PRINT', 'Spooler Rejection.', 'FAILED', e.message);
+        KioskLogger.log('error', 'PRINT', 'Android Spooler Rejection: Check Chrome permissions.', 'FAILED', e.message);
       }
-    }, 1000); 
+    }, 1500); // 1.5s delay to ensure full DOM layout before NokoPrint scan
   }, []);
 
   const handleFinalExport = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
+    const startTime = Date.now();
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
     
@@ -242,7 +245,7 @@ export default function KioskPage() {
       const saveOk = await SessionStore.savePhotoLocally(sessionId, blob);
       setRuntimeStatus(prev => ({ ...prev, photoSaved: saveOk ? 'SUCCESS' : 'FAILED' }));
 
-      // HIGH PRIORITY: Start Printing immediately
+      // HIGH PRIORITY: Start Printing immediately after local save
       initiatePrint(blob);
       setAppState("printing");
 
@@ -435,7 +438,17 @@ export default function KioskPage() {
   return (
     <KioskLayout>
       <canvas ref={canvasRef} className="hidden" />
-      <iframe ref={printIframeRef} className="hidden" title="print-frame" />
+      {/* 
+        PRINT HANDSHAKE BRIDGE:
+        The iframe must be part of the active DOM for window.print() to work on Android Chrome.
+        We use opacity and absolute positioning instead of display:none to keep it "visible" to the engine.
+      */}
+      <iframe 
+        ref={printIframeRef} 
+        className="fixed top-0 left-0 w-1 h-1 opacity-0 pointer-events-none z-[-1]" 
+        title="print-frame" 
+      />
+      
       <div className="flex-1 w-full h-full flex flex-col items-center overflow-hidden kiosk-container safe-area-spacing landscape-container">
         
         <AdminAuthDialog isOpen={isAdminDialogOpen} onClose={() => setIsAdminDialogOpen(false)} onAuthSuccess={() => setIsOwnerMode(true)} />
@@ -530,7 +543,7 @@ export default function KioskPage() {
                 <div className="space-y-4">
                   <h2 className="font-headline font-black text-2xl italic uppercase text-primary">Beauty Filters</h2>
                   <div className="grid grid-cols-2 gap-2">
-                    {FILTERS.slice(0, packageSelected === 50 ? 5 : 10).map(f => (
+                    {FILTERS.map(f => (
                       <button key={f.id} onClick={() => setSelectedFilter(f)} className={cn("p-4 border-2 flex flex-col bg-white/5 transition-all", selectedFilter.id === f.id ? "border-primary bg-primary/10" : "border-white/10")}>
                         <span className="text-[10px] font-black uppercase italic">{f.label}</span>
                       </button>

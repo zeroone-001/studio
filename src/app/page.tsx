@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -420,11 +419,11 @@ export default function KioskPage() {
                 <JnlLogo variant="hero" color="light" />
               </div>
             </div>
-            <div className="w-full flex flex-col items-center pb-20">
-              <div className="text-sm font-black uppercase text-white/60 mb-8 tracking-[0.3em] animate-pulse">
+            <div className="w-full flex flex-col items-center pb-8">
+              <div className="text-sm font-black uppercase text-white/60 mb-6 tracking-[0.3em] animate-pulse">
                 INSERT ₱50 OR ₱100 BILL
               </div>
-              <NeonButton onClick={() => setAppState("payment")} className="w-[40%] text-3xl py-12">TOUCH TO START</NeonButton>
+              <NeonButton onClick={() => setAppState("payment")} className="w-[35%] text-2xl py-10">TOUCH TO START</NeonButton>
             </div>
           </div>
         )}
@@ -442,17 +441,17 @@ export default function KioskPage() {
         )}
 
         {appState === "package-selection" && (
-          <div className="w-full h-full flex flex-col items-center justify-center px-10 gap-12">
-            <h2 className="text-5xl font-headline font-black italic uppercase text-primary">CONFIRM PACKAGE</h2>
+          <div className="w-full h-full flex flex-col items-center justify-center px-6 gap-8">
+            <h2 className="text-4xl font-headline font-black italic uppercase text-primary">CONFIRM PACKAGE</h2>
             <div className="flex justify-center w-full max-w-5xl">
               {paymentReceived >= 100 ? (
                 <button 
                   onClick={() => { setPackageSelected(100); setAppState("setup"); }}
-                  className="group relative bg-white/5 border-4 border-primary p-12 flex flex-col items-center transition-all hover:bg-primary/5 active:scale-95 w-[450px]"
+                  className="group relative bg-white/5 border-4 border-primary p-10 flex flex-col items-center transition-all hover:bg-primary/5 active:scale-95 w-[420px]"
                 >
-                  <span className="text-7xl font-black italic text-white mb-4">₱100</span>
-                  <span className="text-xl font-bold uppercase text-primary">PREMIUM PORTRAIT</span>
-                  <div className="mt-6 space-y-2 text-center text-sm font-bold uppercase text-white/60">
+                  <span className="text-6xl font-black italic text-white mb-2">₱100</span>
+                  <span className="text-lg font-bold uppercase text-primary">PREMIUM PORTRAIT</span>
+                  <div className="mt-4 space-y-1 text-center text-xs font-bold uppercase text-white/60">
                     <p>6 PHOTO SHOTS</p>
                     <p>4x6 SINGLE PORTRAIT</p>
                     <p>FULL FILTER LIBRARY</p>
@@ -461,11 +460,11 @@ export default function KioskPage() {
               ) : paymentReceived >= 50 ? (
                 <button 
                   onClick={() => { setPackageSelected(50); setAppState("setup"); }}
-                  className="group relative bg-white/5 border-4 border-primary p-12 flex flex-col items-center transition-all hover:bg-primary/5 active:scale-95 w-[450px]"
+                  className="group relative bg-white/5 border-4 border-primary p-10 flex flex-col items-center transition-all hover:bg-primary/5 active:scale-95 w-[420px]"
                 >
-                  <span className="text-7xl font-black italic text-white mb-4">₱50</span>
-                  <span className="text-xl font-bold uppercase text-primary">CLASSIC STRIP</span>
-                  <div className="mt-6 space-y-2 text-center text-sm font-bold uppercase text-white/60">
+                  <span className="text-6xl font-black italic text-white mb-2">₱50</span>
+                  <span className="text-lg font-bold uppercase text-primary">CLASSIC STRIP</span>
+                  <div className="mt-4 space-y-1 text-center text-xs font-bold uppercase text-white/60">
                     <p>3 PHOTO SHOTS</p>
                     <p>2x6 PHOTO STRIP</p>
                     <p>5 BEAUTY FILTERS</p>
@@ -482,37 +481,37 @@ export default function KioskPage() {
         )}
 
         {appState === "setup" && (
-          <div className="w-full h-full max-7xl flex flex-row gap-8 items-start py-6 px-8 overflow-hidden">
-             <div className="flex-[0.4] space-y-4 overflow-y-auto pr-4 scrollbar-hide h-full pb-20">
-                <div className="space-y-4">
-                  <h2 className="font-headline font-black text-2xl italic uppercase text-primary">Layout Selection</h2>
-                  <div className="grid grid-cols-2 gap-3">
+          <div className="w-full h-full max-w-[95%] flex flex-row gap-6 items-start py-4 px-4 overflow-hidden">
+             <div className="flex-[0.35] space-y-4 overflow-y-auto pr-2 scrollbar-hide h-full pb-10">
+                <div className="space-y-3">
+                  <h2 className="font-headline font-black text-xl italic uppercase text-primary">Layout Selection</h2>
+                  <div className="grid grid-cols-2 gap-2">
                     {BLUEPRINTS.filter(b => b.package === packageSelected).map(bp => (
-                      <button key={bp.id} onClick={() => setSelectedBlueprint(bp)} className={cn("p-4 border-2 flex flex-col items-center bg-white/5 transition-all min-h-[200px]", selectedBlueprint?.id === bp.id ? "border-primary bg-primary/10" : "border-white/10")}>
-                        <div className="flex-1 w-full relative mb-2">
+                      <button key={bp.id} onClick={() => setSelectedBlueprint(bp)} className={cn("p-2 border-2 flex flex-col items-center bg-white/5 transition-all min-h-[140px]", selectedBlueprint?.id === bp.id ? "border-primary bg-primary/10" : "border-white/10")}>
+                        <div className="flex-1 w-full relative mb-1">
                           <BlueprintFrame blueprint={bp} photos={[]} isPreview className="!h-full !w-auto" />
                         </div>
-                        <span className="text-[8px] font-black uppercase italic">{bp.label}</span>
+                        <span className="text-[7px] font-black uppercase italic">{bp.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
-                <div className="space-y-4">
-                  <h2 className="font-headline font-black text-2xl italic uppercase text-primary">Beauty Filters</h2>
+                <div className="space-y-3">
+                  <h2 className="font-headline font-black text-xl italic uppercase text-primary">Beauty Filters</h2>
                   <div className="grid grid-cols-2 gap-2">
                     {FILTERS.slice(0, packageSelected === 50 ? 5 : FILTERS.length).map(f => (
-                      <button key={f.id} onClick={() => setSelectedFilter(f)} className={cn("p-4 border-2 flex flex-col bg-white/5 transition-all", selectedFilter.id === f.id ? "border-primary bg-primary/10" : "border-white/10")}>
-                        <span className="text-[10px] font-black uppercase italic">{f.label}</span>
+                      <button key={f.id} onClick={() => setSelectedFilter(f)} className={cn("p-3 border-2 flex flex-col bg-white/5 transition-all", selectedFilter.id === f.id ? "border-primary bg-primary/10" : "border-white/10")}>
+                        <span className="text-[9px] font-black uppercase italic">{f.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
              </div>
-             <div className="flex-1 flex flex-col gap-6 h-full">
+             <div className="flex-1 flex flex-col gap-4 h-full pb-4">
                 <div className="relative flex-1 bg-zinc-900 border-4 border-white overflow-hidden shadow-2xl">
                    <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover" style={{ filter: selectedFilter.filter }} />
                 </div>
-                <NeonButton disabled={!selectedBlueprint} onClick={() => startShotSequence()} className="w-full py-10 text-3xl">START SESSION</NeonButton>
+                <NeonButton disabled={!selectedBlueprint} onClick={() => startShotSequence()} className="w-full py-8 text-2xl">START SESSION</NeonButton>
              </div>
           </div>
         )}
@@ -521,13 +520,13 @@ export default function KioskPage() {
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black overflow-hidden">
              <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover" style={{ filter: selectedFilter.filter }} />
              {isCapturingReady && (
-               <div className="absolute top-10 left-10 z-[120] bg-black/60 px-6 py-3 border border-primary backdrop-blur-md">
-                  <span className="text-2xl font-black italic uppercase text-primary">SHOT {currentShotIndex + 1} OF {packageSelected === 50 ? 3 : 6}</span>
+               <div className="absolute top-6 left-6 z-[120] bg-black/60 px-5 py-2 border border-primary backdrop-blur-md">
+                  <span className="text-xl font-black italic uppercase text-primary">SHOT {currentShotIndex + 1} OF {packageSelected === 50 ? 3 : 6}</span>
                </div>
              )}
              {countdown !== null && (
                <div className="absolute inset-0 flex items-center justify-center bg-black/20 z-[110]">
-                 <span className="text-[25rem] font-black italic text-white animate-bounce drop-shadow-[0_0_50px_rgba(255,51,153,0.8)]">{countdown}</span>
+                 <span className="text-[20rem] font-black italic text-white animate-bounce drop-shadow-[0_0_50px_rgba(255,51,153,0.8)]">{countdown}</span>
                </div>
              )}
              {isProcessing && <div className="absolute inset-0 bg-white animate-pulse z-[130]" />}
@@ -535,9 +534,9 @@ export default function KioskPage() {
         )}
 
         {appState === "review" && (
-          <div className="w-full h-full flex flex-row items-center justify-center gap-12 py-6 px-8">
+          <div className="w-full h-full flex flex-row items-center justify-center gap-8 py-4 px-6">
             <div className="flex-1 flex flex-col items-center">
-              <div className="h-[70vh] aspect-[1600/2400] shadow-2xl relative border-4 border-white bg-white overflow-hidden">
+              <div className="h-[82vh] aspect-[1600/2400] shadow-2xl relative border-4 border-white bg-white overflow-hidden">
                  {selectedBlueprint && (
                     <BlueprintFrame 
                       blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.filter} isPreview 
@@ -546,19 +545,19 @@ export default function KioskPage() {
                  )}
               </div>
             </div>
-            <div className="w-96 space-y-4">
-               <NeonButton onClick={() => setAppState("decorating")} className="w-full py-8 text-xl">DECORATE</NeonButton>
-               <button onClick={() => selectedRetakeIndex !== null && startShotSequence()} disabled={selectedRetakeIndex === null} className={cn("w-full py-8 font-black uppercase italic border-2 flex items-center justify-center gap-3", selectedRetakeIndex !== null ? "bg-white text-black" : "bg-white/5 text-white/20")}>
+            <div className="w-80 space-y-3">
+               <NeonButton onClick={() => setAppState("decorating")} className="w-full py-6 text-xl">DECORATE</NeonButton>
+               <button onClick={() => selectedRetakeIndex !== null && startShotSequence()} disabled={selectedRetakeIndex === null} className={cn("w-full py-6 font-black uppercase italic border-2 flex items-center justify-center gap-3", selectedRetakeIndex !== null ? "bg-white text-black" : "bg-white/5 text-white/20")}>
                  <Target className="w-5 h-5" /> Retake Selection
                </button>
-               <button onClick={() => { setCapturedPhotos([]); setAppState("setup"); }} className="w-full py-4 text-[10px] font-black uppercase italic border border-white/10 text-white/40">Retake All</button>
+               <button onClick={() => { setCapturedPhotos([]); setAppState("setup"); }} className="w-full py-3 text-[9px] font-black uppercase italic border border-white/10 text-white/40">Retake All</button>
             </div>
           </div>
         )}
 
         {appState === "decorating" && (
-          <div className="w-full flex flex-row gap-12 items-start py-10 px-8">
-             <div className="flex-1 h-[70vh] flex items-center justify-center">
+          <div className="w-full flex flex-row gap-8 items-start py-6 px-6 h-full">
+             <div className="flex-1 h-[82vh] flex items-center justify-center">
                 <div className="h-full aspect-[1600/2400] relative border-4 border-white bg-white shadow-2xl overflow-hidden">
                   {selectedBlueprint && (
                     <BlueprintFrame 
@@ -571,43 +570,43 @@ export default function KioskPage() {
                   )}
                 </div>
              </div>
-             <div className="w-[450px] space-y-8 h-[70vh] flex flex-col">
-                <div className="flex-1 space-y-6 overflow-y-auto pr-2 scrollbar-hide">
-                   <div className="space-y-4">
-                      <h3 className="text-[10px] font-black uppercase text-white/40 italic">Premium Stickers</h3>
-                      <div className="grid grid-cols-4 gap-2">
+             <div className="w-[400px] space-y-6 h-[82vh] flex flex-col">
+                <div className="flex-1 space-y-4 overflow-y-auto pr-2 scrollbar-hide">
+                   <div className="space-y-3">
+                      <h3 className="text-[9px] font-black uppercase text-white/40 italic">Premium Stickers</h3>
+                      <div className="grid grid-cols-5 gap-1.5">
                         {STICKER_DEFS.map(s => (
-                          <button key={s.id} onClick={() => addSticker(s.id)} className="aspect-square bg-white/5 border-2 border-white/10 p-2 flex items-center justify-center hover:border-primary transition-colors">
+                          <button key={s.id} onClick={() => addSticker(s.id)} className="aspect-square bg-white/5 border border-white/10 p-1 flex items-center justify-center hover:border-primary transition-colors">
                             <s.icon className={cn("w-full h-full", s.color)} />
                           </button>
                         ))}
                       </div>
                    </div>
-                   <div className="space-y-4">
-                      <h3 className="text-[10px] font-black uppercase text-white/40 italic">Quotes</h3>
-                      <div className="grid grid-cols-1 gap-2">
+                   <div className="space-y-3">
+                      <h3 className="text-[9px] font-black uppercase text-white/40 italic">Quotes</h3>
+                      <div className="grid grid-cols-1 gap-1.5">
                         {QUOTES.map(q => (
-                          <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("p-4 border-2 text-left transition-all", selectedQuote.id === q.id ? "border-primary bg-primary/10" : "border-white/10 bg-white/5")}><p className="text-xs font-bold italic">"{q.text}"</p></button>
+                          <button key={q.id} onClick={() => setSelectedQuote(q)} className={cn("p-3 border-2 text-left transition-all", selectedQuote.id === q.id ? "border-primary bg-primary/10" : "border-white/10 bg-white/5")}><p className="text-[10px] font-bold italic">"{q.text}"</p></button>
                         ))}
                       </div>
                    </div>
                 </div>
-                <NeonButton onClick={() => setAppState("final-preview")} className="w-full py-10 text-2xl">DONE</NeonButton>
+                <NeonButton onClick={() => setAppState("final-preview")} className="w-full py-8 text-xl">DONE</NeonButton>
              </div>
           </div>
         )}
 
         {appState === "final-preview" && (
-          <div className="w-full h-full flex flex-col items-center justify-center py-6 px-8 space-y-8">
+          <div className="w-full h-full flex flex-col items-center justify-center py-4 px-6 space-y-4">
             <div className="flex-1 flex items-center justify-center">
-              <div className="h-[60vh] relative border-[12px] border-white bg-white shadow-2xl overflow-hidden" style={{ aspectRatio: packageSelected === 50 ? '800/2400' : '1600/2400' }}>
+              <div className="h-[78vh] relative border-[10px] border-white bg-white shadow-2xl overflow-hidden" style={{ aspectRatio: packageSelected === 50 ? '800/2400' : '1600/2400' }}>
                 {selectedBlueprint && (
                   <BlueprintFrame blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.filter} quoteText={selectedQuote.text} stickers={placedStickers} isPreview={true} />
                 )}
                 {isPreparingPrint && (
-                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center space-y-4 z-[80]">
-                    <Loader2 className="w-12 h-12 text-primary animate-spin" />
-                    <span className="text-xs font-black uppercase italic text-primary">Pre-spooling...</span>
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center space-y-3 z-[80]">
+                    <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                    <span className="text-[9px] font-black uppercase italic text-primary">Pre-spooling...</span>
                   </div>
                 )}
               </div>
@@ -615,7 +614,7 @@ export default function KioskPage() {
             <NeonButton 
               disabled={isPreparingPrint || !preparedBlob}
               onClick={() => { if (preparedBlob) { initiatePrint(preparedBlob); handleCloudSync(preparedBlob); } setAppState("printing"); }} 
-              className="w-full max-w-lg py-8 text-2xl"
+              className="w-full max-w-md py-6 text-xl"
             >
               PROCEED TO PRINT
             </NeonButton>
@@ -623,32 +622,32 @@ export default function KioskPage() {
         )}
 
         {appState === "printing" && (
-          <div className="w-full flex flex-col items-center justify-center gap-12 px-10 h-full relative">
-             <div className="w-full max-w-4xl space-y-10 text-center flex flex-col items-center">
-                <h2 className="font-headline font-black text-6xl italic uppercase text-primary">Printing...</h2>
-                <Progress value={printProgress} className="h-6 bg-white/10 w-full" />
+          <div className="w-full flex flex-col items-center justify-center gap-6 px-6 h-full relative">
+             <div className="w-full max-w-3xl space-y-6 text-center flex flex-col items-center">
+                <h2 className="font-headline font-black text-5xl italic uppercase text-primary">Printing...</h2>
+                <Progress value={printProgress} className="h-4 bg-white/10 w-full" />
                 {softCopyQrUrl && promoConsent !== null && (
-                  <div className="mt-12 animate-in fade-in zoom-in duration-500">
-                    <div className="bg-white/5 border-2 border-white/10 p-10 flex flex-col items-center space-y-6 rounded-[4rem] w-[450px] mx-auto shadow-2xl">
-                      <h3 className="text-3xl font-black italic uppercase text-primary">HD SOFT COPY</h3>
-                      <div className="aspect-square w-full bg-white p-8 rounded-[2.5rem] flex items-center justify-center">
+                  <div className="mt-6 animate-in fade-in zoom-in duration-500">
+                    <div className="bg-white/5 border-2 border-white/10 p-8 flex flex-col items-center space-y-4 rounded-[3rem] w-[380px] mx-auto shadow-2xl">
+                      <h3 className="text-2xl font-black italic uppercase text-primary">HD SOFT COPY</h3>
+                      <div className="aspect-square w-full bg-white p-6 rounded-[2rem] flex items-center justify-center">
                         <img src={softCopyQrUrl} alt="Scan to save" className="w-full h-full" />
                       </div>
-                      <button onClick={() => setAppState("thankyou")} className="w-full bg-primary py-8 text-2xl font-black uppercase italic rounded-3xl active:scale-95">COMPLETE</button>
+                      <button onClick={() => setAppState("thankyou")} className="w-full bg-primary py-6 text-xl font-black uppercase italic rounded-2xl active:scale-95">COMPLETE</button>
                     </div>
                   </div>
                 )}
              </div>
 
              {promoConsent === null && (
-               <div className="absolute inset-0 bg-black/90 border-4 border-primary p-16 flex flex-col items-center space-y-12 rounded-[5rem] w-full max-w-4xl shadow-2xl z-[150] self-center">
-                 <div className="space-y-8 text-center">
-                   <h3 className="text-5xl font-black italic uppercase text-primary">Share Your Photo?</h3>
-                   <p className="text-white text-xl font-bold uppercase">May we post your photo on our Facebook page for promotion?</p>
+               <div className="absolute inset-0 bg-black/90 border-4 border-primary p-12 flex flex-col items-center space-y-8 rounded-[4rem] w-full max-w-3xl shadow-2xl z-[150] self-center">
+                 <div className="space-y-6 text-center">
+                   <h3 className="text-4xl font-black italic uppercase text-primary">Share Your Photo?</h3>
+                   <p className="text-white text-lg font-bold uppercase">May we post your photo on our Facebook page for promotion?</p>
                  </div>
-                 <div className="grid grid-cols-2 gap-8 w-full">
-                    <button onClick={() => setPromoConsent(true)} className="py-10 border-4 border-green-500 bg-green-500/20 text-green-500 text-3xl font-black italic uppercase rounded-3xl">YES</button>
-                    <button onClick={() => setPromoConsent(false)} className="py-10 border-4 border-red-500 bg-red-500/20 text-red-500 text-3xl font-black italic uppercase rounded-3xl">NO</button>
+                 <div className="grid grid-cols-2 gap-6 w-full">
+                    <button onClick={() => setPromoConsent(true)} className="py-8 border-4 border-green-500 bg-green-500/20 text-green-500 text-2xl font-black italic uppercase rounded-2xl">YES</button>
+                    <button onClick={() => setPromoConsent(false)} className="py-8 border-4 border-red-500 bg-red-500/20 text-red-500 text-2xl font-black italic uppercase rounded-2xl">NO</button>
                  </div>
                </div>
              )}
@@ -656,24 +655,24 @@ export default function KioskPage() {
         )}
 
         {appState === "thankyou" && (
-          <div className="fixed inset-0 bg-black flex flex-col items-center justify-center animate-in fade-in duration-1000 p-10">
-             <div className="flex flex-row gap-20 items-center justify-center">
-                <div className="flex flex-col items-center space-y-6">
-                   <h2 className="font-headline font-black text-4xl italic uppercase text-primary">HD SOFT COPY</h2>
-                   <div className="w-64 h-64 bg-white p-4 rounded-3xl flex items-center justify-center">
+          <div className="fixed inset-0 bg-black flex flex-col items-center justify-center animate-in fade-in duration-1000 p-6">
+             <div className="flex flex-row gap-12 items-center justify-center">
+                <div className="flex flex-col items-center space-y-4">
+                   <h2 className="font-headline font-black text-3xl italic uppercase text-primary">HD SOFT COPY</h2>
+                   <div className="w-56 h-56 bg-white p-4 rounded-3xl flex items-center justify-center">
                       <img src={softCopyQrUrl} alt="HD Retrieval" className="w-full h-full" />
                    </div>
                 </div>
-                <div className="flex flex-col items-center space-y-6">
-                   <h2 className="font-headline font-black text-4xl italic uppercase text-primary flex items-center gap-3">
-                     FOLLOW US <span className="text-5xl animate-bounce">👇</span>
+                <div className="flex flex-col items-center space-y-4">
+                   <h2 className="font-headline font-black text-3xl italic uppercase text-primary flex items-center gap-3">
+                     FOLLOW US <span className="text-4xl animate-bounce">👇</span>
                    </h2>
-                   <div className="w-64 h-64 bg-white p-4 rounded-3xl flex items-center justify-center border-4 border-primary/20">
+                   <div className="w-56 h-56 bg-white p-4 rounded-3xl flex items-center justify-center border-4 border-primary/20">
                       <img src={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent("https://www.facebook.com/share/18vnB4a7gB/")}`} alt="Facebook QR" className="w-full h-full" />
                    </div>
                 </div>
              </div>
-             <NeonButton onClick={resetSession} className="px-20 py-8 text-2xl mt-16">BACK TO START</NeonButton>
+             <NeonButton onClick={resetSession} className="px-16 py-6 text-xl mt-10">BACK TO START</NeonButton>
           </div>
         )}
       </div>

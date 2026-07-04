@@ -482,7 +482,7 @@ export default function KioskPage() {
               currentStatus={appState}
               onJumpTo={setAppState}
               onReset={resetSession}
-              onExitOwnerMode={() => setIsOwnerMode(true)}
+              onExitOwnerMode={() => setIsOwnerMode(false)}
               hasPackage={!!packageSelected}
               onSimulateCash={(amount) => setPaymentReceived(prev => prev + amount)}
               onBypassPayment={(pkg) => { setPackageSelected(pkg); setPaymentReceived(pkg); setAppState("setup"); }}
@@ -627,6 +627,7 @@ export default function KioskPage() {
                >
                  <Target className="w-5 h-5" /> Retake Selection
                </button>
+               <button onClick={() => { setCapturedPhotos([]); setAppState("setup"); }} className="w-full py-4 text-[10px] font-black uppercase italic border border-white/10 text-white/40">Retake All</button>
             </div>
           </div>
         )}
@@ -763,8 +764,21 @@ export default function KioskPage() {
         )}
 
         {appState === "thankyou" && (
-          <div className="fixed inset-0 bg-black flex flex-col items-center justify-center animate-in fade-in duration-1000">
-             <h2 className="font-headline font-black text-7xl italic uppercase">THANK <span className="text-primary">YOU!</span></h2>
+          <div className="fixed inset-0 bg-black flex flex-col items-center justify-center animate-in fade-in duration-1000 p-10">
+             <div className="flex flex-row gap-20 items-center justify-center">
+                <div className="flex flex-col items-center space-y-6">
+                   <h2 className="font-headline font-black text-4xl italic uppercase text-primary">SCAN FOR SOFT COPY</h2>
+                   <div className="w-64 h-64 bg-white p-4 rounded-3xl flex items-center justify-center">
+                      <img src={softCopyQrUrl} alt="HD Retrieval" className="w-full h-full" />
+                   </div>
+                </div>
+                <div className="flex flex-col items-center space-y-6">
+                   <h2 className="font-headline font-black text-4xl italic uppercase text-primary">FOLLOW JNL STUDIO</h2>
+                   <div className="w-64 h-64 bg-white p-4 rounded-3xl flex items-center justify-center">
+                      <img src="https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=https://facebook.com/jnlstudioph" alt="Facebook QR" className="w-full h-full" />
+                   </div>
+                </div>
+             </div>
              <NeonButton onClick={resetSession} className="px-20 py-8 text-2xl mt-16">BACK TO START</NeonButton>
           </div>
         )}

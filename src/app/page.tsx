@@ -235,14 +235,24 @@ export default function KioskPage() {
     }, 'image/jpeg', 0.95);
   }, [selectedBlueprint, capturedPhotos, selectedQuote, selectedFilter, placedStickers]);
 
+  /**
+   * HIGH-SPEED CLOUD SYNC
+   * Generates QR instantly locally and uploads in the background.
+   */
   const handleCloudSync = useCallback(async (blob: Blob) => {
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
     
-    const { storage, db } = initializeFirebase();
-    await SessionStore.savePhotoLocally(sessionId, blob);
+    // INSTANT QR GENERATION (Pre-network)
+    const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
+    setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
 
+    const { storage, db } = initializeFirebase();
+    
+    // BACKGROUND SYNC (Non-blocking)
+    SessionStore.savePhotoLocally(sessionId, blob);
     setUploadStatus("uploading");
+
     const docRef = doc(db, "photos", sessionId);
     const sessionData = {
       id: sessionId,
@@ -253,17 +263,22 @@ export default function KioskPage() {
       status: 'uploading'
     };
 
+    // Parallel execution
     setDoc(docRef, sessionData).then(() => {
       setRuntimeStatus(prev => ({ ...prev, sessionCreated: 'SUCCESS' }));
-      const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
-      setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       uploadBytes(photoRef, blob).then(async () => {
         await updateDoc(docRef, { status: 'complete' });
         setUploadStatus("complete");
         setRuntimeStatus(prev => ({ ...prev, cloudSync: 'SUCCESS' }));
       });
+    }).catch(async (error) => {
+      setUploadStatus("error");
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'create',
+        requestResourceData: sessionData
+      }));
     });
   }, [originUrl]);
 

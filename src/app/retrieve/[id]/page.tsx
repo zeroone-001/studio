@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
@@ -17,7 +18,7 @@ export default function RetrievePage() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<'verifying' | 'syncing' | 'complete'>('verifying');
   const retryCount = useRef(0);
-  const MAX_RETRIES = 120; // 60 seconds of polling at 500ms intervals
+  const MAX_RETRIES = 240; // ~2 minutes of aggressive polling (500ms)
 
   const fetchPhoto = useCallback(async () => {
     if (!id) return;
@@ -29,6 +30,7 @@ export default function RetrievePage() {
       
       if (docSnap.exists()) {
         const data = docSnap.data();
+        // Even if status is 'uploading', we try to get the URL as Storage might be faster than Firestore update
         if (data.status === 'complete' || data.status === 'uploading') {
           const photoRef = ref(storage, `photos/${id}.jpg`);
           try {
@@ -38,7 +40,7 @@ export default function RetrievePage() {
             setStatus('complete');
             return;
           } catch (e) {
-            // Document exists but file is still propagating in Storage
+            // Document exists but Storage file content is still propagating
             setStatus('syncing');
           }
         }
@@ -48,12 +50,18 @@ export default function RetrievePage() {
         retryCount.current += 1;
         setTimeout(fetchPhoto, 500); 
       } else {
-        setError("Your photo is taking a bit longer to sync. Please try refreshing the page.");
+        setError("Your photo sync is taking longer than expected. Please try refreshing the page.");
         setLoading(false);
       }
     } catch (err: any) {
-      setError("Unable to connect to JNL Cloud. Please check your signal.");
-      setLoading(false);
+      // Don't fail immediately on transient network errors during polling
+      if (retryCount.current < MAX_RETRIES) {
+        retryCount.current += 1;
+        setTimeout(fetchPhoto, 1000);
+      } else {
+        setError("Unable to connect to JNL Cloud. Please check your signal.");
+        setLoading(false);
+      }
     }
   }, [id]);
 

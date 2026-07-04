@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -100,7 +101,11 @@ export default function KioskPage() {
   // AUTOMATIC TRANSITION AFTER PAYMENT
   useEffect(() => {
     if (appState === "payment") {
-      if (paymentReceived >= 50) {
+      if (paymentReceived >= 100) {
+        setPackageSelected(100);
+        setAppState("package-selection");
+      } else if (paymentReceived >= 50) {
+        setPackageSelected(50);
         setAppState("package-selection");
       }
     }
@@ -116,7 +121,7 @@ export default function KioskPage() {
           }
           return prev + 2;
         });
-      }, 100);
+      }, 150);
       return () => clearInterval(interval);
     }
   }, [appState]);
@@ -150,9 +155,58 @@ export default function KioskPage() {
   }, []);
 
   /**
-   * PRE-SPOOL PRINT FILE
-   * Generates high-res canvas in background to ensure zero lag at print time.
+   * CLOUD SYNC & QR GENERATION WORKFLOW
+   * Follows strict sequence: Record -> Upload -> Verify -> QR Display
    */
+  const handleCloudSync = useCallback(async (blob: Blob) => {
+    const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
+    setCurrentSessionId(sessionId);
+    setUploadStatus("uploading");
+    
+    // 1. Save to Local Persistence
+    await SessionStore.savePhotoLocally(sessionId, blob).catch(() => {});
+    setRuntimeStatus(prev => ({ ...prev, photoSaved: 'SUCCESS' }));
+
+    const { storage, db } = initializeFirebase();
+    const docRef = doc(db, "photos", sessionId);
+    
+    const sessionData = {
+      id: sessionId,
+      storagePath: `photos/${sessionId}.jpg`,
+      timestamp: serverTimestamp(),
+      isDownloaded: false,
+      promoConsent: null,
+      status: 'uploading'
+    };
+
+    try {
+      // 2. Create Record in Firestore
+      await setDoc(docRef, sessionData);
+      setRuntimeStatus(prev => ({ ...prev, sessionCreated: 'SUCCESS' }));
+
+      // 3. Upload Photo to Storage
+      const photoRef = ref(storage, `photos/${sessionId}.jpg`);
+      await uploadBytes(photoRef, blob);
+      
+      // 4. Verify & Finalize
+      await updateDoc(docRef, { status: 'complete' });
+      
+      // 5. Generate QR Code for retrieval
+      const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
+      setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
+      
+      setUploadStatus("complete");
+      setRuntimeStatus(prev => ({ ...prev, cloudSync: 'SUCCESS' }));
+    } catch (error: any) {
+      setUploadStatus("error");
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'create',
+        requestResourceData: sessionData
+      }));
+    }
+  }, [originUrl]);
+
   const preSpoolPrintFile = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
@@ -239,53 +293,6 @@ export default function KioskPage() {
     }, 'image/jpeg', 0.95);
   }, [selectedBlueprint, capturedPhotos, selectedQuote, selectedFilter, placedStickers]);
 
-  /**
-   * HIGH-SPEED CLOUD SYNC
-   * Optimized for zero UI lag.
-   */
-  const handleCloudSync = useCallback(async (blob: Blob) => {
-    const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
-    setCurrentSessionId(sessionId);
-    
-    // INSTANT QR GENERATION
-    const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
-    setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-
-    const { storage, db } = initializeFirebase();
-    
-    // ASYNC BACKGROUND EXECUTION
-    setUploadStatus("uploading");
-    SessionStore.savePhotoLocally(sessionId, blob).catch(() => {});
-
-    const docRef = doc(db, "photos", sessionId);
-    const sessionData = {
-      id: sessionId,
-      storagePath: `photos/${sessionId}.jpg`,
-      timestamp: serverTimestamp(),
-      isDownloaded: false,
-      promoConsent: null,
-      status: 'uploading'
-    };
-
-    setDoc(docRef, sessionData).then(() => {
-      setRuntimeStatus(prev => ({ ...prev, sessionCreated: 'SUCCESS' }));
-      const photoRef = ref(storage, `photos/${sessionId}.jpg`);
-      uploadBytes(photoRef, blob).then(async () => {
-        updateDoc(docRef, { status: 'complete' }).then(() => {
-          setUploadStatus("complete");
-          setRuntimeStatus(prev => ({ ...prev, cloudSync: 'SUCCESS' }));
-        });
-      });
-    }).catch(async (error) => {
-      setUploadStatus("error");
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: docRef.path,
-        operation: 'create',
-        requestResourceData: sessionData
-      }));
-    });
-  }, [originUrl]);
-
   const addSticker = (type: string) => {
     const newSticker: PlacedSticker = {
       id: Math.random().toString(36).substring(7),
@@ -312,12 +319,10 @@ export default function KioskPage() {
     setPromoConsent(null);
     setCurrentShotIndex(0);
     setPreparedBlob(null);
+    setUploadStatus("idle");
+    setSoftCopyQrUrl("");
   }, []);
 
-  /**
-   * OPTIMIZED SHOT SEQUENCE
-   * Removes artificial delays to ensure smooth countdowns.
-   */
   const startShotSequence = async () => {
     const totalShots = packageSelected === 50 ? 3 : 6;
     const photos: string[] = capturedPhotos.length > 0 ? [...capturedPhotos] : [];
@@ -329,15 +334,11 @@ export default function KioskPage() {
          i < (selectedRetakeIndex !== null ? selectedRetakeIndex + 1 : totalShots); i++) {
       setCurrentShotIndex(i);
       setCountdown(null);
-      
-      // Fast transition to countdown
       await new Promise(r => setTimeout(r, 200));
-      
       for (let c = 3; c > 0; c--) {
         setCountdown(c);
         await new Promise(r => setTimeout(r, 1000));
       }
-      
       setCountdown(null);
       setIsProcessing(true);
       const shot = takePhoto();
@@ -345,8 +346,6 @@ export default function KioskPage() {
         if (selectedRetakeIndex !== null) { photos[i] = shot; } else { photos.push(shot); }
         setCapturedPhotos([...photos]);
       }
-      
-      // Ultra-fast capture recovery
       await new Promise(r => setTimeout(r, 300)); 
       setIsProcessing(false);
     }
@@ -366,10 +365,6 @@ export default function KioskPage() {
     return null;
   };
 
-  /**
-   * OPTIMIZED CAMERA LIFECYCLE
-   * Reuses stream to prevent black screens.
-   */
   useEffect(() => {
     if (appState === "setup" || appState === "capturing") {
       const start = async () => {
@@ -379,10 +374,9 @@ export default function KioskPage() {
           }
           return;
         }
-        
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } }, 
+            video: { width: { ideal: 1920 }, height: { ideal: 1080 } }, 
             audio: false 
           });
           setCameraStream(stream);
@@ -457,7 +451,7 @@ export default function KioskPage() {
                     <p>FULL FILTER LIBRARY</p>
                   </div>
                 </button>
-              ) : paymentReceived >= 50 ? (
+              ) : (
                 <button 
                   onClick={() => { setPackageSelected(50); setAppState("setup"); }}
                   className="group relative bg-white/5 border-4 border-primary p-10 flex flex-col items-center transition-all hover:bg-primary/5 active:scale-95 w-[420px]"
@@ -470,11 +464,6 @@ export default function KioskPage() {
                     <p>5 BEAUTY FILTERS</p>
                   </div>
                 </button>
-              ) : (
-                <div className="text-center space-y-4">
-                  <p className="text-xl font-black italic uppercase text-red-500">No payment detected</p>
-                  <NeonButton onClick={() => setAppState("payment")}>BACK TO PAYMENT</NeonButton>
-                </div>
               )}
             </div>
           </div>
@@ -613,7 +602,13 @@ export default function KioskPage() {
             </div>
             <NeonButton 
               disabled={isPreparingPrint || !preparedBlob}
-              onClick={() => { if (preparedBlob) { initiatePrint(preparedBlob); handleCloudSync(preparedBlob); } setAppState("printing"); }} 
+              onClick={() => { 
+                if (preparedBlob) { 
+                  initiatePrint(preparedBlob); 
+                  handleCloudSync(preparedBlob); 
+                } 
+                setAppState("printing"); 
+              }} 
               className="w-full max-w-md py-6 text-xl"
             >
               PROCEED TO PRINT
@@ -622,32 +617,84 @@ export default function KioskPage() {
         )}
 
         {appState === "printing" && (
-          <div className="w-full flex flex-col items-center justify-center gap-6 px-6 h-full relative">
-             <div className="w-full max-w-3xl space-y-6 text-center flex flex-col items-center">
-                <h2 className="font-headline font-black text-5xl italic uppercase text-primary">Printing...</h2>
-                <Progress value={printProgress} className="h-4 bg-white/10 w-full" />
-                {softCopyQrUrl && promoConsent !== null && (
-                  <div className="mt-6 animate-in fade-in zoom-in duration-500">
-                    <div className="bg-white/5 border-2 border-white/10 p-8 flex flex-col items-center space-y-4 rounded-[3rem] w-[380px] mx-auto shadow-2xl">
-                      <h3 className="text-2xl font-black italic uppercase text-primary">HD SOFT COPY</h3>
-                      <div className="aspect-square w-full bg-white p-6 rounded-[2rem] flex items-center justify-center">
-                        <img src={softCopyQrUrl} alt="Scan to save" className="w-full h-full" />
-                      </div>
-                      <button onClick={() => setAppState("thankyou")} className="w-full bg-primary py-6 text-xl font-black uppercase italic rounded-2xl active:scale-95">COMPLETE</button>
-                    </div>
+          <div className="w-full h-full flex flex-row overflow-hidden relative">
+             {/* LEFT SIDE: PRINTING STATUS */}
+             <div className="flex-1 flex flex-col items-center justify-center p-12 border-r border-white/10">
+                {/* TOP: Consent Status */}
+                <div className="mb-12 min-h-[40px]">
+                   {promoConsent !== null && (
+                     <div className="flex items-center gap-3 text-primary font-black uppercase italic text-2xl animate-in slide-in-from-top-4">
+                       <CheckCircle2 className="w-8 h-8" />
+                       {promoConsent ? "Promotion Approved" : "Private Session"}
+                     </div>
+                   )}
+                </div>
+
+                {/* MIDDLE: Status Text */}
+                <div className="text-center mb-8">
+                   <h2 className="font-headline font-black text-6xl italic uppercase text-primary mb-4">Printing...</h2>
+                   <div className="flex items-center justify-center gap-3">
+                     {uploadStatus !== 'complete' && <Loader2 className="w-4 h-4 text-white/40 animate-spin" />}
+                     <p className="text-white/40 font-bold uppercase tracking-[0.3em] text-sm italic">
+                       {uploadStatus === 'idle' && "Initializing..."}
+                       {uploadStatus === 'uploading' && "Saving Soft Copy..."}
+                       {uploadStatus === 'complete' && "System Ready"}
+                       {uploadStatus === 'error' && "Cloud Sync Issue"}
+                     </p>
+                   </div>
+                </div>
+
+                {/* BOTTOM: Progress Bar */}
+                <div className="w-full max-w-2xl">
+                   <Progress value={printProgress} className="h-8 bg-white/10 w-full" />
+                </div>
+             </div>
+
+             {/* RIGHT SIDE PANEL: Soft Copy QR */}
+             <div className="w-[480px] bg-white/5 flex flex-col items-center justify-center p-10">
+                {uploadStatus === 'complete' && softCopyQrUrl ? (
+                  <div className="animate-in fade-in zoom-in-95 duration-700 flex flex-col items-center space-y-8">
+                     <div className="text-center space-y-2">
+                       <h3 className="text-3xl font-black italic uppercase text-primary">HD SOFT COPY</h3>
+                       <p className="text-[10px] font-black uppercase text-white/30 tracking-widest">Available for 24 hours</p>
+                     </div>
+                     <div className="bg-white p-6 rounded-[3rem] shadow-[0_0_50px_rgba(255,255,255,0.1)]">
+                        <img src={softCopyQrUrl} alt="Scan to save" className="w-64 h-64" />
+                     </div>
+                     <p className="text-xs font-bold uppercase text-white/40 text-center leading-relaxed">Scan now to save your<br/>high-resolution portrait</p>
+                     
+                     {printProgress >= 100 && (
+                        <button 
+                          onClick={() => setAppState("thankyou")} 
+                          className="w-full bg-primary py-8 text-2xl font-black uppercase italic rounded-3xl shadow-[0_10px_30px_rgba(255,51,153,0.3)] active:scale-95 transition-all text-white"
+                        >
+                          DONE
+                        </button>
+                     )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center space-y-6 opacity-20">
+                     <div className="relative">
+                        <Loader2 className="w-16 h-16 text-white animate-spin" />
+                        <Camera className="w-6 h-6 absolute inset-0 m-auto" />
+                     </div>
+                     <span className="text-sm font-black uppercase italic tracking-widest">Generating QR...</span>
                   </div>
                 )}
              </div>
 
+             {/* CONSENT OVERLAY (PRIORITIZED) */}
              {promoConsent === null && (
-               <div className="absolute inset-0 bg-black/90 border-4 border-primary p-12 flex flex-col items-center space-y-8 rounded-[4rem] w-full max-w-3xl shadow-2xl z-[150] self-center">
-                 <div className="space-y-6 text-center">
-                   <h3 className="text-4xl font-black italic uppercase text-primary">Share Your Photo?</h3>
-                   <p className="text-white text-lg font-bold uppercase">May we post your photo on our Facebook page for promotion?</p>
-                 </div>
-                 <div className="grid grid-cols-2 gap-6 w-full">
-                    <button onClick={() => setPromoConsent(true)} className="py-8 border-4 border-green-500 bg-green-500/20 text-green-500 text-2xl font-black italic uppercase rounded-2xl">YES</button>
-                    <button onClick={() => setPromoConsent(false)} className="py-8 border-4 border-red-500 bg-red-500/20 text-red-500 text-2xl font-black italic uppercase rounded-2xl">NO</button>
+               <div className="absolute inset-0 bg-black/95 z-[200] flex items-center justify-center p-6 backdrop-blur-md">
+                 <div className="bg-zinc-950 border-4 border-primary p-12 flex flex-col items-center space-y-10 rounded-[4rem] w-full max-w-4xl shadow-2xl">
+                   <div className="space-y-6 text-center">
+                     <h3 className="text-5xl font-black italic uppercase text-primary">Share Your Photo?</h3>
+                     <p className="text-white text-xl font-bold uppercase tracking-wide">May we post your photo on our Facebook page for promotion?</p>
+                   </div>
+                   <div className="grid grid-cols-2 gap-8 w-full">
+                      <button onClick={() => setPromoConsent(true)} className="py-10 border-4 border-green-500 bg-green-500/10 text-green-500 text-3xl font-black italic uppercase rounded-3xl hover:bg-green-500/20 active:scale-95 transition-all">YES</button>
+                      <button onClick={() => setPromoConsent(false)} className="py-10 border-4 border-red-500 bg-red-500/10 text-red-500 text-3xl font-black italic uppercase rounded-3xl hover:bg-red-500/20 active:scale-95 transition-all">NO</button>
+                   </div>
                  </div>
                </div>
              )}
@@ -655,27 +702,32 @@ export default function KioskPage() {
         )}
 
         {appState === "thankyou" && (
-          <div className="fixed inset-0 bg-black flex flex-col items-center justify-center animate-in fade-in duration-1000 p-6">
-             <div className="flex flex-row gap-12 items-center justify-center">
-                <div className="flex flex-col items-center space-y-4">
-                   <h2 className="font-headline font-black text-3xl italic uppercase text-primary">HD SOFT COPY</h2>
-                   <div className="w-56 h-56 bg-white p-4 rounded-3xl flex items-center justify-center">
-                      <img src={softCopyQrUrl} alt="HD Retrieval" className="w-full h-full" />
-                   </div>
-                </div>
-                <div className="flex flex-col items-center space-y-4">
-                   <h2 className="font-headline font-black text-3xl italic uppercase text-primary flex items-center gap-3">
-                     FOLLOW US <span className="text-4xl animate-bounce">👇</span>
-                   </h2>
-                   <div className="w-56 h-56 bg-white p-4 rounded-3xl flex items-center justify-center border-4 border-primary/20">
-                      <img src={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent("https://www.facebook.com/share/18vnB4a7gB/")}`} alt="Facebook QR" className="w-full h-full" />
-                   </div>
-                </div>
+          <div className="fixed inset-0 bg-black flex flex-col items-center justify-center animate-in fade-in duration-1000 p-12 space-y-12">
+             <div className="text-center space-y-4">
+                <h2 className="font-headline font-black text-7xl italic uppercase text-primary">Thank You!</h2>
+                <p className="text-white/40 font-bold uppercase tracking-[0.4em] text-sm">Visit us again at JNL Studio</p>
              </div>
-             <NeonButton onClick={resetSession} className="px-16 py-6 text-xl mt-10">BACK TO START</NeonButton>
+
+             <div className="bg-white/5 border-2 border-white/10 p-12 rounded-[5rem] flex flex-col items-center space-y-8 shadow-2xl backdrop-blur-sm">
+                <div className="flex items-center gap-6">
+                   <h3 className="text-4xl font-black italic uppercase text-primary">FOLLOW US</h3>
+                   <span className="text-6xl animate-bounce">👇</span>
+                </div>
+                <div className="bg-white p-8 rounded-[4rem] shadow-xl">
+                   <img 
+                     src={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent("https://www.facebook.com/share/18vnB4a7gB/")}`} 
+                     alt="Facebook Page" 
+                     className="w-72 h-72" 
+                   />
+                </div>
+                <p className="text-white/40 font-bold uppercase tracking-widest text-base">Scan to follow JNL Studio on Facebook</p>
+             </div>
+
+             <NeonButton onClick={resetSession} className="px-24 !py-10 text-3xl mt-6 rounded-2xl">BACK TO START</NeonButton>
           </div>
         )}
       </div>
     </KioskLayout>
   );
 }
+

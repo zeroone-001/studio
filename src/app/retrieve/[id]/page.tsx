@@ -18,7 +18,7 @@ export default function RetrievePage() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<'verifying' | 'syncing' | 'complete'>('verifying');
   const retryCount = useRef(0);
-  const MAX_RETRIES = 240; // ~2 minutes of aggressive polling (500ms)
+  const MAX_RETRIES = 120; // 60 seconds at 500ms intervals
 
   const fetchPhoto = useCallback(async () => {
     if (!id) return;
@@ -30,36 +30,34 @@ export default function RetrievePage() {
       
       if (docSnap.exists()) {
         const data = docSnap.data();
-        // Even if status is 'uploading', we try to get the URL as Storage might be faster than Firestore update
-        if (data.status === 'complete' || data.status === 'uploading') {
-          const photoRef = ref(storage, `photos/${id}.jpg`);
-          try {
-            const url = await getDownloadURL(photoRef);
-            setImageUrl(url);
-            setLoading(false);
-            setStatus('complete');
-            return;
-          } catch (e) {
-            // Document exists but Storage file content is still propagating
-            setStatus('syncing');
-          }
+        
+        // Try storage immediately if record exists
+        const photoRef = ref(storage, `photos/${id}.jpg`);
+        try {
+          const url = await getDownloadURL(photoRef);
+          setImageUrl(url);
+          setLoading(false);
+          setStatus('complete');
+          return;
+        } catch (e) {
+          // Document exists but file is still propagating in storage
+          setStatus('syncing');
         }
       }
 
       if (retryCount.current < MAX_RETRIES) {
         retryCount.current += 1;
-        setTimeout(fetchPhoto, 500); 
+        setTimeout(fetchPhoto, 500); // Fast polling for immediate retrieval
       } else {
-        setError("Your photo sync is taking longer than expected. Please try refreshing the page.");
+        setError("Your photo sync is taking longer than expected. Please check your connection.");
         setLoading(false);
       }
     } catch (err: any) {
-      // Don't fail immediately on transient network errors during polling
       if (retryCount.current < MAX_RETRIES) {
         retryCount.current += 1;
         setTimeout(fetchPhoto, 1000);
       } else {
-        setError("Unable to connect to JNL Cloud. Please check your signal.");
+        setError("Unable to connect to JNL Cloud. Please try refreshing.");
         setLoading(false);
       }
     }
@@ -102,7 +100,7 @@ export default function RetrievePage() {
               </div>
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <p className="text-white text-xl font-black uppercase italic">Preparing your photo...</p>
+                  <p className="text-white text-xl font-black uppercase italic">Preparing Soft Copy...</p>
                   <p className="text-white/40 text-[10px] font-bold uppercase italic tracking-widest">Inihahanda ang iyong larawan...</p>
                 </div>
                 {status === 'syncing' && (
@@ -117,7 +115,7 @@ export default function RetrievePage() {
                 <p className="text-white/80 font-black uppercase italic text-lg">Transmission Issue</p>
                 <p className="text-white/40 font-bold uppercase text-[10px]">{error}</p>
               </div>
-              <NeonButton onClick={() => window.location.reload()} className="w-full !py-6">RETRY CONNECTION</NeonButton>
+              <NeonButton onClick={() => window.location.reload()} className="w-full !py-6">RETRY</NeonButton>
             </div>
           ) : (
             <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
@@ -140,3 +138,4 @@ export default function RetrievePage() {
     </KioskLayout>
   );
 }
+

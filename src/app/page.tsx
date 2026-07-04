@@ -146,11 +146,14 @@ export default function KioskPage() {
           text: 'Open with NokoPrint'
         });
         setRuntimeStatus(prev => ({ ...prev, intentAcknowledged: 'SUCCESS', navigatorShareResolved: 'SUCCESS', nokoprintOpened: 'SUCCESS' }));
+        KioskLogger.log('info', 'PRINT', 'Intent Dispatched to NokoPrint', 'SUCCESS');
       } else {
         setRuntimeStatus(prev => ({ ...prev, intentTriggered: 'FAILED', navigatorShareRejected: 'FAILED' }));
+        KioskLogger.log('error', 'PRINT', 'Navigator Share API Blocked or Unavailable', 'FAILED');
       }
     } catch (e: any) {
       setRuntimeStatus(prev => ({ ...prev, intentAcknowledged: 'FAILED', navigatorShareRejected: 'FAILED', lastErrorMessage: e.message }));
+      KioskLogger.log('error', 'PRINT', 'Intent Launch Failure', 'FAILED', e.message);
     }
   }, []);
 
@@ -618,9 +621,7 @@ export default function KioskPage() {
 
         {appState === "printing" && (
           <div className="w-full h-full flex flex-row overflow-hidden relative">
-             {/* LEFT SIDE: PRINTING STATUS */}
              <div className="flex-1 flex flex-col items-center justify-center p-12 border-r border-white/10">
-                {/* TOP: Consent Status */}
                 <div className="mb-12 min-h-[40px]">
                    {promoConsent !== null && (
                      <div className="flex items-center gap-3 text-primary font-black uppercase italic text-2xl animate-in slide-in-from-top-4">
@@ -630,27 +631,29 @@ export default function KioskPage() {
                    )}
                 </div>
 
-                {/* MIDDLE: Status Text */}
                 <div className="text-center mb-8">
                    <h2 className="font-headline font-black text-6xl italic uppercase text-primary mb-4">Printing...</h2>
-                   <div className="flex items-center justify-center gap-3">
-                     {uploadStatus !== 'complete' && <Loader2 className="w-4 h-4 text-white/40 animate-spin" />}
-                     <p className="text-white/40 font-bold uppercase tracking-[0.3em] text-sm italic">
-                       {uploadStatus === 'idle' && "Initializing..."}
-                       {uploadStatus === 'uploading' && "Saving Soft Copy..."}
-                       {uploadStatus === 'complete' && "System Ready"}
-                       {uploadStatus === 'error' && "Cloud Sync Issue"}
+                   <div className="flex flex-col items-center justify-center gap-3">
+                     <div className="flex items-center gap-2">
+                        {uploadStatus !== 'complete' && <Loader2 className="w-4 h-4 text-white/40 animate-spin" />}
+                        <p className="text-white/40 font-bold uppercase tracking-[0.3em] text-sm italic">
+                          {uploadStatus === 'idle' && "Initializing Sequence..."}
+                          {uploadStatus === 'uploading' && "Uploading High-Res Version..."}
+                          {uploadStatus === 'complete' && "Cloud Storage Verified"}
+                          {uploadStatus === 'error' && "Sync Interrupted"}
+                        </p>
+                     </div>
+                     <p className="text-primary text-[10px] font-black uppercase italic animate-pulse">
+                        {uploadStatus === 'complete' ? "SYSTEM READY - SCAN QR" : "HOLD ON, SYNCING..."}
                      </p>
                    </div>
                 </div>
 
-                {/* BOTTOM: Progress Bar */}
                 <div className="w-full max-w-2xl">
                    <Progress value={printProgress} className="h-8 bg-white/10 w-full" />
                 </div>
              </div>
 
-             {/* RIGHT SIDE PANEL: Soft Copy QR */}
              <div className="w-[480px] bg-white/5 flex flex-col items-center justify-center p-10">
                 {uploadStatus === 'complete' && softCopyQrUrl ? (
                   <div className="animate-in fade-in zoom-in-95 duration-700 flex flex-col items-center space-y-8">
@@ -678,12 +681,14 @@ export default function KioskPage() {
                         <Loader2 className="w-16 h-16 text-white animate-spin" />
                         <Camera className="w-6 h-6 absolute inset-0 m-auto" />
                      </div>
-                     <span className="text-sm font-black uppercase italic tracking-widest">Generating QR...</span>
+                     <div className="text-center space-y-2">
+                        <span className="text-sm font-black uppercase italic tracking-widest block">Verifying Upload...</span>
+                        <span className="text-[8px] font-bold uppercase block">QR generates after success</span>
+                     </div>
                   </div>
                 )}
              </div>
 
-             {/* CONSENT OVERLAY (PRIORITIZED) */}
              {promoConsent === null && (
                <div className="absolute inset-0 bg-black/95 z-[200] flex items-center justify-center p-6 backdrop-blur-md">
                  <div className="bg-zinc-950 border-4 border-primary p-12 flex flex-col items-center space-y-10 rounded-[4rem] w-full max-w-4xl shadow-2xl">
@@ -730,4 +735,3 @@ export default function KioskPage() {
     </KioskLayout>
   );
 }
-

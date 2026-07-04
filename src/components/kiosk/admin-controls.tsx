@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   LogOut, 
   RefreshCcw, 
@@ -13,7 +13,8 @@ import {
   Loader2,
   ExternalLink,
   ShieldCheck,
-  Zap
+  Zap,
+  Printer
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
@@ -54,7 +55,20 @@ export function AdminControls({
   runtimeStatus
 }: AdminControlsProps) {
   const [view, setView] = useState<'main' | 'logs' | 'diag'>('main');
+  const [usbStatus, setUsbStatus] = useState("OFFLINE");
   const logs = KioskLogger.getLogs();
+
+  useEffect(() => {
+    const checkUsb = async () => {
+      if ('usb' in navigator) {
+        const devices = await navigator.usb.getDevices();
+        setUsbStatus(devices.length > 0 ? "ONLINE" : "OFFLINE");
+      }
+    };
+    checkUsb();
+    const interval = setInterval(checkUsb, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleBreakout = () => {
     if (typeof window !== 'undefined') {
@@ -62,9 +76,20 @@ export function AdminControls({
     }
   };
 
+  const pairPrinter = async () => {
+    if ('usb' in navigator) {
+      try {
+        // @ts-ignore
+        await navigator.usb.requestDevice({ filters: [] });
+        KioskLogger.log('info', 'HARDWARE', 'New USB Device Paired', 'SUCCESS');
+      } catch (e) {
+        KioskLogger.log('error', 'HARDWARE', 'USB Pairing Cancelled', 'FAILED');
+      }
+    }
+  };
+
   const testPackage = (amount: number) => {
     onSimulateCash(amount);
-    // Amount is now set, app will automatically show the correct package confirmation screen
     onJumpTo('package-selection');
   };
 
@@ -83,10 +108,9 @@ export function AdminControls({
         {view === 'main' && (
           <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 scrollbar-hide">
             
-            {/* OWNER MODE TEST BUTTONS */}
             <div className="bg-primary/5 border border-primary/20 p-3 rounded-lg space-y-3">
               <h3 className="text-[8px] font-black uppercase text-primary italic flex items-center gap-2">
-                <Zap className="w-3 h-3" /> OWNER TEST MODE (BYPASS)
+                <Zap className="w-3 h-3" /> OWNER TEST MODE
               </h3>
               <div className="grid grid-cols-2 gap-2">
                 <button 
@@ -103,6 +127,13 @@ export function AdminControls({
                 </button>
               </div>
             </div>
+
+            <button 
+              onClick={pairPrinter}
+              className="w-full py-4 text-[10px] font-black uppercase flex items-center justify-center gap-2 border-2 border-blue-500/40 bg-blue-500/10 text-blue-400"
+            >
+              <Printer className="w-4 h-4" /> Pair Printer (Epson L210)
+            </button>
 
             {runtimeStatus && (
               <div className="bg-white/5 border border-primary/20 p-3 rounded-lg space-y-2">
@@ -121,15 +152,6 @@ export function AdminControls({
                   ))}
                 </div>
               </div>
-            )}
-
-            {runtimeStatus?.topLevelContext === 'NO' && (
-              <button 
-                onClick={handleBreakout}
-                className="w-full py-4 text-[10px] font-black uppercase flex items-center justify-center gap-2 border-2 bg-amber-500/20 border-amber-500/40 text-amber-500 animate-pulse"
-              >
-                <ExternalLink className="w-4 h-4" /> RELAUNCH AS TOP LEVEL
-              </button>
             )}
 
             <button onClick={onReset} className="w-full bg-red-500/10 border border-red-500/30 py-3 text-[10px] font-black uppercase text-red-500 flex items-center justify-center gap-2">
@@ -165,7 +187,35 @@ export function AdminControls({
           <div className="space-y-4">
              <div className="space-y-2">
                 <label className="text-[8px] font-black uppercase text-white/40 flex items-center gap-2">
-                  <ShieldCheck className="w-3 h-3" /> Browser Environment
+                  <Printer className="w-3 h-3" /> PRINT DIAGNOSTICS
+                </label>
+                <div className="bg-black/40 border border-white/10 p-3 space-y-3">
+                   <div className="flex justify-between items-center">
+                     <span className="text-[9px] font-bold text-white/40 uppercase">Printer Status</span>
+                     <span className={cn("text-[9px] font-black italic", usbStatus === 'ONLINE' ? "text-green-500" : "text-red-500")}>{usbStatus}</span>
+                   </div>
+                   <div className="flex justify-between items-center">
+                     <span className="text-[9px] font-bold text-white/40 uppercase">Connection Source</span>
+                     <span className="text-[9px] font-black italic text-primary">NokoPrint (Android Intent)</span>
+                   </div>
+                   <div className="flex justify-between items-center">
+                     <span className="text-[9px] font-bold text-white/40 uppercase">Last Print Attempt</span>
+                     <span className={cn("text-[9px] font-black italic", runtimeStatus?.intentAcknowledged === 'SUCCESS' ? "text-green-500" : runtimeStatus?.intentAcknowledged === 'FAILED' ? "text-red-500" : "text-white/20")}>
+                        {runtimeStatus?.intentAcknowledged || "NONE"}
+                     </span>
+                   </div>
+                   {runtimeStatus?.lastErrorMessage && (
+                     <div className="pt-2 border-t border-white/5">
+                        <span className="text-[7px] font-bold text-red-500 uppercase block mb-1">Last Error</span>
+                        <span className="text-[7px] font-mono text-red-400 break-all">{runtimeStatus.lastErrorMessage}</span>
+                     </div>
+                   )}
+                </div>
+             </div>
+
+             <div className="space-y-2">
+                <label className="text-[8px] font-black uppercase text-white/40 flex items-center gap-2">
+                  <ShieldCheck className="w-3 h-3" /> ENVIRONMENT
                 </label>
                 <div className="bg-black/40 border border-white/10 p-3 space-y-3">
                    <div className="flex justify-between items-center">
@@ -175,18 +225,6 @@ export function AdminControls({
                    <div className="flex justify-between items-center">
                      <span className="text-[9px] font-bold text-white/40 uppercase">Top Level Window</span>
                      <span className={cn("text-[9px] font-black italic", runtimeStatus?.topLevelContext === 'YES' ? "text-green-500" : "text-red-500")}>{runtimeStatus?.topLevelContext}</span>
-                   </div>
-                </div>
-             </div>
-
-             <div className="space-y-2">
-                <label className="text-[8px] font-black uppercase text-white/40 flex items-center gap-2">
-                  <Cpu className="w-3 h-3" /> System Diagnostics
-                </label>
-                <div className="bg-black/40 border border-white/10 p-3 space-y-3">
-                   <div className="flex flex-col gap-1">
-                     <span className="text-[7px] font-bold text-white/20 uppercase">User Agent</span>
-                     <span className="text-[7px] font-mono text-white/40 break-all">{runtimeStatus?.userAgent}</span>
                    </div>
                 </div>
              </div>

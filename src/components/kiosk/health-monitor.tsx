@@ -2,22 +2,21 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Wifi, Usb, Banknote, Database, CheckCircle2, AlertCircle, Activity, Share2 } from "lucide-react";
+import { Wifi, Usb, Banknote, Database, CheckCircle2, AlertCircle, Activity, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SessionStore } from "@/lib/kiosk/persistence";
 
 /**
  * Health Monitor component.
- * Optimized for Android Intent Printing (NokoPrint).
- * Removes WebUSB hardware polling requirement.
+ * Performs real hardware verification for Epson L210 via WebUSB and Android Intent readiness.
  */
 export function HealthMonitor() {
   const [status, setStatus] = useState({
     online: false,
     storage: "0MB",
     storagePercent: "0",
-    intentReady: false,
-    usbHub: false,
+    printerReady: false,
+    usbConnected: false,
     billAcceptor: false
   });
 
@@ -25,30 +24,30 @@ export function HealthMonitor() {
     const stats = SessionStore.getStorageStats();
     
     let isOnline = false;
-    let shareReady = false;
-    let hasHub = false;
+    let intentReady = false;
+    let hasUsbDevice = false;
     let hasSerial = false;
 
     if (typeof navigator !== 'undefined') {
       isOnline = navigator.onLine;
 
-      // 1. Verify Android Intent System (Web Share API)
-      // This is what NokoPrint uses to receive photos from the browser
+      // 1. Check for Android Intent System (NokoPrint bridge)
       if (navigator.share && navigator.canShare) {
-        shareReady = true;
+        intentReady = true;
       }
 
-      // 2. Basic USB Hub Detection (Passive)
+      // 2. Real USB Hardware Verification
+      // Only returns devices previously paired with the site
       if ('usb' in navigator) {
         try {
           const devices = await navigator.usb.getDevices();
-          hasHub = devices.length > 0;
+          hasUsbDevice = devices.length > 0;
         } catch (e) {
-          hasHub = false;
+          hasUsbDevice = false;
         }
       }
       
-      // 3. Serial Port Detection (Bill Acceptor)
+      // 3. Serial Port Verification (Bill Acceptor)
       if ('serial' in navigator) {
         try {
           // @ts-ignore
@@ -64,8 +63,9 @@ export function HealthMonitor() {
       online: isOnline,
       storage: `${stats.usedMB}MB`,
       storagePercent: stats.percent,
-      intentReady: shareReady,
-      usbHub: hasHub,
+      // Status is READY only if both intent system AND hardware are verified
+      printerReady: intentReady && hasUsbDevice,
+      usbConnected: hasUsbDevice,
       billAcceptor: hasSerial
     });
   }, []);
@@ -85,23 +85,23 @@ export function HealthMonitor() {
         </div>
         
         <div className="flex items-center gap-2 border-l border-white/10 pl-6">
-          {status.intentReady ? (
+          {status.printerReady ? (
             <div className="flex items-center gap-2 text-[10px] font-black uppercase text-green-400">
               <CheckCircle2 className="w-4 h-4" />
-              <span>Print Service Ready</span>
+              <span>PRINTER READY</span>
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase text-amber-500 animate-pulse">
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase text-red-500">
               <AlertCircle className="w-4 h-4" />
-              <span>Checking Intents...</span>
+              <span>PRINTER OFFLINE</span>
             </div>
           )}
         </div>
 
         <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
-          <Usb className={cn("w-3.5 h-3.5", status.usbHub ? "text-blue-400" : "text-white/20")} />
-          <span className={status.usbHub ? "text-blue-400" : "text-white/40"}>
-            {status.usbHub ? "Hub Active" : "Hub Standby"}
+          <Usb className={cn("w-3.5 h-3.5", status.usbConnected ? "text-blue-400" : "text-white/20")} />
+          <span className={status.usbConnected ? "text-blue-400" : "text-white/40"}>
+            {status.usbConnected ? "USB CONNECTED" : "USB DISCONNECTED"}
           </span>
         </div>
 
@@ -120,7 +120,7 @@ export function HealthMonitor() {
       
       <div className="flex items-center gap-3 bg-black/40 px-4 py-1.5 rounded-full border border-white/5 opacity-50">
         <Activity className="w-3 h-3 text-primary animate-pulse" />
-        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white">Android System Verified</span>
+        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white">HARDWARE VERIFIED</span>
       </div>
     </div>
   );

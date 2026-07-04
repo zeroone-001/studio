@@ -124,6 +124,7 @@ export default function KioskPage() {
 
   /**
    * INITIATE PRINT (SYNCHRONOUS INTENT DISPATCH)
+   * Prioritizes intent launch to avoid user gesture expiry.
    */
   const initiatePrint = useCallback(async (blob: Blob) => {
     KioskLogger.log('info', 'PRINT', 'User Gesture Activated. Requesting Intent...', 'PENDING');
@@ -149,6 +150,10 @@ export default function KioskPage() {
     }
   }, []);
 
+  /**
+   * PRE-SPOOL PRINT FILE
+   * Generates high-res canvas in background to ensure zero lag at print time.
+   */
   const preSpoolPrintFile = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
@@ -237,21 +242,21 @@ export default function KioskPage() {
 
   /**
    * HIGH-SPEED CLOUD SYNC
-   * Generates QR instantly locally and uploads in the background.
+   * Optimized for zero UI lag.
    */
   const handleCloudSync = useCallback(async (blob: Blob) => {
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
     
-    // INSTANT QR GENERATION (Pre-network)
+    // INSTANT QR GENERATION
     const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
 
     const { storage, db } = initializeFirebase();
     
-    // BACKGROUND SYNC (Non-blocking)
-    SessionStore.savePhotoLocally(sessionId, blob);
+    // ASYNC BACKGROUND EXECUTION
     setUploadStatus("uploading");
+    SessionStore.savePhotoLocally(sessionId, blob).catch(() => {});
 
     const docRef = doc(db, "photos", sessionId);
     const sessionData = {
@@ -263,14 +268,14 @@ export default function KioskPage() {
       status: 'uploading'
     };
 
-    // Parallel execution
     setDoc(docRef, sessionData).then(() => {
       setRuntimeStatus(prev => ({ ...prev, sessionCreated: 'SUCCESS' }));
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       uploadBytes(photoRef, blob).then(async () => {
-        await updateDoc(docRef, { status: 'complete' });
-        setUploadStatus("complete");
-        setRuntimeStatus(prev => ({ ...prev, cloudSync: 'SUCCESS' }));
+        updateDoc(docRef, { status: 'complete' }).then(() => {
+          setUploadStatus("complete");
+          setRuntimeStatus(prev => ({ ...prev, cloudSync: 'SUCCESS' }));
+        });
       });
     }).catch(async (error) => {
       setUploadStatus("error");
@@ -310,24 +315,30 @@ export default function KioskPage() {
     setPreparedBlob(null);
   }, []);
 
+  /**
+   * OPTIMIZED SHOT SEQUENCE
+   * Removes artificial delays to ensure smooth countdowns.
+   */
   const startShotSequence = async () => {
     const totalShots = packageSelected === 50 ? 3 : 6;
     const photos: string[] = capturedPhotos.length > 0 ? [...capturedPhotos] : [];
     
     setAppState("capturing");
-    setIsCapturingReady(false);
-    await new Promise(r => setTimeout(r, 1000));
     setIsCapturingReady(true);
 
     for (let i = (selectedRetakeIndex !== null ? selectedRetakeIndex : 0); 
          i < (selectedRetakeIndex !== null ? selectedRetakeIndex + 1 : totalShots); i++) {
       setCurrentShotIndex(i);
       setCountdown(null);
-      await new Promise(r => setTimeout(r, 1000));
+      
+      // Fast transition to countdown
+      await new Promise(r => setTimeout(r, 200));
+      
       for (let c = 3; c > 0; c--) {
         setCountdown(c);
         await new Promise(r => setTimeout(r, 1000));
       }
+      
       setCountdown(null);
       setIsProcessing(true);
       const shot = takePhoto();
@@ -335,7 +346,9 @@ export default function KioskPage() {
         if (selectedRetakeIndex !== null) { photos[i] = shot; } else { photos.push(shot); }
         setCapturedPhotos([...photos]);
       }
-      await new Promise(r => setTimeout(r, 500)); 
+      
+      // Ultra-fast capture recovery
+      await new Promise(r => setTimeout(r, 300)); 
       setIsProcessing(false);
     }
     setSelectedRetakeIndex(null);
@@ -349,18 +362,28 @@ export default function KioskPage() {
       canvasRef.current.width = videoRef.current.videoWidth;
       canvasRef.current.height = videoRef.current.videoHeight;
       context.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
-      return canvasRef.current.toDataURL('image/jpeg', 0.95);
+      return canvasRef.current.toDataURL('image/jpeg', 0.92);
     }
     return null;
   };
 
+  /**
+   * OPTIMIZED CAMERA LIFECYCLE
+   * Reuses stream to prevent black screens.
+   */
   useEffect(() => {
     if (appState === "setup" || appState === "capturing") {
       const start = async () => {
-        if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
+        if (cameraStream && cameraStream.active) {
+          if (videoRef.current && videoRef.current.srcObject !== cameraStream) {
+            videoRef.current.srcObject = cameraStream;
+          }
+          return;
+        }
+        
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { width: { ideal: 1920 }, height: { ideal: 1080 } }, 
+            video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } }, 
             audio: false 
           });
           setCameraStream(stream);
@@ -370,7 +393,7 @@ export default function KioskPage() {
       start();
     }
     if (appState === "final-preview") { preSpoolPrintFile(); }
-  }, [appState, preSpoolPrintFile]);
+  }, [appState, preSpoolPrintFile, cameraStream]);
 
   return (
     <KioskLayout>
@@ -422,7 +445,6 @@ export default function KioskPage() {
           <div className="w-full h-full flex flex-col items-center justify-center px-10 gap-12">
             <h2 className="text-5xl font-headline font-black italic uppercase text-primary">CONFIRM PACKAGE</h2>
             <div className="flex justify-center w-full max-w-5xl">
-              {/* If bill detected is 50, show only 50. If 100, show only 100. */}
               {paymentReceived >= 100 ? (
                 <button 
                   onClick={() => { setPackageSelected(100); setAppState("setup"); }}

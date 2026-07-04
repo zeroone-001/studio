@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -31,8 +32,9 @@ export function KioskLayout({ children, className }: KioskLayoutProps) {
   const [meteors, setMeteors] = useState<Meteor[]>([]);
 
   useEffect(() => {
+    // Optimized particle count for mobile performance
     setStars(
-      Array.from({ length: 150 }).map((_, i) => ({
+      Array.from({ length: 60 }).map((_, i) => ({
         id: i,
         top: `${Math.random() * 100}%`,
         left: `${Math.random() * 100}%`,
@@ -44,7 +46,7 @@ export function KioskLayout({ children, className }: KioskLayoutProps) {
     );
 
     setMeteors(
-      Array.from({ length: 8 }).map((_, i) => ({
+      Array.from({ length: 4 }).map((_, i) => ({
         id: i,
         top: `${Math.random() * 50}%`,
         right: `${Math.random() * 30}%`,
@@ -60,7 +62,7 @@ export function KioskLayout({ children, className }: KioskLayoutProps) {
         {stars.map((star) => (
           <div
             key={star.id}
-            className="absolute rounded-full bg-white animate-twinkle shadow-[0_0_12px_rgba(255,255,255,0.9)]"
+            className="absolute rounded-full bg-white animate-twinkle shadow-[0_0_8px_rgba(255,255,255,0.6)]"
             style={{
               top: star.top,
               left: star.left,
@@ -69,26 +71,28 @@ export function KioskLayout({ children, className }: KioskLayoutProps) {
               opacity: star.opacity,
               animationDuration: star.duration,
               animationDelay: star.delay,
+              willChange: "opacity, transform"
             }}
           />
         ))}
         {meteors.map((meteor) => (
           <div
             key={meteor.id}
-            className="absolute w-[3px] h-[200px] bg-gradient-to-b from-white via-primary/60 to-transparent opacity-0 animate-meteor"
+            className="absolute w-[2px] h-[150px] bg-gradient-to-b from-white via-primary/40 to-transparent opacity-0 animate-meteor"
             style={{
               top: meteor.top,
               right: meteor.right,
               animationDuration: meteor.duration,
               animationDelay: meteor.delay,
+              willChange: "transform, opacity"
             }}
           />
         ))}
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/10 via-transparent to-primary/10" />
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-primary/5" />
       </div>
 
       <div className={cn(
-        "kiosk-container z-10 bg-black/10 backdrop-blur-[1px]",
+        "kiosk-container z-10 bg-black/5 backdrop-blur-[0.5px]",
         className
       )}>
         {children}

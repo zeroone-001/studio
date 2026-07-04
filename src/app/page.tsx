@@ -140,10 +140,6 @@ export default function KioskPage() {
     }
   }, [selectedCameraId]);
 
-  /**
-   * ACTUAL PRINT DISPATCH (Honor Pad X10 Android Intent)
-   * This MUST be called synchronously within a user gesture.
-   */
   const initiatePrint = useCallback(async (blob: Blob) => {
     KioskLogger.log('info', 'PRINT', 'User Gesture Activated. Requesting Intent...', 'PENDING');
     setRuntimeStatus(prev => ({ ...prev, intentTriggered: 'SUCCESS', navigatorShareStarted: 'SUCCESS' }));
@@ -174,10 +170,6 @@ export default function KioskPage() {
     }
   }, []);
 
-  /**
-   * PRE-SPOOLING ENGINE
-   * Generates the high-res blob BEFORE the user clicks "Proceed to Print"
-   */
   const preSpoolPrintFile = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
@@ -276,7 +268,6 @@ export default function KioskPage() {
     }, 'image/jpeg', 0.95);
   }, [selectedBlueprint, capturedPhotos, selectedQuote, selectedFilter, placedStickers]);
 
-  // Handle Cloud Sync & QR separately (doesn't need gesture)
   const handleCloudSync = useCallback(async (blob: Blob) => {
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
@@ -723,13 +714,26 @@ export default function KioskPage() {
 
         {appState === "printing" && (
           <div className="w-full flex flex-col items-center justify-center gap-12 px-10 h-full relative">
-             <div className="w-full max-w-4xl space-y-10 text-center">
+             <div className="w-full max-w-4xl space-y-10 text-center flex flex-col items-center">
                 <h2 className="font-headline font-black text-6xl italic uppercase text-primary">Printing...</h2>
-                <Progress value={printProgress} className="h-6 bg-white/10" />
+                <Progress value={printProgress} className="h-6 bg-white/10 w-full" />
+                
+                {/* QR Code for Soft Copy - Visible during printing once ready */}
+                {softCopyQrUrl && promoConsent !== null && (
+                  <div className="mt-12 animate-in fade-in zoom-in duration-500">
+                    <div className="bg-white/5 border-2 border-white/10 p-10 flex flex-col items-center space-y-6 rounded-[4rem] w-[450px] mx-auto shadow-2xl">
+                      <h3 className="text-3xl font-black italic uppercase text-primary">HD SOFT COPY</h3>
+                      <div className="aspect-square w-full bg-white p-8 rounded-[2.5rem] flex items-center justify-center shadow-2xl">
+                        <img src={softCopyQrUrl} alt="Scan to save" className="w-full h-full" />
+                      </div>
+                      <button onClick={() => setAppState("thankyou")} className="w-full bg-primary py-8 text-2xl font-black uppercase italic rounded-3xl active:scale-95 transition-transform">COMPLETE</button>
+                    </div>
+                  </div>
+                )}
              </div>
 
              {promoConsent === null && (
-               <div className="bg-black/90 border-4 border-primary p-16 flex flex-col items-center space-y-12 rounded-[5rem] w-full max-w-4xl shadow-[0_0_80px_rgba(255,51,153,0.5)] animate-in zoom-in-95 z-[150]">
+               <div className="absolute inset-0 bg-black/90 border-4 border-primary p-16 flex flex-col items-center space-y-12 rounded-[5rem] w-full max-w-4xl shadow-[0_0_80px_rgba(255,51,153,0.5)] animate-in zoom-in-95 z-[150] self-center justify-self-center">
                  <div className="space-y-8 text-center">
                    <div className="space-y-4">
                      <h3 className="text-5xl font-black italic uppercase text-primary tracking-tight">Share Your Photo?</h3>
@@ -747,16 +751,6 @@ export default function KioskPage() {
                       <AlertCircle className="w-10 h-10" /> NO / HINDI
                     </button>
                  </div>
-               </div>
-             )}
-
-             {promoConsent !== null && softCopyQrUrl && (
-               <div className="bg-white/5 border-2 border-white/10 p-10 flex flex-col items-center space-y-8 rounded-[4rem] w-[450px]">
-                 <h3 className="text-3xl font-black italic uppercase text-primary">HD SOFT COPY</h3>
-                 <div className="aspect-square w-full bg-white p-8 rounded-[2.5rem] flex items-center justify-center shadow-2xl">
-                   <img src={softCopyQrUrl} alt="Scan to save" className="w-full h-full" />
-                 </div>
-                 <button onClick={() => setAppState("thankyou")} className="w-full bg-primary py-8 text-2xl font-black uppercase italic rounded-3xl">COMPLETE</button>
                </div>
              )}
           </div>
@@ -777,7 +771,7 @@ export default function KioskPage() {
                      <p className="text-2xl animate-bounce">👇</p>
                    </div>
                    <div className="w-64 h-64 bg-white p-4 rounded-3xl flex items-center justify-center border-4 border-primary/20">
-                      <img src="https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=https://www.facebook.com/share/18vnB4a7gB/" alt="Facebook QR" className="w-full h-full" />
+                      <img src={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent("https://www.facebook.com/share/18vnB4a7gB/")}`} alt="Facebook QR" className="w-full h-full" />
                    </div>
                 </div>
              </div>

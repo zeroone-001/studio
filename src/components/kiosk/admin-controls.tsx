@@ -64,6 +64,7 @@ export function AdminControls({
 
   const testPackage = (amount: number) => {
     onSimulateCash(amount);
+    // Amount is now set, app will automatically show the correct package confirmation screen
     onJumpTo('package-selection');
   };
 

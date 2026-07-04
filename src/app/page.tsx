@@ -398,6 +398,9 @@ export default function KioskPage() {
               </div>
             </div>
             <div className="w-full flex flex-col items-center pb-20">
+              <div className="text-sm font-black uppercase text-white/60 mb-8 tracking-[0.3em] animate-pulse">
+                INSERT ₱50 OR ₱100 BILL
+              </div>
               <NeonButton onClick={() => setAppState("payment")} className="w-[40%] text-3xl py-12">TOUCH TO START</NeonButton>
             </div>
           </div>
@@ -417,41 +420,41 @@ export default function KioskPage() {
 
         {appState === "package-selection" && (
           <div className="w-full h-full flex flex-col items-center justify-center px-10 gap-12">
-            <h2 className="text-5xl font-headline font-black italic uppercase text-primary">SELECT PACKAGE</h2>
-            <div className="grid grid-cols-2 gap-10 w-full max-w-5xl">
-              <button 
-                onClick={() => { setPackageSelected(50); setAppState("setup"); }}
-                className="group relative bg-white/5 border-4 border-white/10 p-12 flex flex-col items-center transition-all hover:border-primary hover:bg-primary/5 active:scale-95"
-              >
-                <span className="text-7xl font-black italic text-white mb-4">₱50</span>
-                <span className="text-xl font-bold uppercase text-white/40 group-hover:text-primary">CLASSIC STRIP</span>
-                <div className="mt-6 space-y-2 text-center text-sm font-bold uppercase text-white/60">
-                  <p>3 PHOTO SHOTS</p>
-                  <p>2x6 PHOTO STRIP</p>
-                  <p>5 BEAUTY FILTERS</p>
+            <h2 className="text-5xl font-headline font-black italic uppercase text-primary">CONFIRM PACKAGE</h2>
+            <div className="flex justify-center w-full max-w-5xl">
+              {/* If bill detected is 50, show only 50. If 100, show only 100. */}
+              {paymentReceived >= 100 ? (
+                <button 
+                  onClick={() => { setPackageSelected(100); setAppState("setup"); }}
+                  className="group relative bg-white/5 border-4 border-primary p-12 flex flex-col items-center transition-all hover:bg-primary/5 active:scale-95 w-[450px]"
+                >
+                  <span className="text-7xl font-black italic text-white mb-4">₱100</span>
+                  <span className="text-xl font-bold uppercase text-primary">PREMIUM PORTRAIT</span>
+                  <div className="mt-6 space-y-2 text-center text-sm font-bold uppercase text-white/60">
+                    <p>6 PHOTO SHOTS</p>
+                    <p>4x6 SINGLE PORTRAIT</p>
+                    <p>FULL FILTER LIBRARY</p>
+                  </div>
+                </button>
+              ) : paymentReceived >= 50 ? (
+                <button 
+                  onClick={() => { setPackageSelected(50); setAppState("setup"); }}
+                  className="group relative bg-white/5 border-4 border-primary p-12 flex flex-col items-center transition-all hover:bg-primary/5 active:scale-95 w-[450px]"
+                >
+                  <span className="text-7xl font-black italic text-white mb-4">₱50</span>
+                  <span className="text-xl font-bold uppercase text-primary">CLASSIC STRIP</span>
+                  <div className="mt-6 space-y-2 text-center text-sm font-bold uppercase text-white/60">
+                    <p>3 PHOTO SHOTS</p>
+                    <p>2x6 PHOTO STRIP</p>
+                    <p>5 BEAUTY FILTERS</p>
+                  </div>
+                </button>
+              ) : (
+                <div className="text-center space-y-4">
+                  <p className="text-xl font-black italic uppercase text-red-500">No payment detected</p>
+                  <NeonButton onClick={() => setAppState("payment")}>BACK TO PAYMENT</NeonButton>
                 </div>
-              </button>
-              <button 
-                disabled={paymentReceived < 100}
-                onClick={() => { setPackageSelected(100); setAppState("setup"); }}
-                className={cn(
-                  "group relative bg-white/5 border-4 p-12 flex flex-col items-center transition-all",
-                  paymentReceived >= 100 
-                    ? "border-white/10 hover:border-primary hover:bg-primary/5 active:scale-95" 
-                    : "border-white/5 opacity-40 cursor-not-allowed"
-                )}
-              >
-                <span className="text-7xl font-black italic text-white mb-4">₱100</span>
-                <span className="text-xl font-bold uppercase text-white/40 group-hover:text-primary">PREMIUM PORTRAIT</span>
-                <div className="mt-6 space-y-2 text-center text-sm font-bold uppercase text-white/60">
-                  <p>6 PHOTO SHOTS</p>
-                  <p>4x6 SINGLE PORTRAIT</p>
-                  <p>FULL FILTER LIBRARY</p>
-                </div>
-                {paymentReceived < 100 && (
-                  <p className="mt-4 text-xs font-black text-red-500 italic uppercase">NEED ₱50 MORE</p>
-                )}
-              </button>
+              )}
             </div>
           </div>
         )}

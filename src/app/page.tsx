@@ -481,37 +481,37 @@ export default function KioskPage() {
         )}
 
         {appState === "setup" && (
-          <div className="w-full h-full max-w-[95%] flex flex-row gap-6 items-start py-4 px-4 overflow-hidden">
-             <div className="flex-[0.35] space-y-4 overflow-y-auto pr-2 scrollbar-hide h-full pb-10">
-                <div className="space-y-3">
-                  <h2 className="font-headline font-black text-xl italic uppercase text-primary">Layout Selection</h2>
-                  <div className="grid grid-cols-2 gap-2">
+          <div className="w-full h-full max-w-[98%] flex flex-row gap-4 items-start py-2 px-2 overflow-hidden">
+             <div className="flex-[0.4] space-y-3 pr-2 scrollbar-hide h-full pb-6">
+                <div className="space-y-2">
+                  <h2 className="font-headline font-black text-lg italic uppercase text-primary">Layout Selection</h2>
+                  <div className="grid grid-cols-3 gap-1.5">
                     {BLUEPRINTS.filter(b => b.package === packageSelected).map(bp => (
-                      <button key={bp.id} onClick={() => setSelectedBlueprint(bp)} className={cn("p-2 border-2 flex flex-col items-center bg-white/5 transition-all min-h-[140px]", selectedBlueprint?.id === bp.id ? "border-primary bg-primary/10" : "border-white/10")}>
+                      <button key={bp.id} onClick={() => setSelectedBlueprint(bp)} className={cn("p-1.5 border-2 flex flex-col items-center bg-white/5 transition-all min-h-[110px]", selectedBlueprint?.id === bp.id ? "border-primary bg-primary/10" : "border-white/10")}>
                         <div className="flex-1 w-full relative mb-1">
                           <BlueprintFrame blueprint={bp} photos={[]} isPreview className="!h-full !w-auto" />
                         </div>
-                        <span className="text-[7px] font-black uppercase italic">{bp.label}</span>
+                        <span className="text-[6px] font-black uppercase italic text-center">{bp.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
-                <div className="space-y-3">
-                  <h2 className="font-headline font-black text-xl italic uppercase text-primary">Beauty Filters</h2>
-                  <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <h2 className="font-headline font-black text-lg italic uppercase text-primary">Beauty Filters</h2>
+                  <div className="grid grid-cols-5 gap-1.5">
                     {FILTERS.slice(0, packageSelected === 50 ? 5 : FILTERS.length).map(f => (
-                      <button key={f.id} onClick={() => setSelectedFilter(f)} className={cn("p-3 border-2 flex flex-col bg-white/5 transition-all", selectedFilter.id === f.id ? "border-primary bg-primary/10" : "border-white/10")}>
-                        <span className="text-[9px] font-black uppercase italic">{f.label}</span>
+                      <button key={f.id} onClick={() => setSelectedFilter(f)} className={cn("p-2 border-2 flex flex-col items-center justify-center bg-white/5 transition-all min-h-[50px]", selectedFilter.id === f.id ? "border-primary bg-primary/10" : "border-white/10")}>
+                        <span className="text-[7px] font-black uppercase italic text-center leading-tight">{f.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
              </div>
-             <div className="flex-1 flex flex-col gap-4 h-full pb-4">
+             <div className="flex-1 flex flex-col gap-3 h-full pb-4">
                 <div className="relative flex-1 bg-zinc-900 border-4 border-white overflow-hidden shadow-2xl">
                    <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover" style={{ filter: selectedFilter.filter }} />
                 </div>
-                <NeonButton disabled={!selectedBlueprint} onClick={() => startShotSequence()} className="w-full py-8 text-2xl">START SESSION</NeonButton>
+                <NeonButton disabled={!selectedBlueprint} onClick={() => startShotSequence()} className="w-full py-6 text-xl">START SESSION</NeonButton>
              </div>
           </div>
         )}
@@ -535,8 +535,8 @@ export default function KioskPage() {
 
         {appState === "review" && (
           <div className="w-full h-full flex flex-row items-center justify-center gap-8 py-4 px-6">
-            <div className="flex-1 flex flex-col items-center">
-              <div className="h-[82vh] aspect-[1600/2400] shadow-2xl relative border-4 border-white bg-white overflow-hidden">
+            <div className="flex-1 h-[82vh] flex items-center justify-center">
+              <div className="h-full aspect-[1600/2400] shadow-2xl relative border-4 border-white bg-white overflow-hidden">
                  {selectedBlueprint && (
                     <BlueprintFrame 
                       blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.filter} isPreview 
@@ -598,8 +598,8 @@ export default function KioskPage() {
 
         {appState === "final-preview" && (
           <div className="w-full h-full flex flex-col items-center justify-center py-4 px-6 space-y-4">
-            <div className="flex-1 flex items-center justify-center">
-              <div className="h-[78vh] relative border-[10px] border-white bg-white shadow-2xl overflow-hidden" style={{ aspectRatio: packageSelected === 50 ? '800/2400' : '1600/2400' }}>
+            <div className="flex-1 h-[82vh] flex items-center justify-center">
+              <div className="h-full relative border-[10px] border-white bg-white shadow-2xl overflow-hidden" style={{ aspectRatio: packageSelected === 50 ? '800/2400' : '1600/2400' }}>
                 {selectedBlueprint && (
                   <BlueprintFrame blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.filter} quoteText={selectedQuote.text} stickers={placedStickers} isPreview={true} />
                 )}

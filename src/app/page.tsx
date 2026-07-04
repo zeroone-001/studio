@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -66,6 +67,7 @@ export default function KioskPage() {
   const [preparedBlob, setPreparedBlob] = useState<Blob | null>(null);
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
 
+  // REAL-TIME TRACE SYSTEM (Honor Pad X10 Diagnostics)
   const [runtimeStatus, setRuntimeStatus] = useState({
     photoGenerated: 'PENDING',
     blobCreated: 'PENDING',
@@ -125,6 +127,7 @@ export default function KioskPage() {
     }
   }, [appState]);
 
+  // CRITICAL: Decoupled Printing Pipeline
   const initiatePrint = useCallback(async (blob: Blob) => {
     KioskLogger.log('info', 'PRINT', 'User Gesture Activated. Requesting Intent...', 'PENDING');
     setRuntimeStatus(prev => ({ ...prev, intentTriggered: 'SUCCESS', navigatorShareStarted: 'SUCCESS' }));
@@ -152,11 +155,13 @@ export default function KioskPage() {
     }
   }, []);
 
+  // CRITICAL: Decoupled Cloud Sync Pipeline
   const handleCloudSync = useCallback(async (blob: Blob) => {
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
     setUploadStatus("uploading");
     
+    // Save to local IndexedDB (Fast gallery fallback)
     await SessionStore.savePhotoLocally(sessionId, blob).catch(() => {});
     setRuntimeStatus(prev => ({ ...prev, photoSaved: 'SUCCESS' }));
 
@@ -173,12 +178,15 @@ export default function KioskPage() {
     };
 
     try {
+      // 1. Create Firestore metadata record
       await setDoc(docRef, sessionData);
       setRuntimeStatus(prev => ({ ...prev, sessionCreated: 'SUCCESS' }));
 
+      // 2. Upload high-res photo to Storage
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       await uploadBytes(photoRef, blob);
       
+      // 3. Mark complete
       await updateDoc(docRef, { status: 'complete' });
       
       const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
@@ -213,6 +221,7 @@ export default function KioskPage() {
     const STRIP_W = isStrip ? 800 : 1600;
 
     const drawContent = async (offsetX: number) => {
+      // Draw Photos
       for (let i = 0; i < selectedBlueprint.slots.length; i++) {
         const slot = selectedBlueprint.slots[i];
         const photo = capturedPhotos[i];
@@ -229,6 +238,7 @@ export default function KioskPage() {
         ctx.filter = 'none';
       }
       
+      // Draw Stickers
       const sortedStickers = [...placedStickers].sort((a, b) => a.zIndex - b.zIndex);
       for (const s of sortedStickers) {
         const def = STICKER_DEFS.find(d => d.id === s.type);
@@ -256,6 +266,7 @@ export default function KioskPage() {
         URL.revokeObjectURL(url);
       }
       
+      // Branding Footer
       const footerY = 2200;
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(offsetX, footerY, STRIP_W, 200);
@@ -270,7 +281,12 @@ export default function KioskPage() {
       ctx.fillText('JNL STUDIO', offsetX + 60, footerY + 180);
     };
 
-    if (isStrip) { await drawContent(0); await drawContent(800); } else { await drawContent(0); }
+    if (isStrip) {
+      await drawContent(0);
+      await drawContent(800);
+    } else {
+      await drawContent(0);
+    }
 
     setRuntimeStatus(prev => ({ ...prev, photoGenerated: 'SUCCESS' }));
     exportCanvas.toBlob((blob) => {
@@ -285,7 +301,12 @@ export default function KioskPage() {
   const addSticker = (type: string) => {
     const newSticker: PlacedSticker = {
       id: Math.random().toString(36).substring(7),
-      type, x: 50, y: 50, size: 20, rotation: 0, zIndex: placedStickers.length + 100
+      type,
+      x: 50,
+      y: 50,
+      size: 20,
+      rotation: 0,
+      zIndex: placedStickers.length + 100
     };
     setPlacedStickers([...placedStickers, newSticker]);
     setSelectedStickerId(newSticker.id);
@@ -332,7 +353,11 @@ export default function KioskPage() {
       setIsProcessing(true);
       const shot = takePhoto();
       if (shot) {
-        if (selectedRetakeIndex !== null) { photos[i] = shot; } else { photos.push(shot); }
+        if (selectedRetakeIndex !== null) {
+          photos[i] = shot;
+        } else {
+          photos.push(shot);
+        }
         setCapturedPhotos([...photos]);
       }
       await new Promise(r => setTimeout(r, 300)); 
@@ -374,7 +399,9 @@ export default function KioskPage() {
       };
       start();
     }
-    if (appState === "final-preview") { preSpoolPrintFile(); }
+    if (appState === "final-preview") {
+      preSpoolPrintFile();
+    }
   }, [appState, preSpoolPrintFile, cameraStream]);
 
   return (
@@ -398,7 +425,13 @@ export default function KioskPage() {
         {appState === "welcome" && (
           <div className="flex flex-col items-center w-full h-full animate-in fade-in duration-1000">
             <div className="flex-1 flex flex-col items-center justify-center relative">
-              <div onClick={() => { setLogoTapCount(p => p + 1); if (logoTapCount >= 4) { setIsAdminDialogOpen(true); setLogoTapCount(0); } }}>
+              <div onClick={() => {
+                setLogoTapCount(p => p + 1);
+                if (logoTapCount >= 4) {
+                  setIsAdminDialogOpen(true);
+                  setLogoTapCount(0);
+                }
+              }}>
                 <JnlLogo variant="hero" color="light" />
               </div>
             </div>
@@ -460,6 +493,7 @@ export default function KioskPage() {
 
         {appState === "setup" && (
           <div className="w-full h-full max-w-[98%] flex flex-row gap-4 items-start py-2 px-2 overflow-hidden">
+             {/* Left Panel: Blueprints & Filters */}
              <div className="flex-[0.4] space-y-3 pr-2 scrollbar-hide h-full pb-6">
                 <div className="space-y-2">
                   <h2 className="font-headline font-black text-lg italic uppercase text-primary">Layout Selection</h2>
@@ -485,6 +519,7 @@ export default function KioskPage() {
                   </div>
                 </div>
              </div>
+             {/* Right Panel: Live View */}
              <div className="flex-1 flex flex-col gap-3 h-full pb-4">
                 <div className="relative flex-1 bg-zinc-900 border-4 border-white overflow-hidden shadow-2xl">
                    <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover" style={{ filter: selectedFilter.filter }} />
@@ -591,12 +626,13 @@ export default function KioskPage() {
             </div>
             <NeonButton 
               disabled={isPreparingPrint || !preparedBlob}
-              onClick={() => { 
-                if (preparedBlob) { 
-                  initiatePrint(preparedBlob); 
-                  handleCloudSync(preparedBlob); 
-                } 
-                setAppState("printing"); 
+              onClick={() => {
+                if (preparedBlob) {
+                  // Decoupled parallel execution
+                  initiatePrint(preparedBlob);
+                  handleCloudSync(preparedBlob);
+                }
+                setAppState("printing");
               }} 
               className="w-full max-w-md py-6 text-xl"
             >
@@ -607,6 +643,7 @@ export default function KioskPage() {
 
         {appState === "printing" && (
           <div className="w-full h-full flex flex-row overflow-hidden relative">
+             {/* Main Progress Area */}
              <div className="flex-1 flex flex-col items-center justify-center p-12 border-r border-white/10">
                 <div className="mb-12 min-h-[40px]">
                    {promoConsent !== null && (
@@ -640,6 +677,7 @@ export default function KioskPage() {
                 </div>
              </div>
 
+             {/* Right Panel: Soft Copy QR */}
              <div className="w-[480px] bg-white/5 flex flex-col items-center justify-center p-10">
                 {uploadStatus === 'complete' && softCopyQrUrl ? (
                   <div className="animate-in fade-in zoom-in-95 duration-700 flex flex-col items-center space-y-8">
@@ -675,6 +713,7 @@ export default function KioskPage() {
                 )}
              </div>
 
+             {/* Bilingual Promotional Consent Overlay */}
              {promoConsent === null && (
                <div className="absolute inset-0 bg-black/95 z-[200] flex items-center justify-center p-6 backdrop-blur-md">
                  <div className="bg-zinc-950 border-4 border-primary p-12 flex flex-col items-center space-y-8 rounded-[4rem] w-full max-w-4xl shadow-2xl">

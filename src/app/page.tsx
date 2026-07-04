@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -126,10 +125,6 @@ export default function KioskPage() {
     }
   }, [appState]);
 
-  /**
-   * INITIATE PRINT (SYNCHRONOUS INTENT DISPATCH)
-   * Prioritizes intent launch to avoid user gesture expiry.
-   */
   const initiatePrint = useCallback(async (blob: Blob) => {
     KioskLogger.log('info', 'PRINT', 'User Gesture Activated. Requesting Intent...', 'PENDING');
     setRuntimeStatus(prev => ({ ...prev, intentTriggered: 'SUCCESS', navigatorShareStarted: 'SUCCESS' }));
@@ -157,16 +152,11 @@ export default function KioskPage() {
     }
   }, []);
 
-  /**
-   * CLOUD SYNC & QR GENERATION WORKFLOW
-   * Follows strict sequence: Record -> Upload -> Verify -> QR Display
-   */
   const handleCloudSync = useCallback(async (blob: Blob) => {
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
     setUploadStatus("uploading");
     
-    // 1. Save to Local Persistence
     await SessionStore.savePhotoLocally(sessionId, blob).catch(() => {});
     setRuntimeStatus(prev => ({ ...prev, photoSaved: 'SUCCESS' }));
 
@@ -183,18 +173,14 @@ export default function KioskPage() {
     };
 
     try {
-      // 2. Create Record in Firestore
       await setDoc(docRef, sessionData);
       setRuntimeStatus(prev => ({ ...prev, sessionCreated: 'SUCCESS' }));
 
-      // 3. Upload Photo to Storage
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       await uploadBytes(photoRef, blob);
       
-      // 4. Verify & Finalize
       await updateDoc(docRef, { status: 'complete' });
       
-      // 5. Generate QR Code for retrieval
       const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
       setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
       
@@ -691,14 +677,38 @@ export default function KioskPage() {
 
              {promoConsent === null && (
                <div className="absolute inset-0 bg-black/95 z-[200] flex items-center justify-center p-6 backdrop-blur-md">
-                 <div className="bg-zinc-950 border-4 border-primary p-12 flex flex-col items-center space-y-10 rounded-[4rem] w-full max-w-4xl shadow-2xl">
-                   <div className="space-y-6 text-center">
-                     <h3 className="text-5xl font-black italic uppercase text-primary">Share Your Photo?</h3>
-                     <p className="text-white text-xl font-bold uppercase tracking-wide">May we post your photo on our Facebook page for promotion?</p>
+                 <div className="bg-zinc-950 border-4 border-primary p-12 flex flex-col items-center space-y-8 rounded-[4rem] w-full max-w-4xl shadow-2xl">
+                   <div className="space-y-4 text-center">
+                     <div className="space-y-1">
+                        <h3 className="text-3xl font-black italic uppercase text-primary">📸 Moment Sharing Consent</h3>
+                        <p className="text-primary/60 text-lg font-black italic uppercase">Pahintulot sa Pagbabahagi ng Larawan at Moment</p>
+                     </div>
+                     
+                     <div className="space-y-4 py-4 border-y border-white/10">
+                        <div className="space-y-1">
+                          <p className="text-white text-lg font-bold">JNL Studio may share your photobooth moments on our Facebook page for promotional purposes.</p>
+                          <p className="text-white/40 text-sm italic font-medium">Maaaring ibahagi ng JNL Studio ang inyong photobooth moments sa aming Facebook page para sa promotion.</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-white/80 text-sm font-bold uppercase tracking-wider">Your choice will not affect your photos, prints, or soft copy.</p>
+                          <p className="text-white/40 text-[10px] italic font-medium">Ang inyong sagot ay hindi makakaapekto sa inyong prints o soft copy.</p>
+                        </div>
+                     </div>
                    </div>
-                   <div className="grid grid-cols-2 gap-8 w-full">
-                      <button onClick={() => setPromoConsent(true)} className="py-10 border-4 border-green-500 bg-green-500/10 text-green-500 text-3xl font-black italic uppercase rounded-3xl hover:bg-green-500/20 active:scale-95 transition-all">YES</button>
-                      <button onClick={() => setPromoConsent(false)} className="py-10 border-4 border-red-500 bg-red-500/10 text-red-500 text-3xl font-black italic uppercase rounded-3xl hover:bg-red-500/20 active:scale-95 transition-all">NO</button>
+
+                   <div className="grid grid-cols-2 gap-6 w-full pt-4">
+                      <button 
+                        onClick={() => setPromoConsent(true)} 
+                        className="py-8 border-4 border-green-500 bg-green-500/10 text-green-500 text-2xl font-black italic uppercase rounded-3xl hover:bg-green-500/20 active:scale-95 transition-all flex flex-col items-center justify-center gap-1"
+                      >
+                        <span>✅ YES, I AGREE</span>
+                      </button>
+                      <button 
+                        onClick={() => setPromoConsent(false)} 
+                        className="py-8 border-4 border-red-500 bg-red-500/10 text-red-500 text-2xl font-black italic uppercase rounded-3xl hover:bg-red-500/20 active:scale-95 transition-all flex flex-col items-center justify-center gap-1"
+                      >
+                        <span>❌ NO, THANK YOU</span>
+                      </button>
                    </div>
                  </div>
                </div>

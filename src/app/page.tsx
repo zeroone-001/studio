@@ -132,6 +132,16 @@ export default function KioskPage() {
     KioskLogger.log('info', 'PRINT', 'User Gesture Activated. Requesting Intent...', 'PENDING');
     setRuntimeStatus(prev => ({ ...prev, intentTriggered: 'SUCCESS', navigatorShareStarted: 'SUCCESS' }));
     
+    // Watchdog for NokoPrint
+    const printWatchdog = setTimeout(() => {
+      setRuntimeStatus(prev => {
+        if (prev.intentAcknowledged === 'PENDING') {
+          return { ...prev, intentAcknowledged: 'FAILED', lastErrorMessage: 'NokoPrint did not respond in time' };
+        }
+        return prev;
+      });
+    }, 5000);
+
     try {
       const fileName = `JNL_Studio_${Date.now()}.jpg`;
       const file = new File([blob], fileName, { type: 'image/jpeg' });
@@ -143,27 +153,45 @@ export default function KioskPage() {
           title: 'JNL Studio Portrait',
           text: 'Open with NokoPrint'
         });
+        clearTimeout(printWatchdog);
         setRuntimeStatus(prev => ({ ...prev, intentAcknowledged: 'SUCCESS', navigatorShareResolved: 'SUCCESS', nokoprintOpened: 'SUCCESS' }));
         KioskLogger.log('info', 'PRINT', 'Intent Dispatched to NokoPrint', 'SUCCESS');
       } else {
-        setRuntimeStatus(prev => ({ ...prev, intentTriggered: 'FAILED', navigatorShareRejected: 'FAILED' }));
+        clearTimeout(printWatchdog);
+        setRuntimeStatus(prev => ({ ...prev, intentTriggered: 'FAILED', navigatorShareRejected: 'FAILED', intentAcknowledged: 'FAILED' }));
         KioskLogger.log('error', 'PRINT', 'Navigator Share API Blocked or Unavailable', 'FAILED');
       }
     } catch (e: any) {
+      clearTimeout(printWatchdog);
       setRuntimeStatus(prev => ({ ...prev, intentAcknowledged: 'FAILED', navigatorShareRejected: 'FAILED', lastErrorMessage: e.message }));
       KioskLogger.log('error', 'PRINT', 'Intent Launch Failure', 'FAILED', e.message);
     }
   }, []);
 
-  // CRITICAL: Decoupled Cloud Sync Pipeline
+  // CRITICAL: Decoupled Cloud Sync Pipeline (Non-blocking QR)
   const handleCloudSync = useCallback(async (blob: Blob) => {
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
+    
+    // GENERATE QR IMMEDIATELY (Deterministic URL)
+    const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
+    setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
     setUploadStatus("uploading");
+
+    // Watchdog for Cloud Sync
+    const syncWatchdog = setTimeout(() => {
+      setRuntimeStatus(prev => {
+        if (prev.cloudSync === 'PENDING') {
+          return { ...prev, cloudSync: 'FAILED', lastErrorMessage: 'Cloud Sync timed out' };
+        }
+        return prev;
+      });
+    }, 8000);
     
     // Save to local IndexedDB (Fast gallery fallback)
-    await SessionStore.savePhotoLocally(sessionId, blob).catch(() => {});
-    setRuntimeStatus(prev => ({ ...prev, photoSaved: 'SUCCESS' }));
+    SessionStore.savePhotoLocally(sessionId, blob).then(() => {
+      setRuntimeStatus(prev => ({ ...prev, photoSaved: 'SUCCESS' }));
+    }).catch(() => {});
 
     const { storage, db } = initializeFirebase();
     const docRef = doc(db, "photos", sessionId);
@@ -189,13 +217,13 @@ export default function KioskPage() {
       // 3. Mark complete
       await updateDoc(docRef, { status: 'complete' });
       
-      const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
-      setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
-      
+      clearTimeout(syncWatchdog);
       setUploadStatus("complete");
       setRuntimeStatus(prev => ({ ...prev, cloudSync: 'SUCCESS' }));
     } catch (error: any) {
+      clearTimeout(syncWatchdog);
       setUploadStatus("error");
+      setRuntimeStatus(prev => ({ ...prev, cloudSync: 'FAILED', lastErrorMessage: error.message }));
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: docRef.path,
         operation: 'create',
@@ -331,6 +359,24 @@ export default function KioskPage() {
     setPreparedBlob(null);
     setUploadStatus("idle");
     setSoftCopyQrUrl("");
+    setRuntimeStatus({
+      photoGenerated: 'PENDING',
+      blobCreated: 'PENDING',
+      photoSaved: 'PENDING',
+      intentTriggered: 'PENDING',
+      intentAcknowledged: 'PENDING',
+      cloudSync: 'PENDING',
+      sessionCreated: 'PENDING',
+      fileCreated: 'PENDING',
+      navigatorShareStarted: 'PENDING',
+      navigatorShareResolved: 'PENDING',
+      navigatorShareRejected: 'PENDING',
+      nokoprintOpened: 'PENDING',
+      secureContext: window.isSecureContext ? 'YES' : 'NO',
+      topLevelContext: window.self === window.top ? 'YES' : 'NO',
+      userAgent: navigator.userAgent,
+      lastErrorMessage: ''
+    });
   }, []);
 
   const startShotSequence = async () => {
@@ -658,7 +704,7 @@ export default function KioskPage() {
                    <h2 className="font-headline font-black text-6xl italic uppercase text-primary mb-4">Printing...</h2>
                    <div className="flex flex-col items-center justify-center gap-3">
                      <div className="flex items-center gap-2">
-                        {uploadStatus !== 'complete' && <Loader2 className="w-4 h-4 text-white/40 animate-spin" />}
+                        {(uploadStatus === 'uploading' || runtimeStatus.cloudSync === 'PENDING') && <Loader2 className="w-4 h-4 text-white/40 animate-spin" />}
                         <p className="text-white/40 font-bold uppercase tracking-[0.3em] text-sm italic">
                           {uploadStatus === 'idle' && "Initializing Sequence..."}
                           {uploadStatus === 'uploading' && "Uploading High-Res Version..."}
@@ -667,7 +713,7 @@ export default function KioskPage() {
                         </p>
                      </div>
                      <p className="text-primary text-[10px] font-black uppercase italic animate-pulse">
-                        {uploadStatus === 'complete' ? "SYSTEM READY - SCAN QR" : "HOLD ON, SYNCING..."}
+                        {softCopyQrUrl ? "SYSTEM READY - SCAN QR" : "HOLD ON, SYNCING..."}
                      </p>
                    </div>
                 </div>
@@ -675,11 +721,18 @@ export default function KioskPage() {
                 <div className="w-full max-w-2xl">
                    <Progress value={printProgress} className="h-8 bg-white/10 w-full" />
                 </div>
+
+                {/* Live Blocked Trace (Visible for Triage) */}
+                {runtimeStatus.lastErrorMessage && (
+                  <div className="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-[8px] font-mono text-red-500">
+                    ERROR: {runtimeStatus.lastErrorMessage}
+                  </div>
+                )}
              </div>
 
-             {/* Right Panel: Soft Copy QR */}
+             {/* Right Panel: Soft Copy QR (INSTANT DISPLAY) */}
              <div className="w-[480px] bg-white/5 flex flex-col items-center justify-center p-10">
-                {uploadStatus === 'complete' && softCopyQrUrl ? (
+                {softCopyQrUrl ? (
                   <div className="animate-in fade-in zoom-in-95 duration-700 flex flex-col items-center space-y-8">
                      <div className="text-center space-y-2">
                        <h3 className="text-3xl font-black italic uppercase text-primary">HD SOFT COPY</h3>
@@ -690,7 +743,7 @@ export default function KioskPage() {
                      </div>
                      <p className="text-xs font-bold uppercase text-white/40 text-center leading-relaxed">Scan now to save your<br/>high-resolution portrait</p>
                      
-                     {printProgress >= 100 && (
+                     {(printProgress >= 100 || runtimeStatus.intentAcknowledged !== 'PENDING') && (
                         <button 
                           onClick={() => setAppState("thankyou")} 
                           className="w-full bg-primary py-8 text-2xl font-black uppercase italic rounded-3xl shadow-[0_10px_30px_rgba(255,51,153,0.3)] active:scale-95 transition-all text-white"

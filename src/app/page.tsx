@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -140,14 +141,20 @@ export default function KioskPage() {
     }
   }, [selectedCameraId]);
 
+  /**
+   * INITIATE PRINT (SYNCHRONOUS INTENT DISPATCH)
+   * Must be called directly within a user click event to preserve Activation context.
+   */
   const initiatePrint = useCallback(async (blob: Blob) => {
     KioskLogger.log('info', 'PRINT', 'User Gesture Activated. Requesting Intent...', 'PENDING');
     setRuntimeStatus(prev => ({ ...prev, intentTriggered: 'SUCCESS', navigatorShareStarted: 'SUCCESS' }));
     
     try {
-      const file = new File([blob], `JNL_Studio_${Date.now()}.jpg`, { type: 'image/jpeg' });
+      const fileName = `JNL_Studio_${Date.now()}.jpg`;
+      const file = new File([blob], fileName, { type: 'image/jpeg' });
       setRuntimeStatus(prev => ({ ...prev, fileCreated: 'SUCCESS' }));
 
+      // VERIFY AND DISPATCH
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         KioskLogger.log('info', 'PRINT', `Dispatching ${file.size} bytes to Android System...`, 'PENDING');
         
@@ -699,6 +706,7 @@ export default function KioskPage() {
             <NeonButton 
               disabled={isPreparingPrint || !preparedBlob}
               onClick={() => {
+                // ABSOLUTE PRIORITY: SYNCHRONOUS INTENT DISPATCH
                 if (preparedBlob) {
                   initiatePrint(preparedBlob);
                   handleCloudSync(preparedBlob);
@@ -732,6 +740,7 @@ export default function KioskPage() {
                 )}
              </div>
 
+             {/* FB PROMOTION CONSENT OVERLAY */}
              {promoConsent === null && (
                <div className="absolute inset-0 bg-black/90 border-4 border-primary p-16 flex flex-col items-center space-y-12 rounded-[5rem] w-full max-w-4xl shadow-[0_0_80px_rgba(255,51,153,0.5)] animate-in zoom-in-95 z-[150] self-center justify-self-center">
                  <div className="space-y-8 text-center">

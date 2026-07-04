@@ -4,13 +4,13 @@ import * as Kawaii from "@/components/kiosk/kawaii-stickers";
 export type SessionState = 
   | "welcome" 
   | "payment" 
+  | "package-selection"
   | "setup" 
   | "test-camera"
   | "capturing" 
   | "review" 
   | "decorating" 
   | "final-preview"
-  | "consent" 
   | "printing" 
   | "thankyou";
 

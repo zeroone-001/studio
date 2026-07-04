@@ -1,21 +1,19 @@
 
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { 
   LogOut, 
   RefreshCcw, 
   Activity,
   Trash2,
   CheckCircle2,
-  FolderOpen,
   Cpu,
-  Share2,
   AlertCircle,
   Loader2,
   ExternalLink,
   ShieldCheck,
-  Layout
+  Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
@@ -26,17 +24,7 @@ interface AdminControlsProps {
   onJumpTo: (state: SessionState) => void;
   onReset: () => void;
   onExitOwnerMode: () => void;
-  hasPackage: boolean;
   onSimulateCash: (amount: number) => void;
-  onBypassPayment: (pkg: 50 | 100) => void;
-  usbStatus: "connected" | "disconnected";
-  onSetupUsb: () => void;
-  onSetupBillAcceptor: () => void;
-  isDevMode: boolean;
-  onToggleDevMode: () => void;
-  cameras?: MediaDeviceInfo[];
-  selectedCameraId?: string;
-  onSelectCamera?: (id: string) => void;
   runtimeStatus?: {
     photoGenerated: string;
     blobCreated: string;
@@ -62,8 +50,7 @@ export function AdminControls({
   onJumpTo, 
   onReset, 
   onExitOwnerMode,
-  onSetupUsb,
-  usbStatus,
+  onSimulateCash,
   runtimeStatus
 }: AdminControlsProps) {
   const [view, setView] = useState<'main' | 'logs' | 'diag'>('main');
@@ -89,6 +76,28 @@ export function AdminControls({
 
         {view === 'main' && (
           <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 scrollbar-hide">
+            
+            {/* PAYMENT BYPASS SECTION */}
+            <div className="bg-primary/5 border border-primary/20 p-3 rounded-lg space-y-3">
+              <h3 className="text-[8px] font-black uppercase text-primary italic flex items-center gap-2">
+                <Zap className="w-3 h-3" /> PAYMENT BYPASS (OWNER MODE)
+              </h3>
+              <div className="grid grid-cols-2 gap-2">
+                <button 
+                  onClick={() => onSimulateCash(50)}
+                  className="py-3 bg-primary text-white text-[10px] font-black uppercase italic rounded-md active:scale-95 transition-transform"
+                >
+                  SIMULATE ₱50
+                </button>
+                <button 
+                  onClick={() => onSimulateCash(100)}
+                  className="py-3 bg-primary text-white text-[10px] font-black uppercase italic rounded-md active:scale-95 transition-transform"
+                >
+                  SIMULATE ₱100
+                </button>
+              </div>
+            </div>
+
             {runtimeStatus && (
               <div className="bg-white/5 border border-primary/20 p-3 rounded-lg space-y-2">
                 <h3 className="text-[8px] font-black uppercase text-primary italic mb-2 flex items-center gap-2">
@@ -104,11 +113,6 @@ export function AdminControls({
                       </div>
                     </div>
                   ))}
-                  {runtimeStatus.lastErrorMessage && (
-                    <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 text-[7px] text-red-400 font-mono break-words">
-                      ERROR: {runtimeStatus.lastErrorMessage}
-                    </div>
-                  )}
                 </div>
               </div>
             )}
@@ -118,27 +122,9 @@ export function AdminControls({
                 onClick={handleBreakout}
                 className="w-full py-4 text-[10px] font-black uppercase flex items-center justify-center gap-2 border-2 bg-amber-500/20 border-amber-500/40 text-amber-500 animate-pulse"
               >
-                <ExternalLink className="w-4 h-4" /> RELAUNCH AS TOP LEVEL (FIX PRINTING)
+                <ExternalLink className="w-4 h-4" /> RELAUNCH AS TOP LEVEL
               </button>
             )}
-
-            <div className="space-y-2">
-              <label className="text-[8px] font-black uppercase text-white/40">State Navigation</label>
-              <div className="grid grid-cols-2 gap-2">
-                 {(["welcome", "payment", "setup", "review", "decorating", "printing", "thankyou"] as SessionState[]).map(state => (
-                   <button 
-                    key={state}
-                    onClick={() => onJumpTo(state)} 
-                    className={cn(
-                      "py-2 text-[8px] font-black uppercase border",
-                      currentStatus === state ? "bg-primary border-primary text-white" : "bg-white/5 border-white/10 text-white/60"
-                    )}
-                   >
-                     Jump: {state}
-                   </button>
-                 ))}
-              </div>
-            </div>
 
             <button onClick={onReset} className="w-full bg-red-500/10 border border-red-500/30 py-3 text-[10px] font-black uppercase text-red-500 flex items-center justify-center gap-2">
               <RefreshCcw className="w-3 h-3" /> Emergency Reset
@@ -184,29 +170,20 @@ export function AdminControls({
                      <span className="text-[9px] font-bold text-white/40 uppercase">Top Level Window</span>
                      <span className={cn("text-[9px] font-black italic", runtimeStatus?.topLevelContext === 'YES' ? "text-green-500" : "text-red-500")}>{runtimeStatus?.topLevelContext}</span>
                    </div>
-                   <div className="flex flex-col gap-1 mt-2 border-t border-white/5 pt-2">
-                     <span className="text-[7px] font-bold text-white/20 uppercase">User Agent</span>
-                     <span className="text-[7px] font-mono text-white/40 break-all">{runtimeStatus?.userAgent}</span>
-                   </div>
                 </div>
              </div>
 
              <div className="space-y-2">
                 <label className="text-[8px] font-black uppercase text-white/40 flex items-center gap-2">
-                  <Cpu className="w-3 h-3" /> Storage & Hardware
+                  <Cpu className="w-3 h-3" /> System Diagnostics
                 </label>
                 <div className="bg-black/40 border border-white/10 p-3 space-y-3">
-                   <div className="flex justify-between items-center">
-                     <span className="text-[9px] font-bold text-white/40 uppercase">Lexar Storage</span>
-                     <span className={cn("text-[9px] font-black italic", usbStatus === 'connected' ? "text-green-500" : "text-white/20")}>{usbStatus.toUpperCase()}</span>
+                   <div className="flex flex-col gap-1">
+                     <span className="text-[7px] font-bold text-white/20 uppercase">User Agent</span>
+                     <span className="text-[7px] font-mono text-white/40 break-all">{runtimeStatus?.userAgent}</span>
                    </div>
                 </div>
              </div>
-
-             <button onClick={onSetupUsb} className={cn("w-full py-4 text-[10px] font-black uppercase flex items-center justify-center gap-2 border-2", usbStatus === 'connected' ? "bg-blue-500 border-blue-400 text-white" : "bg-white/5 border-white/10 text-white/60")}>
-              {usbStatus === 'connected' ? <CheckCircle2 className="w-4 h-4" /> : <FolderOpen className="w-4 h-4" />}
-              {usbStatus === 'connected' ? "LEXAR READY" : "MOUNT LEXAR USB"}
-            </button>
           </div>
         )}
       </div>

@@ -62,6 +62,11 @@ export function AdminControls({
     }
   };
 
+  const testPackage = (amount: number) => {
+    onSimulateCash(amount);
+    onJumpTo('package-selection');
+  };
+
   return (
     <div className="fixed bottom-16 right-4 z-[100] flex flex-col items-end gap-2 scale-90 sm:scale-100 origin-bottom-right">
       <div className="bg-zinc-950/95 border-2 border-primary/50 p-4 shadow-2xl w-96 animate-in slide-in-from-right-4">
@@ -77,23 +82,23 @@ export function AdminControls({
         {view === 'main' && (
           <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 scrollbar-hide">
             
-            {/* PAYMENT BYPASS SECTION */}
+            {/* OWNER MODE TEST BUTTONS */}
             <div className="bg-primary/5 border border-primary/20 p-3 rounded-lg space-y-3">
               <h3 className="text-[8px] font-black uppercase text-primary italic flex items-center gap-2">
-                <Zap className="w-3 h-3" /> PAYMENT BYPASS (OWNER MODE)
+                <Zap className="w-3 h-3" /> OWNER TEST MODE (BYPASS)
               </h3>
               <div className="grid grid-cols-2 gap-2">
                 <button 
-                  onClick={() => onSimulateCash(50)}
+                  onClick={() => testPackage(50)}
                   className="py-3 bg-primary text-white text-[10px] font-black uppercase italic rounded-md active:scale-95 transition-transform"
                 >
-                  SIMULATE ₱50
+                  TEST ₱50 PACKAGE
                 </button>
                 <button 
-                  onClick={() => onSimulateCash(100)}
+                  onClick={() => testPackage(100)}
                   className="py-3 bg-primary text-white text-[10px] font-black uppercase italic rounded-md active:scale-95 transition-transform"
                 >
-                  SIMULATE ₱100
+                  TEST ₱100 PACKAGE
                 </button>
               </div>
             </div>

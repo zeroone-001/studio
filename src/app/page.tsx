@@ -44,8 +44,6 @@ export default function KioskPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
-  const [selectedCameraId, setSelectedCameraId] = useState<string>("");
-
   const [selectedFilter, setSelectedFilter] = useState(FILTERS[0]);
   const [selectedBlueprint, setSelectedBlueprint] = useState<FrameBlueprint | null>(null);
   const [placedStickers, setPlacedStickers] = useState<PlacedSticker[]>([]);

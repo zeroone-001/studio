@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -773,9 +772,12 @@ export default function KioskPage() {
                    </div>
                 </div>
                 <div className="flex flex-col items-center space-y-6">
-                   <h2 className="font-headline font-black text-4xl italic uppercase text-primary">FOLLOW JNL STUDIO</h2>
-                   <div className="w-64 h-64 bg-white p-4 rounded-3xl flex items-center justify-center">
-                      <img src="https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=https://facebook.com/jnlstudioph" alt="Facebook QR" className="w-full h-full" />
+                   <div className="text-center space-y-2">
+                     <h2 className="font-headline font-black text-4xl italic uppercase text-primary">FOLLOW US</h2>
+                     <p className="text-2xl animate-bounce">👇</p>
+                   </div>
+                   <div className="w-64 h-64 bg-white p-4 rounded-3xl flex items-center justify-center border-4 border-primary/20">
+                      <img src="https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=https://www.facebook.com/share/18vnB4a7gB/" alt="Facebook QR" className="w-full h-full" />
                    </div>
                 </div>
              </div>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -55,6 +56,15 @@ interface AdminControlsProps {
     qrSourceUrl?: string;
     shareIntentPayload?: string;
     lastSaveError?: string;
+    // IMAGE PIPELINE
+    captureSuccess: string;
+    canvasExists: string;
+    canvasWidth: string;
+    canvasHeight: string;
+    frameApplied: string;
+    filterApplied: string;
+    blobCreated: string;
+    blobSize: string;
   };
 }
 
@@ -159,6 +169,27 @@ export function AdminControls({
     onJumpTo('package-selection');
   };
 
+  const TraceItem = ({ label, value }: { label: string, value?: string }) => (
+    <div className="flex justify-between items-center px-1 border-b border-white/5 py-1">
+      <span className="text-[7px] font-bold text-white/40 uppercase tracking-widest">{label}</span>
+      <div className="flex items-center gap-1">
+        {value === 'PASS' ? (
+          <CheckCircle2 className="w-2.5 h-2.5 text-green-500" />
+        ) : value === 'FAIL' ? (
+          <AlertCircle className="w-2.5 h-2.5 text-red-500" />
+        ) : (
+          <Loader2 className="w-2.5 h-2.5 text-white/10 animate-spin" />
+        )}
+        <span className={cn(
+          "text-[8px] font-black italic", 
+          value === 'PASS' ? "text-green-500" : value === 'FAIL' ? "text-red-500" : "text-white/20"
+        )}>
+          {value || 'PENDING'}
+        </span>
+      </div>
+    </div>
+  );
+
   if (isMinimized) {
     return (
       <div 
@@ -250,30 +281,29 @@ export function AdminControls({
           {view === 'logs' && (
             <div className="space-y-4">
                {runtimeStatus && (
-                 <div className="bg-white/5 border border-primary/20 p-3 rounded-xl space-y-2">
-                    <h3 className="text-[7px] font-black uppercase text-primary italic mb-2 flex items-center gap-2">
-                      <Activity className="w-3 h-3" /> LIVE TRACE (HANDOFF)
+                 <div className="bg-black/60 border border-green-500/30 p-3 rounded-xl space-y-2">
+                    <h3 className="text-[7px] font-black uppercase text-green-400 italic mb-2 flex items-center gap-2">
+                      <Zap className="w-3 h-3" /> IMAGE GENERATION TRACE
                     </h3>
                     <div className="grid grid-cols-1 gap-1">
-                      {Object.entries(runtimeStatus)
-                        .filter(([k]) => ![
-                          'userAgent', 'lastErrorMessage', 'secureContext', 'topLevelContext',
-                          'savePath', 'qrSourceUrl', 'shareIntentPayload', 'lastSaveError'
-                        ].includes(k))
-                        .map(([key, val]) => (
-                          <div key={key} className="flex justify-between items-center px-1 border-b border-white/5 py-1">
-                            <span className="text-[7px] font-bold text-white/40 uppercase tracking-widest">{key.replace(/([A-Z])/g, ' $1')}</span>
-                            <div className="flex items-center gap-1">
-                              {val === 'SUCCESS' ? <CheckCircle2 className="w-2.5 h-2.5 text-green-500" /> : val === 'FAILED' ? <AlertCircle className="w-2.5 h-2.5 text-red-500" /> : <Loader2 className="w-2.5 h-2.5 text-white/10 animate-spin" />}
-                              <span className={cn("text-[8px] font-black italic", val === 'SUCCESS' ? "text-green-500" : val === 'FAILED' ? "text-red-500" : "text-white/20")}>{val}</span>
-                            </div>
-                          </div>
-                        ))}
+                       <TraceItem label="Capture Success" value={runtimeStatus.captureSuccess} />
+                       <TraceItem label="Canvas Exists" value={runtimeStatus.canvasExists} />
+                       <div className="flex justify-between items-center px-1 border-b border-white/5 py-1">
+                         <span className="text-[7px] font-bold text-white/40 uppercase tracking-widest">Canvas Resolution</span>
+                         <span className="text-[8px] font-mono text-white/80">{runtimeStatus.canvasWidth}x{runtimeStatus.canvasHeight}</span>
+                       </div>
+                       <TraceItem label="Frame Applied" value={runtimeStatus.frameApplied} />
+                       <TraceItem label="Filter Applied" value={runtimeStatus.filterApplied} />
+                       <TraceItem label="Blob Created" value={runtimeStatus.blobCreated} />
+                       <div className="flex justify-between items-center px-1 border-b border-white/5 py-1">
+                         <span className="text-[7px] font-bold text-white/40 uppercase tracking-widest">Blob Byte Size</span>
+                         <span className="text-[8px] font-mono text-white/80">{runtimeStatus.blobSize}</span>
+                       </div>
+                       <TraceItem label="File Created" value={runtimeStatus.fileCreated} />
                     </div>
                  </div>
                )}
 
-               {/* ACTUAL RUNTIME DIAGNOSTICS (SESSION AUDIT) */}
                {runtimeStatus && (
                  <div className="bg-black/60 border border-indigo-500/30 p-3 rounded-xl space-y-2">
                     <h3 className="text-[7px] font-black uppercase text-indigo-400 italic mb-2 flex items-center gap-2">
@@ -282,13 +312,13 @@ export function AdminControls({
                     <div className="space-y-1">
                       <div className="flex justify-between items-center py-1 border-b border-white/5 px-1">
                         <span className="text-[7px] text-white/40 uppercase">File Created?</span>
-                        <span className={cn("text-[8px] font-black", runtimeStatus.fileCreated === 'SUCCESS' ? "text-green-500" : "text-red-500")}>
-                          {runtimeStatus.fileCreated === 'SUCCESS' ? "TRUE" : "FALSE"}
+                        <span className={cn("text-[8px] font-black", runtimeStatus.fileCreated === 'PASS' ? "text-green-500" : "text-red-500")}>
+                          {runtimeStatus.fileCreated === 'PASS' ? "TRUE" : "FALSE"}
                         </span>
                       </div>
                       <div className="flex justify-between items-center py-1 border-b border-white/5 px-1">
                         <span className="text-[7px] text-white/40 uppercase">File Size</span>
-                        <span className="text-[8px] font-mono text-white/80">{runtimeStatus.fileSize || '0 bytes'}</span>
+                        <span className="text-[8px] font-mono text-white/80">{runtimeStatus.blobSize || '0 bytes'}</span>
                       </div>
                       <div className="flex flex-col py-1 border-b border-white/5 px-1">
                         <span className="text-[7px] text-white/40 uppercase mb-0.5">Save Path</span>
@@ -354,8 +384,8 @@ export function AdminControls({
                   <div className="bg-black/40 border border-white/10 p-3 rounded-xl space-y-2">
                      <div className="flex justify-between items-center">
                        <span className="text-[8px] font-bold text-white/40 uppercase">Sync Link</span>
-                       <span className={cn("text-[8px] font-black italic", runtimeStatus?.cloudSync === 'SUCCESS' ? "text-green-500" : "text-red-500")}>
-                          {runtimeStatus?.cloudSync}
+                       <span className={cn("text-[8px] font-black italic", runtimeStatus?.cloudSync === 'PASS' ? "text-green-500" : "text-red-500")}>
+                          {runtimeStatus?.cloudSync || 'PENDING'}
                        </span>
                      </div>
                   </div>

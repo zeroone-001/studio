@@ -159,6 +159,7 @@ export const StickerEditor = React.memo(({
 
   return (
     <div
+      data-sticker-id={sticker.id}
       className={cn(
         "absolute pointer-events-auto touch-none select-none",
         isSelected ? "z-[1000]" : "z-40"

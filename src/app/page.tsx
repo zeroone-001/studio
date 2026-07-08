@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -89,7 +90,16 @@ export default function KioskPage() {
     savePath: 'NONE',
     qrSourceUrl: 'NONE',
     shareIntentPayload: 'NONE',
-    lastSaveError: 'NONE'
+    lastSaveError: 'NONE',
+    // IMAGE PIPELINE TRACE
+    captureSuccess: 'PENDING',
+    canvasExists: 'PENDING',
+    canvasWidth: '0',
+    canvasHeight: '0',
+    frameApplied: 'PENDING',
+    filterApplied: 'PENDING',
+    blobCreated: 'PENDING',
+    blobSize: '0 bytes'
   });
 
   useEffect(() => {
@@ -146,10 +156,8 @@ export default function KioskPage() {
 
       setRuntimeStatus(prev => ({ 
         ...prev, 
-        fileCreated: 'SUCCESS', 
-        fileSize: `${(blob.size / 1024).toFixed(1)} KB`,
-        intentTriggered: 'SUCCESS', 
-        navigatorShareStarted: 'SUCCESS',
+        intentTriggered: 'PASS', 
+        navigatorShareStarted: 'PASS',
         shareIntentPayload: payloadString
       }));
 
@@ -162,9 +170,9 @@ export default function KioskPage() {
         });
         setRuntimeStatus(prev => ({ 
           ...prev, 
-          intentAcknowledged: 'SUCCESS', 
-          navigatorShareResolved: 'SUCCESS', 
-          nokoprintOpened: 'SUCCESS' 
+          intentAcknowledged: 'PASS', 
+          navigatorShareResolved: 'PASS', 
+          nokoprintOpened: 'PASS' 
         }));
         KioskLogger.log('info', 'PRINT', 'Intent Dispatched to NokoPrint', 'SUCCESS');
       } else {
@@ -173,8 +181,8 @@ export default function KioskPage() {
     } catch (e: any) {
       setRuntimeStatus(prev => ({ 
         ...prev, 
-        intentAcknowledged: 'FAILED', 
-        navigatorShareRejected: 'FAILED', 
+        intentAcknowledged: 'FAIL', 
+        navigatorShareRejected: 'FAIL', 
         lastErrorMessage: e.message 
       }));
       KioskLogger.log('error', 'PRINT', 'Intent Launch Failure', 'FAILED', e.message);
@@ -187,7 +195,7 @@ export default function KioskPage() {
     setCurrentSessionId(sessionId);
     
     if (!blob || blob.size === 0) {
-      setRuntimeStatus(prev => ({ ...prev, photoSaved: 'FAILED', lastSaveError: 'Empty Image' }));
+      setRuntimeStatus(prev => ({ ...prev, photoSaved: 'FAIL', lastSaveError: 'Empty Image' }));
       return;
     }
 
@@ -198,8 +206,7 @@ export default function KioskPage() {
     if (localSave.success) {
       setRuntimeStatus(prev => ({ 
         ...prev, 
-        photoSaved: 'SUCCESS',
-        fileSize: `${(localSave.size / 1024).toFixed(1)} KB`,
+        photoSaved: 'PASS',
         savePath: savePaths.join(' | ')
       }));
     } else {
@@ -213,11 +220,11 @@ export default function KioskPage() {
         savePaths.push(`USB: ${usbSave.path}`);
         setRuntimeStatus(prev => ({ 
           ...prev, 
-          usbBackup: 'SUCCESS',
+          usbBackup: 'PASS',
           savePath: savePaths.join(' | ')
         }));
       } else {
-        setRuntimeStatus(prev => ({ ...prev, usbBackup: 'FAILED', lastSaveError: 'USB Archive Failed' }));
+        setRuntimeStatus(prev => ({ ...prev, usbBackup: 'FAIL', lastSaveError: 'USB Archive Failed' }));
       }
     }
 
@@ -246,17 +253,17 @@ export default function KioskPage() {
 
     try {
       await setDoc(docRef, sessionData);
-      setRuntimeStatus(prev => ({ ...prev, sessionCreated: 'SUCCESS' }));
+      setRuntimeStatus(prev => ({ ...prev, sessionCreated: 'PASS' }));
 
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       await uploadBytes(photoRef, blob, { contentType: 'image/jpeg' });
       
       await updateDoc(docRef, { status: 'complete' });
       setUploadStatus("complete");
-      setRuntimeStatus(prev => ({ ...prev, cloudSync: 'SUCCESS' }));
+      setRuntimeStatus(prev => ({ ...prev, cloudSync: 'PASS' }));
     } catch (error: any) {
       setUploadStatus("error");
-      setRuntimeStatus(prev => ({ ...prev, cloudSync: 'FAILED', lastSaveError: `Cloud Sync: ${error.message}` }));
+      setRuntimeStatus(prev => ({ ...prev, cloudSync: 'FAIL', lastSaveError: `Cloud Sync: ${error.message}` }));
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: docRef.path,
         operation: 'create',
@@ -273,7 +280,19 @@ export default function KioskPage() {
     exportCanvas.width = 1600;
     exportCanvas.height = 2400;
     const ctx = exportCanvas.getContext('2d');
-    if (!ctx) return;
+    
+    if (!ctx) {
+      setRuntimeStatus(prev => ({ ...prev, canvasExists: 'FAIL' }));
+      setIsPreparingPrint(false);
+      return;
+    }
+
+    setRuntimeStatus(prev => ({ 
+      ...prev, 
+      canvasExists: 'PASS', 
+      canvasWidth: '1600', 
+      canvasHeight: '2400' 
+    }));
 
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, 1600, 2400);
@@ -299,6 +318,8 @@ export default function KioskPage() {
         ctx.filter = 'none';
       }
       
+      setRuntimeStatus(prev => ({ ...prev, filterApplied: 'PASS' }));
+
       // Draw Stickers
       const sortedStickers = [...placedStickers].sort((a, b) => a.zIndex - b.zIndex);
       for (const s of sortedStickers) {
@@ -327,6 +348,8 @@ export default function KioskPage() {
         URL.revokeObjectURL(url);
       }
       
+      setRuntimeStatus(prev => ({ ...prev, frameApplied: 'PASS' }));
+
       // Branding Footer
       const footerY = 2200;
       ctx.fillStyle = '#FFFFFF';
@@ -349,20 +372,23 @@ export default function KioskPage() {
       await drawContent(0);
     }
 
-    setRuntimeStatus(prev => ({ ...prev, photoGenerated: 'SUCCESS' }));
+    setRuntimeStatus(prev => ({ ...prev, photoGenerated: 'PASS' }));
+    
     exportCanvas.toBlob((blob) => {
       if (blob && blob.size > 0) {
         setPreparedBlob(blob);
         setRuntimeStatus(prev => ({ 
           ...prev, 
-          fileCreated: 'SUCCESS', 
-          fileSize: `${(blob.size / 1024).toFixed(1)} KB` 
+          blobCreated: 'PASS', 
+          blobSize: `${(blob.size / 1024).toFixed(1)} KB`,
+          fileCreated: 'PASS'
         }));
       } else {
         setRuntimeStatus(prev => ({ 
           ...prev, 
-          photoGenerated: 'FAILED', 
-          fileCreated: 'FAILED',
+          blobCreated: 'FAIL', 
+          fileCreated: 'FAIL',
+          blobSize: '0 bytes',
           lastErrorMessage: 'Zero-byte Canvas output' 
         }));
       }
@@ -424,7 +450,15 @@ export default function KioskPage() {
       savePath: 'NONE',
       qrSourceUrl: 'NONE',
       shareIntentPayload: 'NONE',
-      lastSaveError: 'NONE'
+      lastSaveError: 'NONE',
+      captureSuccess: 'PENDING',
+      canvasExists: 'PENDING',
+      canvasWidth: '0',
+      canvasHeight: '0',
+      frameApplied: 'PENDING',
+      filterApplied: 'PENDING',
+      blobCreated: 'PENDING',
+      blobSize: '0 bytes'
     });
   }, [usbHandle]);
 
@@ -463,14 +497,20 @@ export default function KioskPage() {
   };
 
   const takePhoto = (): string | null => {
-    if (!videoRef.current || !canvasRef.current) return null;
+    if (!videoRef.current || !canvasRef.current) {
+      setRuntimeStatus(prev => ({ ...prev, captureSuccess: 'FAIL' }));
+      return null;
+    }
     const context = canvasRef.current.getContext('2d');
     if (context) {
       canvasRef.current.width = videoRef.current.videoWidth;
       canvasRef.current.height = videoRef.current.videoHeight;
       context.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
-      return canvasRef.current.toDataURL('image/jpeg', 0.92);
+      const shot = canvasRef.current.toDataURL('image/jpeg', 0.92);
+      setRuntimeStatus(prev => ({ ...prev, captureSuccess: shot ? 'PASS' : 'FAIL' }));
+      return shot;
     }
+    setRuntimeStatus(prev => ({ ...prev, captureSuccess: 'FAIL' }));
     return null;
   };
 
@@ -785,7 +825,7 @@ export default function KioskPage() {
                        <h3 className="text-3xl font-black italic uppercase text-primary">HD SOFT COPY</h3>
                        <p className="text-[10px] font-black uppercase text-white/30 tracking-widest">Available for 24 hours</p>
                      </div>
-                     <div className="bg-white p-6 rounded-[3rem] shadow-[0_0_50px_rgba(255,255,255,0.1)]">
+                     <div className="bg-white p-6 rounded-[3rem] shadow-[0_0_50px_rgba(255,51,153,0.1)]">
                         <img src={softCopyQrUrl} alt="Scan to save" className="w-64 h-64" />
                      </div>
                      <p className="text-xs font-bold uppercase text-white/40 text-center leading-relaxed">Scan now to save your<br/>high-resolution portrait</p>

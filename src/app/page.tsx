@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -18,7 +17,7 @@ import { Progress } from "@/components/ui/progress";
 import { SessionStore } from "@/lib/kiosk/persistence";
 import { KioskLogger } from "@/lib/kiosk/logger";
 import { initializeFirebase } from "@/firebase";
-import { ref, uploadBytes } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { doc, setDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -68,7 +67,7 @@ export default function KioskPage() {
   const [preparedBlob, setPreparedBlob] = useState<Blob | null>(null);
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
 
-  // REAL-TIME TRACE SYSTEM (Honor Pad X10 Diagnostics)
+  // TRUTH-BASED DIAGNOSTICS (Honor Pad X10)
   const [runtimeStatus, setRuntimeStatus] = useState({
     photoGenerated: 'PENDING',
     photoSaved: 'PENDING',
@@ -99,22 +98,43 @@ export default function KioskPage() {
     frameApplied: 'PENDING',
     filterApplied: 'PENDING',
     blobCreated: 'PENDING',
-    blobSize: '0 bytes'
+    blobSize: '0 bytes',
+    // SOFT COPY TRACE
+    uploadStarted: 'FALSE',
+    uploadCompleted: 'FALSE',
+    uploadFailed: 'FALSE',
+    uploadTarget: 'NONE',
+    uploadedFileUrl: 'NONE',
+    storageProvider: 'Firebase Storage',
+    lastUploadError: 'NONE',
+    // HARDWARE TRUTH
+    usbDevicesCount: 0,
+    shareCapable: 'UNKNOWN',
+    usbHandleValid: 'FALSE'
   });
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setRuntimeStatus(prev => ({
-        ...prev,
-        secureContext: window.isSecureContext ? 'YES' : 'NO',
-        topLevelContext: window.self === window.top ? 'YES' : 'NO',
-        userAgent: navigator.userAgent
-      }));
+      const checkHardware = async () => {
+        let usbCount = 0;
+        if ('usb' in navigator) {
+          const devices = await navigator.usb.getDevices();
+          usbCount = devices.length;
+        }
+        setRuntimeStatus(prev => ({
+          ...prev,
+          secureContext: window.isSecureContext ? 'YES' : 'NO',
+          topLevelContext: window.self === window.top ? 'YES' : 'NO',
+          userAgent: navigator.userAgent,
+          usbDevicesCount: usbCount,
+          shareCapable: !!navigator.share ? 'YES' : 'NO'
+        }));
+      };
+      checkHardware();
       setOriginUrl(window.location.origin);
     }
   }, []);
 
-  // AUTOMATIC TRANSITION AFTER PAYMENT
   useEffect(() => {
     if (appState === "payment") {
       if (paymentReceived >= 100) {
@@ -140,7 +160,6 @@ export default function KioskPage() {
     }
   }, [appState]);
 
-  // CRITICAL: Prioritized Intent Dispatch (NokoPrint)
   const initiatePrint = useCallback(async (blob: Blob) => {
     KioskLogger.log('info', 'PRINT', 'User Gesture Activated. Requesting Intent...', 'PENDING');
     
@@ -161,7 +180,6 @@ export default function KioskPage() {
         shareIntentPayload: payloadString
       }));
 
-      // 2. Dispatch Intent to NokoPrint (Android Only)
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
@@ -189,56 +207,37 @@ export default function KioskPage() {
     }
   }, []);
 
-  // CRITICAL: Robust Image Saving & Sync
   const handleCloudSync = useCallback(async (blob: Blob) => {
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
     
+    setRuntimeStatus(prev => ({ ...prev, uploadStarted: 'TRUE', uploadTarget: `photos/${sessionId}.jpg` }));
+
     if (!blob || blob.size === 0) {
-      setRuntimeStatus(prev => ({ ...prev, photoSaved: 'FAIL', lastSaveError: 'Empty Image' }));
+      setRuntimeStatus(prev => ({ ...prev, photoSaved: 'FAIL', lastSaveError: 'Empty Image', uploadFailed: 'TRUE' }));
       return;
     }
 
     let savePaths = ['Local: IndexedDB'];
-
-    // 1. Local IndexedDB Persistence (Instant)
     const localSave = await SessionStore.savePhotoLocally(sessionId, blob);
     if (localSave.success) {
-      setRuntimeStatus(prev => ({ 
-        ...prev, 
-        photoSaved: 'PASS',
-        savePath: savePaths.join(' | ')
-      }));
-    } else {
-      setRuntimeStatus(prev => ({ ...prev, lastSaveError: 'Local IndexedDB Write Failed' }));
+      setRuntimeStatus(prev => ({ ...prev, photoSaved: 'PASS', savePath: savePaths.join(' | ') }));
     }
 
-    // 2. USB Archive (Lexar) - If Mounted
     if (usbHandle) {
       const usbSave = await SessionStore.saveToUsb(usbHandle, sessionId, blob);
       if (usbSave.success) {
         savePaths.push(`USB: ${usbSave.path}`);
-        setRuntimeStatus(prev => ({ 
-          ...prev, 
-          usbBackup: 'PASS',
-          savePath: savePaths.join(' | ')
-        }));
-      } else {
-        setRuntimeStatus(prev => ({ ...prev, usbBackup: 'FAIL', lastSaveError: 'USB Archive Failed' }));
+        setRuntimeStatus(prev => ({ ...prev, usbBackup: 'PASS', savePath: savePaths.join(' | ') }));
       }
     }
 
-    // GENERATE QR ONLY AFTER LOCAL SAVE IS CONFIRMED
     const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
     setUploadStatus("uploading");
     
-    setRuntimeStatus(prev => ({
-      ...prev,
-      qrSourceUrl: retrievalUrl
-    }));
+    setRuntimeStatus(prev => ({ ...prev, qrSourceUrl: retrievalUrl }));
 
-    // 3. Cloud Sync (Firebase)
     const { storage, db } = initializeFirebase();
     const docRef = doc(db, "photos", sessionId);
     
@@ -258,12 +257,24 @@ export default function KioskPage() {
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       await uploadBytes(photoRef, blob, { contentType: 'image/jpeg' });
       
+      const downloadUrl = await getDownloadURL(photoRef);
       await updateDoc(docRef, { status: 'complete' });
+      
       setUploadStatus("complete");
-      setRuntimeStatus(prev => ({ ...prev, cloudSync: 'PASS' }));
+      setRuntimeStatus(prev => ({ 
+        ...prev, 
+        cloudSync: 'PASS', 
+        uploadCompleted: 'TRUE', 
+        uploadedFileUrl: downloadUrl 
+      }));
     } catch (error: any) {
       setUploadStatus("error");
-      setRuntimeStatus(prev => ({ ...prev, cloudSync: 'FAIL', lastSaveError: `Cloud Sync: ${error.message}` }));
+      setRuntimeStatus(prev => ({ 
+        ...prev, 
+        cloudSync: 'FAIL', 
+        uploadFailed: 'TRUE', 
+        lastUploadError: error.message 
+      }));
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: docRef.path,
         operation: 'create',
@@ -301,7 +312,6 @@ export default function KioskPage() {
     const STRIP_W = isStrip ? 800 : 1600;
 
     const drawContent = async (offsetX: number) => {
-      // Draw Photos
       for (let i = 0; i < selectedBlueprint.slots.length; i++) {
         const slot = selectedBlueprint.slots[i];
         const photo = capturedPhotos[i];
@@ -320,7 +330,6 @@ export default function KioskPage() {
       
       setRuntimeStatus(prev => ({ ...prev, filterApplied: 'PASS' }));
 
-      // Draw Stickers
       const sortedStickers = [...placedStickers].sort((a, b) => a.zIndex - b.zIndex);
       for (const s of sortedStickers) {
         const def = STICKER_DEFS.find(d => d.id === s.type);
@@ -350,7 +359,6 @@ export default function KioskPage() {
       
       setRuntimeStatus(prev => ({ ...prev, frameApplied: 'PASS' }));
 
-      // Branding Footer
       const footerY = 2200;
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(offsetX, footerY, STRIP_W, 200);
@@ -429,7 +437,8 @@ export default function KioskPage() {
     setPreparedBlob(null);
     setUploadStatus("idle");
     setSoftCopyQrUrl("");
-    setRuntimeStatus({
+    setRuntimeStatus(prev => ({
+      ...prev,
       photoGenerated: 'PENDING',
       photoSaved: 'PENDING',
       intentTriggered: 'PENDING',
@@ -443,23 +452,21 @@ export default function KioskPage() {
       navigatorShareResolved: 'PENDING',
       navigatorShareRejected: 'PENDING',
       nokoprintOpened: 'PENDING',
-      secureContext: window.isSecureContext ? 'YES' : 'NO',
-      topLevelContext: window.self === window.top ? 'YES' : 'NO',
-      userAgent: navigator.userAgent,
-      lastErrorMessage: '',
       savePath: 'NONE',
       qrSourceUrl: 'NONE',
       shareIntentPayload: 'NONE',
       lastSaveError: 'NONE',
       captureSuccess: 'PENDING',
       canvasExists: 'PENDING',
-      canvasWidth: '0',
-      canvasHeight: '0',
       frameApplied: 'PENDING',
       filterApplied: 'PENDING',
       blobCreated: 'PENDING',
-      blobSize: '0 bytes'
-    });
+      blobSize: '0 bytes',
+      uploadStarted: 'FALSE',
+      uploadCompleted: 'FALSE',
+      uploadFailed: 'FALSE',
+      uploadedFileUrl: 'NONE'
+    }));
   }, [usbHandle]);
 
   const startShotSequence = async () => {

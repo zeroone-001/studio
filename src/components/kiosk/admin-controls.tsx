@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -20,7 +19,9 @@ import {
   GripHorizontal,
   Database,
   QrCode,
-  HardDrive
+  HardDrive,
+  Cloud,
+  Smartphone
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
@@ -65,6 +66,18 @@ interface AdminControlsProps {
     filterApplied: string;
     blobCreated: string;
     blobSize: string;
+    // SOFT COPY TRACE
+    uploadStarted: string;
+    uploadCompleted: string;
+    uploadFailed: string;
+    uploadTarget: string;
+    uploadedFileUrl: string;
+    storageProvider: string;
+    lastUploadError: string;
+    // HARDWARE TRUTH
+    usbDevicesCount: number;
+    shareCapable: string;
+    usbHandleValid: string;
   };
 }
 
@@ -173,16 +186,16 @@ export function AdminControls({
     <div className="flex justify-between items-center px-1 border-b border-white/5 py-1">
       <span className="text-[7px] font-bold text-white/40 uppercase tracking-widest">{label}</span>
       <div className="flex items-center gap-1">
-        {value === 'PASS' ? (
+        {value === 'PASS' || value === 'TRUE' || value === 'YES' ? (
           <CheckCircle2 className="w-2.5 h-2.5 text-green-500" />
-        ) : value === 'FAIL' ? (
+        ) : value === 'FAIL' || value === 'FALSE' || value === 'NO' ? (
           <AlertCircle className="w-2.5 h-2.5 text-red-500" />
         ) : (
           <Loader2 className="w-2.5 h-2.5 text-white/10 animate-spin" />
         )}
         <span className={cn(
           "text-[8px] font-black italic", 
-          value === 'PASS' ? "text-green-500" : value === 'FAIL' ? "text-red-500" : "text-white/20"
+          (value === 'PASS' || value === 'TRUE' || value === 'YES') ? "text-green-500" : (value === 'FAIL' || value === 'FALSE' || value === 'NO') ? "text-red-500" : "text-white/20"
         )}>
           {value || 'PENDING'}
         </span>
@@ -307,6 +320,35 @@ export function AdminControls({
                {runtimeStatus && (
                  <div className="bg-black/60 border border-indigo-500/30 p-3 rounded-xl space-y-2">
                     <h3 className="text-[7px] font-black uppercase text-indigo-400 italic mb-2 flex items-center gap-2">
+                      <Cloud className="w-3 h-3" /> SOFT COPY PIPELINE
+                    </h3>
+                    <div className="grid grid-cols-1 gap-1">
+                       <TraceItem label="Upload Started" value={runtimeStatus.uploadStarted} />
+                       <TraceItem label="Upload Completed" value={runtimeStatus.uploadCompleted} />
+                       <TraceItem label="Upload Failed" value={runtimeStatus.uploadFailed} />
+                       <div className="flex flex-col py-1 border-b border-white/5 px-1">
+                         <span className="text-[7px] text-white/40 uppercase mb-0.5">Target Path</span>
+                         <span className="text-[6px] font-mono text-indigo-300 break-all">{runtimeStatus.uploadTarget}</span>
+                       </div>
+                       <div className="flex flex-col py-1 border-b border-white/5 px-1">
+                         <span className="text-[7px] text-white/40 uppercase mb-0.5">Storage Provider</span>
+                         <span className="text-[6px] font-mono text-white/60">{runtimeStatus.storageProvider}</span>
+                       </div>
+                       <div className="flex flex-col py-1 border-b border-white/5 px-1">
+                         <span className="text-[7px] text-white/40 uppercase mb-0.5">Final Binary URL</span>
+                         <span className="text-[6px] font-mono text-emerald-300 break-all">{runtimeStatus.uploadedFileUrl}</span>
+                       </div>
+                       <div className="flex flex-col py-1 px-1">
+                         <span className="text-[7px] text-white/40 uppercase mb-0.5">Last Upload Error</span>
+                         <span className="text-[6px] font-mono text-red-400 break-all">{runtimeStatus.lastUploadError}</span>
+                       </div>
+                    </div>
+                 </div>
+               )}
+
+               {runtimeStatus && (
+                 <div className="bg-black/60 border border-amber-500/30 p-3 rounded-xl space-y-2">
+                    <h3 className="text-[7px] font-black uppercase text-amber-400 italic mb-2 flex items-center gap-2">
                       <Database className="w-3 h-3" /> SESSION AUDIT (LAST RUN)
                     </h3>
                     <div className="space-y-1">
@@ -332,14 +374,6 @@ export function AdminControls({
                         <span className="text-[7px] text-white/40 uppercase mb-0.5">Share Intent Payload</span>
                         <span className="text-[6px] font-mono text-emerald-300 break-all">{runtimeStatus.shareIntentPayload || 'NONE'}</span>
                       </div>
-                      <div className="flex flex-col py-1 border-b border-white/5 px-1">
-                        <span className="text-[7px] text-white/40 uppercase mb-0.5">Last Save Error</span>
-                        <span className="text-[6px] font-mono text-red-400 break-all">{runtimeStatus.lastSaveError || 'NONE'}</span>
-                      </div>
-                      <div className="flex flex-col py-1 px-1">
-                        <span className="text-[7px] text-white/40 uppercase mb-0.5">Last Print Error</span>
-                        <span className="text-[6px] font-mono text-red-400 break-all">{runtimeStatus.lastErrorMessage || 'NONE'}</span>
-                      </div>
                     </div>
                  </div>
                )}
@@ -363,17 +397,17 @@ export function AdminControls({
             <div className="space-y-4">
                <div className="space-y-2">
                   <label className="text-[7px] font-black uppercase text-white/40 flex items-center gap-2">
-                    <Printer className="w-3 h-3" /> PRINTER / USB
+                    <Smartphone className="w-3 h-3" /> HARDWARE TRUTH
                   </label>
                   <div className="bg-black/40 border border-white/10 p-3 rounded-xl space-y-2">
-                     <div className="flex justify-between items-center">
-                       <span className="text-[8px] font-bold text-white/40 uppercase">HW Status</span>
-                       <span className={cn("text-[8px] font-black italic", usbStatus === 'ONLINE' ? "text-green-500" : "text-red-500")}>{usbStatus}</span>
+                     <div className="flex justify-between items-center px-1 border-b border-white/5 py-1">
+                       <span className="text-[7px] font-bold text-white/40 uppercase">USB Devices Found</span>
+                       <span className={cn("text-[8px] font-black", (runtimeStatus?.usbDevicesCount || 0) > 0 ? "text-green-500" : "text-red-500")}>
+                         {runtimeStatus?.usbDevicesCount || 0} DEVICES
+                       </span>
                      </div>
-                     <div className="flex justify-between items-center">
-                       <span className="text-[8px] font-bold text-white/40 uppercase">Lexar Mount</span>
-                       <span className={cn("text-[8px] font-black italic", usbHandle ? "text-green-500" : "text-amber-500")}>{usbHandle ? "READY" : "WAITING"}</span>
-                     </div>
+                     <TraceItem label="Android Share Capable" value={runtimeStatus?.shareCapable} />
+                     <TraceItem label="Lexar Permission Valid" value={usbHandle ? 'YES' : 'NO'} />
                   </div>
                </div>
 

@@ -76,6 +76,7 @@ export default function KioskPage() {
     cloudSync: 'PENDING',
     sessionCreated: 'PENDING',
     fileCreated: 'PENDING',
+    fileSize: '0 bytes',
     usbBackup: 'PENDING',
     navigatorShareStarted: 'PENDING',
     navigatorShareResolved: 'PENDING',
@@ -125,11 +126,13 @@ export default function KioskPage() {
     }
   }, [appState]);
 
-  // CRITICAL: Decoupled Printing Pipeline
+  // CRITICAL: Prioritized Intent Dispatch (NokoPrint)
   const initiatePrint = useCallback(async (blob: Blob) => {
     KioskLogger.log('info', 'PRINT', 'User Gesture Activated. Requesting Intent...', 'PENDING');
     
     try {
+      if (!blob || blob.size === 0) throw new Error("Null or Empty Blob detected");
+
       const timestamp = Date.now();
       const sessionId = `jnl_${timestamp.toString(36)}`;
       const fileName = `JNL_STUDIO_${sessionId}.jpg`;
@@ -138,6 +141,7 @@ export default function KioskPage() {
       setRuntimeStatus(prev => ({ 
         ...prev, 
         fileCreated: 'SUCCESS', 
+        fileSize: `${(blob.size / 1024).toFixed(1)} KB`,
         intentTriggered: 'SUCCESS', 
         navigatorShareStarted: 'SUCCESS' 
       }));
@@ -170,27 +174,36 @@ export default function KioskPage() {
     }
   }, []);
 
-  // CRITICAL: Decoupled Cloud Sync & Storage Pipeline
+  // CRITICAL: Robust Image Saving & Sync
   const handleCloudSync = useCallback(async (blob: Blob) => {
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
     
-    // GENERATE QR IMMEDIATELY (Deterministic URL)
+    if (!blob || blob.size === 0) {
+      setRuntimeStatus(prev => ({ ...prev, photoSaved: 'FAILED', lastErrorMessage: 'Empty Image' }));
+      return;
+    }
+
+    // 1. Local IndexedDB Persistence (Instant)
+    const localSave = await SessionStore.savePhotoLocally(sessionId, blob);
+    if (localSave.success) {
+      setRuntimeStatus(prev => ({ 
+        ...prev, 
+        photoSaved: 'SUCCESS',
+        fileSize: `${(localSave.size / 1024).toFixed(1)} KB`
+      }));
+    }
+
+    // 2. USB Archive (Lexar) - If Mounted
+    if (usbHandle) {
+      const usbSave = await SessionStore.saveToUsb(usbHandle, sessionId, blob);
+      setRuntimeStatus(prev => ({ ...prev, usbBackup: usbSave.success ? 'SUCCESS' : 'FAILED' }));
+    }
+
+    // GENERATE QR ONLY AFTER LOCAL SAVE IS CONFIRMED
     const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
     setUploadStatus("uploading");
-
-    // 1. Local IndexedDB Persistence (Instant)
-    SessionStore.savePhotoLocally(sessionId, blob).then(() => {
-      setRuntimeStatus(prev => ({ ...prev, photoSaved: 'SUCCESS' }));
-    });
-
-    // 2. USB Backup (Lexar) - If Mounted
-    if (usbHandle) {
-      SessionStore.saveToUsb(usbHandle, sessionId, blob).then(success => {
-        setRuntimeStatus(prev => ({ ...prev, usbBackup: success ? 'SUCCESS' : 'FAILED' }));
-      });
-    }
 
     // 3. Cloud Sync (Firebase)
     const { storage, db } = initializeFirebase();
@@ -312,8 +325,10 @@ export default function KioskPage() {
 
     setRuntimeStatus(prev => ({ ...prev, photoGenerated: 'SUCCESS' }));
     exportCanvas.toBlob((blob) => {
-      if (blob) {
+      if (blob && blob.size > 0) {
         setPreparedBlob(blob);
+      } else {
+        setRuntimeStatus(prev => ({ ...prev, photoGenerated: 'FAILED', lastErrorMessage: 'Zero-byte Canvas output' }));
       }
       setIsPreparingPrint(false);
     }, 'image/jpeg', 0.95);
@@ -360,6 +375,7 @@ export default function KioskPage() {
       cloudSync: 'PENDING',
       sessionCreated: 'PENDING',
       fileCreated: 'PENDING',
+      fileSize: '0 bytes',
       usbBackup: usbHandle ? 'PENDING' : 'OFFLINE',
       navigatorShareStarted: 'PENDING',
       navigatorShareResolved: 'PENDING',

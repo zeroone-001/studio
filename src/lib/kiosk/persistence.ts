@@ -37,26 +37,32 @@ export const SessionStore = {
   },
 
   // Save photo to IndexedDB for instant local persistence
-  savePhotoLocally: async (id: string, blob: Blob): Promise<boolean> => {
+  savePhotoLocally: async (id: string, blob: Blob): Promise<{ success: boolean; size: number }> => {
     try {
-      if (typeof window === 'undefined') return false;
+      if (typeof window === 'undefined') return { success: false, size: 0 };
+      if (blob.size === 0) throw new Error('Empty Blob');
+
       const db = await SessionStore.initDB();
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
       store.put(blob, id);
-      return new Promise((resolve, reject) => {
-        tx.oncomplete = () => resolve(true);
-        tx.onerror = () => reject(false);
+      
+      return new Promise((resolve) => {
+        tx.oncomplete = () => resolve({ success: true, size: blob.size });
+        tx.onerror = () => resolve({ success: false, size: 0 });
       });
     } catch (e) {
       console.error('Local Gallery Save Failed', e);
-      return false;
+      return { success: false, size: 0 };
     }
   },
 
   // Permanent Archive to Lexar microSD (microSD is mapped via Directory Picker)
+  // Path: /JNL_STUDIO_ARCHIVE/JNL_PORTRAIT_{id}.jpg
   saveToUsb: async (handle: FileSystemDirectoryHandle, id: string, blob: Blob) => {
     try {
+      if (blob.size === 0) throw new Error('Empty Blob');
+      
       // Create or get the archive folder
       const studioFolder = await handle.getDirectoryHandle('JNL_STUDIO_ARCHIVE', { create: true });
       const fileName = `JNL_PORTRAIT_${id}.jpg`;
@@ -64,10 +70,11 @@ export const SessionStore = {
       const writable = await fileHandle.createWritable();
       await writable.write(blob);
       await writable.close();
-      return true;
+      
+      return { success: true, path: `USB:/JNL_STUDIO_ARCHIVE/${fileName}`, size: blob.size };
     } catch (e) {
       console.error('Lexar USB Archive Failed', e);
-      return false;
+      return { success: false, path: '', size: 0 };
     }
   },
 

@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -70,7 +69,6 @@ export default function KioskPage() {
   // REAL-TIME TRACE SYSTEM (Honor Pad X10 Diagnostics)
   const [runtimeStatus, setRuntimeStatus] = useState({
     photoGenerated: 'PENDING',
-    blobCreated: 'PENDING',
     photoSaved: 'PENDING',
     intentTriggered: 'PENDING',
     intentAcknowledged: 'PENDING',
@@ -130,7 +128,6 @@ export default function KioskPage() {
   // CRITICAL: Decoupled Printing Pipeline
   const initiatePrint = useCallback(async (blob: Blob) => {
     KioskLogger.log('info', 'PRINT', 'User Gesture Activated. Requesting Intent...', 'PENDING');
-    setRuntimeStatus(prev => ({ ...prev, intentTriggered: 'SUCCESS', navigatorShareStarted: 'SUCCESS' }));
     
     // Watchdog for NokoPrint
     const printWatchdog = setTimeout(() => {
@@ -145,7 +142,13 @@ export default function KioskPage() {
     try {
       const fileName = `JNL_Studio_${Date.now()}.jpg`;
       const file = new File([blob], fileName, { type: 'image/jpeg' });
-      setRuntimeStatus(prev => ({ ...prev, fileCreated: 'SUCCESS' }));
+      
+      setRuntimeStatus(prev => ({ 
+        ...prev, 
+        fileCreated: 'SUCCESS', 
+        intentTriggered: 'SUCCESS', 
+        navigatorShareStarted: 'SUCCESS' 
+      }));
 
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
@@ -154,16 +157,31 @@ export default function KioskPage() {
           text: 'Open with NokoPrint'
         });
         clearTimeout(printWatchdog);
-        setRuntimeStatus(prev => ({ ...prev, intentAcknowledged: 'SUCCESS', navigatorShareResolved: 'SUCCESS', nokoprintOpened: 'SUCCESS' }));
+        setRuntimeStatus(prev => ({ 
+          ...prev, 
+          intentAcknowledged: 'SUCCESS', 
+          navigatorShareResolved: 'SUCCESS', 
+          nokoprintOpened: 'SUCCESS' 
+        }));
         KioskLogger.log('info', 'PRINT', 'Intent Dispatched to NokoPrint', 'SUCCESS');
       } else {
         clearTimeout(printWatchdog);
-        setRuntimeStatus(prev => ({ ...prev, intentTriggered: 'FAILED', navigatorShareRejected: 'FAILED', intentAcknowledged: 'FAILED' }));
+        setRuntimeStatus(prev => ({ 
+          ...prev, 
+          intentTriggered: 'FAILED', 
+          navigatorShareRejected: 'FAILED', 
+          intentAcknowledged: 'FAILED' 
+        }));
         KioskLogger.log('error', 'PRINT', 'Navigator Share API Blocked or Unavailable', 'FAILED');
       }
     } catch (e: any) {
       clearTimeout(printWatchdog);
-      setRuntimeStatus(prev => ({ ...prev, intentAcknowledged: 'FAILED', navigatorShareRejected: 'FAILED', lastErrorMessage: e.message }));
+      setRuntimeStatus(prev => ({ 
+        ...prev, 
+        intentAcknowledged: 'FAILED', 
+        navigatorShareRejected: 'FAILED', 
+        lastErrorMessage: e.message 
+      }));
       KioskLogger.log('error', 'PRINT', 'Intent Launch Failure', 'FAILED', e.message);
     }
   }, []);
@@ -186,7 +204,7 @@ export default function KioskPage() {
         }
         return prev;
       });
-    }, 8000);
+    }, 10000); // Extended for large portraits
     
     // Save to local IndexedDB (Fast gallery fallback)
     SessionStore.savePhotoLocally(sessionId, blob).then(() => {
@@ -320,7 +338,6 @@ export default function KioskPage() {
     exportCanvas.toBlob((blob) => {
       if (blob) {
         setPreparedBlob(blob);
-        setRuntimeStatus(prev => ({ ...prev, blobCreated: 'SUCCESS' }));
       }
       setIsPreparingPrint(false);
     }, 'image/jpeg', 0.95);
@@ -361,7 +378,6 @@ export default function KioskPage() {
     setSoftCopyQrUrl("");
     setRuntimeStatus({
       photoGenerated: 'PENDING',
-      blobCreated: 'PENDING',
       photoSaved: 'PENDING',
       intentTriggered: 'PENDING',
       intentAcknowledged: 'PENDING',
@@ -674,8 +690,9 @@ export default function KioskPage() {
               disabled={isPreparingPrint || !preparedBlob}
               onClick={() => {
                 if (preparedBlob) {
-                  // Decoupled parallel execution
+                  // PRIORITY: Synchronous intent dispatch
                   initiatePrint(preparedBlob);
+                  // BACKGROUND: Parallel cloud sync
                   handleCloudSync(preparedBlob);
                 }
                 setAppState("printing");

@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -33,7 +32,6 @@ interface AdminControlsProps {
   onSimulateCash: (amount: number) => void;
   runtimeStatus?: {
     photoGenerated: string;
-    blobCreated: string;
     photoSaved: string;
     intentTriggered: string;
     intentAcknowledged: string;
@@ -204,7 +202,7 @@ export function AdminControls({
                   onClick={pairPrinter}
                   className="w-full py-4 text-[9px] font-black uppercase flex items-center justify-center gap-2 border border-blue-500/30 bg-blue-500/5 text-blue-400 rounded-xl hover:bg-blue-500/10"
                 >
-                  <Printer className="w-4 h-4" /> RE-PAIR HARDWARE
+                  <Printer className="w-4 h-4" /> PAIR PRINTER HUB
                 </button>
               </div>
 

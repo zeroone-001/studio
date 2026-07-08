@@ -9,7 +9,7 @@ import { AdminControls } from "@/components/kiosk/admin-controls";
 import { HealthMonitor } from "@/components/kiosk/health-monitor";
 import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
-  Target, CheckCircle2, AlertCircle, Loader2, Camera
+  Target, CheckCircle2, AlertCircle, Loader2, Camera, WifiOff
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -281,6 +281,12 @@ export default function KioskPage() {
       return;
     }
 
+    // ALWAYS SAVE LOCALLY FIRST (Zero Latency)
+    await SessionStore.savePhotoLocally(sessionId, blob);
+    if (usbHandle) {
+      await SessionStore.saveToUsb(usbHandle, sessionId, blob);
+    }
+
     const { storage, db, auth } = initializeFirebase();
 
     if (!auth.currentUser) {
@@ -291,13 +297,7 @@ export default function KioskPage() {
       }
     }
 
-    // ALWAYS SAVE TO PERMANENT USB MASTER ARCHIVE
-    await SessionStore.savePhotoLocally(sessionId, blob);
-    if (usbHandle) {
-      await SessionStore.saveToUsb(usbHandle, sessionId, blob);
-    }
-
-    // UPLOAD TEMPORARY SOFT COPY
+    // UPLOAD TEMPORARY SOFT COPY WITH FAST TIMEOUT
     const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
     setUploadStatus("uploading");
     
@@ -320,6 +320,18 @@ export default function KioskPage() {
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       const uploadTask = uploadBytesResumable(photoRef, blob, { contentType: 'image/jpeg' });
 
+      // HARD PRODUCTION TIMEOUT: 5 Seconds for Soft Copy
+      const cloudTimeout = setTimeout(() => {
+        if (uploadStatus !== "complete") {
+          setUploadStatus("error");
+          setRuntimeStatus(prev => ({ 
+            ...prev, 
+            uploadFailed: 'TRUE', 
+            fbErrorMessage: 'Network Timeout (Offline Mode Active)' 
+          }));
+        }
+      }, 5000);
+
       uploadTask.on('state_changed', 
         (snapshot) => {
           const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
@@ -330,6 +342,7 @@ export default function KioskPage() {
           }));
         },
         async (error: any) => {
+          clearTimeout(cloudTimeout);
           setUploadStatus("error");
           setRuntimeStatus(prev => ({ 
             ...prev, 
@@ -340,10 +353,10 @@ export default function KioskPage() {
           }));
         },
         async () => {
+          clearTimeout(cloudTimeout);
           const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
           await updateDoc(docRef, { status: 'complete', downloadUrl: downloadUrl });
           
-          // QR CODE GENERATED ONLY AFTER VERIFIED UPLOAD
           setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
           setUploadStatus("complete");
           
@@ -366,7 +379,7 @@ export default function KioskPage() {
         fbException: error.message 
       }));
     }
-  }, [originUrl, usbHandle, promoConsent]);
+  }, [originUrl, usbHandle, promoConsent, uploadStatus]);
 
   const preSpoolPrintFile = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
@@ -467,6 +480,7 @@ export default function KioskPage() {
 
     setRuntimeStatus(prev => ({ ...prev, photoGenerated: 'PASS' }));
     
+    // PRODUCTION OPTIMIZATION: 0.90 Quality for faster upload
     exportCanvas.toBlob((blob) => {
       if (blob && blob.size > 0) {
         setPreparedBlob(blob);
@@ -486,7 +500,7 @@ export default function KioskPage() {
         }));
       }
       setIsPreparingPrint(false);
-    }, 'image/jpeg', 0.95);
+    }, 'image/jpeg', 0.90);
   }, [selectedBlueprint, capturedPhotos, selectedQuote, selectedFilter, placedStickers]);
 
   const addSticker = (type: string) => {
@@ -891,16 +905,16 @@ export default function KioskPage() {
                    <h2 className="font-headline font-black text-6xl italic uppercase text-primary mb-4">Printing...</h2>
                    <div className="flex flex-col items-center justify-center gap-3">
                      <div className="flex items-center gap-2">
-                        {(uploadStatus === 'uploading' || runtimeStatus.cloudSync === 'PENDING') && <Loader2 className="w-4 h-4 text-white/40 animate-spin" />}
-                        <p className="text-white/40 font-bold uppercase tracking-[0.3em] text-sm italic">
+                        {(uploadStatus === 'uploading' || runtimeStatus.cloudSync === 'PENDING') && uploadStatus !== 'error' && <Loader2 className="w-4 h-4 text-white/40 animate-spin" />}
+                        <p className={cn("font-bold uppercase tracking-[0.3em] text-sm italic", uploadStatus === 'error' ? "text-red-500" : "text-white/40")}>
                           {uploadStatus === 'idle' && "Initializing Sequence..."}
                           {uploadStatus === 'uploading' && "Uploading High-Res Version..."}
                           {uploadStatus === 'complete' && "Cloud Storage Verified"}
-                          {uploadStatus === 'error' && "Sync Interrupted"}
+                          {uploadStatus === 'error' && "Soft Copy Unavailable (Offline)"}
                         </p>
                      </div>
                      <p className="text-primary text-[10px] font-black uppercase italic animate-pulse">
-                        {softCopyQrUrl ? "SYSTEM READY - SCAN QR" : "HOLD ON, SYNCING..."}
+                        {softCopyQrUrl ? "SYSTEM READY - SCAN QR" : (uploadStatus === 'error' ? "Physical Print in Progress" : "HOLD ON, SYNCING...")}
                      </p>
                    </div>
                 </div>
@@ -926,6 +940,24 @@ export default function KioskPage() {
                         <button 
                           onClick={() => setAppState("thankyou")} 
                           className="w-full bg-primary py-8 text-2xl font-black uppercase italic rounded-3xl shadow-[0_10px_30px_rgba(255,51,153,0.3)] active:scale-95 transition-all text-white"
+                        >
+                          DONE
+                        </button>
+                     )}
+                  </div>
+                ) : uploadStatus === 'error' ? (
+                  <div className="flex flex-col items-center space-y-8 animate-in fade-in duration-500">
+                    <div className="w-32 h-32 bg-red-500/10 border-2 border-red-500/30 rounded-full flex items-center justify-center">
+                      <WifiOff className="w-16 h-16 text-red-500" />
+                    </div>
+                    <div className="text-center space-y-4">
+                      <h3 className="text-2xl font-black italic uppercase text-white/60">OFFLINE MODE</h3>
+                      <p className="text-[10px] font-bold uppercase text-white/30 leading-relaxed max-w-[250px]">Internet connection lost. High-res download is disabled, but your physical print is unaffected.</p>
+                    </div>
+                    {(printProgress >= 100 || runtimeStatus.intentAcknowledged !== 'PENDING') && (
+                        <button 
+                          onClick={() => setAppState("thankyou")} 
+                          className="w-full bg-zinc-800 py-8 text-2xl font-black uppercase italic rounded-3xl shadow-xl active:scale-95 transition-all text-white/40"
                         >
                           DONE
                         </button>

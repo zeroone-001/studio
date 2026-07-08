@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -21,7 +22,9 @@ import {
   QrCode,
   HardDrive,
   Cloud,
-  Smartphone
+  Smartphone,
+  ShieldAlert,
+  Terminal
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
@@ -74,6 +77,17 @@ interface AdminControlsProps {
     uploadedFileUrl: string;
     storageProvider: string;
     lastUploadError: string;
+    // FIREBASE EMERGENCY DEBUG
+    fbProjectId: string;
+    fbStorageBucket: string;
+    fbUserUid: string;
+    fbAuthState: string;
+    fbUploadProgress: string;
+    fbTaskState: string;
+    fbErrorCode: string;
+    fbErrorMessage: string;
+    fbException: string;
+    fbUrlGenerated: string;
     // HARDWARE TRUTH
     usbDevicesCount: number;
     shareCapable: string;
@@ -186,16 +200,16 @@ export function AdminControls({
     <div className="flex justify-between items-center px-1 border-b border-white/5 py-1">
       <span className="text-[7px] font-bold text-white/40 uppercase tracking-widest">{label}</span>
       <div className="flex items-center gap-1">
-        {value === 'PASS' || value === 'TRUE' || value === 'YES' ? (
+        {value === 'PASS' || value === 'TRUE' || value === 'YES' || value === 'LOGGED_IN' ? (
           <CheckCircle2 className="w-2.5 h-2.5 text-green-500" />
-        ) : value === 'FAIL' || value === 'FALSE' || value === 'NO' ? (
+        ) : value === 'FAIL' || value === 'FALSE' || value === 'NO' || value === 'SIGNED_OUT' ? (
           <AlertCircle className="w-2.5 h-2.5 text-red-500" />
         ) : (
           <Loader2 className="w-2.5 h-2.5 text-white/10 animate-spin" />
         )}
         <span className={cn(
           "text-[8px] font-black italic", 
-          (value === 'PASS' || value === 'TRUE' || value === 'YES') ? "text-green-500" : (value === 'FAIL' || value === 'FALSE' || value === 'NO') ? "text-red-500" : "text-white/20"
+          (value === 'PASS' || value === 'TRUE' || value === 'YES' || value === 'LOGGED_IN') ? "text-green-500" : (value === 'FAIL' || value === 'FALSE' || value === 'NO' || value === 'SIGNED_OUT') ? "text-red-500" : "text-white/20"
         )}>
           {value || 'PENDING'}
         </span>
@@ -293,6 +307,49 @@ export function AdminControls({
 
           {view === 'logs' && (
             <div className="space-y-4">
+               {/* EMERGENCY FIREBASE STORAGE DEBUG */}
+               <div className="bg-red-500/10 border-2 border-red-500/40 p-3 rounded-xl space-y-2">
+                  <h3 className="text-[8px] font-black uppercase text-red-500 italic mb-2 flex items-center gap-2">
+                    <ShieldAlert className="w-3 h-3" /> FIREBASE STORAGE DEBUG
+                  </h3>
+                  <div className="grid grid-cols-1 gap-1">
+                     <div className="flex flex-col py-1 border-b border-red-500/10">
+                       <span className="text-[6px] text-white/40 uppercase">Project ID</span>
+                       <span className="text-[7px] font-mono text-white/80">{runtimeStatus?.fbProjectId}</span>
+                     </div>
+                     <div className="flex flex-col py-1 border-b border-red-500/10">
+                       <span className="text-[6px] text-white/40 uppercase">Storage Bucket</span>
+                       <span className="text-[7px] font-mono text-white/80">{runtimeStatus?.fbStorageBucket}</span>
+                     </div>
+                     <TraceItem label="Auth State" value={runtimeStatus?.fbAuthState} />
+                     <div className="flex flex-col py-1 border-b border-red-500/10">
+                       <span className="text-[6px] text-white/40 uppercase">User UID</span>
+                       <span className="text-[7px] font-mono text-white/60 break-all">{runtimeStatus?.fbUserUid}</span>
+                     </div>
+                     <div className="flex justify-between items-center py-1 border-b border-red-500/10">
+                       <span className="text-[7px] font-bold text-white/40 uppercase">Progress</span>
+                       <span className="text-[8px] font-black text-amber-500">{runtimeStatus?.fbUploadProgress}</span>
+                     </div>
+                     <div className="flex justify-between items-center py-1 border-b border-red-500/10">
+                       <span className="text-[7px] font-bold text-white/40 uppercase">Task State</span>
+                       <span className="text-[8px] font-black text-indigo-400">{runtimeStatus?.fbTaskState}</span>
+                     </div>
+                     <div className="flex flex-col py-1 border-b border-red-500/10">
+                       <span className="text-[6px] text-white/40 uppercase">Error Code</span>
+                       <span className="text-[7px] font-black text-red-400">{runtimeStatus?.fbErrorCode}</span>
+                     </div>
+                     <div className="flex flex-col py-1 border-b border-red-500/10">
+                       <span className="text-[6px] text-white/40 uppercase">Error Message</span>
+                       <span className="text-[7px] font-medium text-red-300 italic">{runtimeStatus?.fbErrorMessage}</span>
+                     </div>
+                     <div className="flex flex-col py-1 border-b border-red-500/10">
+                       <span className="text-[6px] text-white/40 uppercase">Full Exception</span>
+                       <span className="text-[6px] font-mono text-white/20 break-all bg-black/40 p-1.5 rounded">{runtimeStatus?.fbException}</span>
+                     </div>
+                     <TraceItem label="Download URL Generated" value={runtimeStatus?.fbUrlGenerated} />
+                  </div>
+               </div>
+
                {runtimeStatus && (
                  <div className="bg-black/60 border border-green-500/30 p-3 rounded-xl space-y-2">
                     <h3 className="text-[7px] font-black uppercase text-green-400 italic mb-2 flex items-center gap-2">
@@ -338,42 +395,6 @@ export function AdminControls({
                          <span className="text-[7px] text-white/40 uppercase mb-0.5">Final Binary URL</span>
                          <span className="text-[6px] font-mono text-emerald-300 break-all">{runtimeStatus.uploadedFileUrl}</span>
                        </div>
-                       <div className="flex flex-col py-1 px-1">
-                         <span className="text-[7px] text-white/40 uppercase mb-0.5">Last Upload Error</span>
-                         <span className="text-[6px] font-mono text-red-400 break-all">{runtimeStatus.lastUploadError}</span>
-                       </div>
-                    </div>
-                 </div>
-               )}
-
-               {runtimeStatus && (
-                 <div className="bg-black/60 border border-amber-500/30 p-3 rounded-xl space-y-2">
-                    <h3 className="text-[7px] font-black uppercase text-amber-400 italic mb-2 flex items-center gap-2">
-                      <Database className="w-3 h-3" /> SESSION AUDIT (LAST RUN)
-                    </h3>
-                    <div className="space-y-1">
-                      <div className="flex justify-between items-center py-1 border-b border-white/5 px-1">
-                        <span className="text-[7px] text-white/40 uppercase">File Created?</span>
-                        <span className={cn("text-[8px] font-black", runtimeStatus.fileCreated === 'PASS' ? "text-green-500" : "text-red-500")}>
-                          {runtimeStatus.fileCreated === 'PASS' ? "TRUE" : "FALSE"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center py-1 border-b border-white/5 px-1">
-                        <span className="text-[7px] text-white/40 uppercase">File Size</span>
-                        <span className="text-[8px] font-mono text-white/80">{runtimeStatus.blobSize || '0 bytes'}</span>
-                      </div>
-                      <div className="flex flex-col py-1 border-b border-white/5 px-1">
-                        <span className="text-[7px] text-white/40 uppercase mb-0.5">Save Path</span>
-                        <span className="text-[6px] font-mono text-indigo-300 break-all">{runtimeStatus.savePath || 'NONE'}</span>
-                      </div>
-                      <div className="flex flex-col py-1 border-b border-white/5 px-1">
-                        <span className="text-[7px] text-white/40 uppercase mb-0.5">QR Source URL</span>
-                        <span className="text-[6px] font-mono text-amber-300 break-all">{runtimeStatus.qrSourceUrl || 'NONE'}</span>
-                      </div>
-                      <div className="flex flex-col py-1 border-b border-white/5 px-1">
-                        <span className="text-[7px] text-white/40 uppercase mb-0.5">Share Intent Payload</span>
-                        <span className="text-[6px] font-mono text-emerald-300 break-all">{runtimeStatus.shareIntentPayload || 'NONE'}</span>
-                      </div>
                     </div>
                  </div>
                )}

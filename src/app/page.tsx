@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -17,8 +18,9 @@ import { Progress } from "@/components/ui/progress";
 import { SessionStore } from "@/lib/kiosk/persistence";
 import { KioskLogger } from "@/lib/kiosk/logger";
 import { initializeFirebase } from "@/firebase";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { doc, setDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { 
@@ -107,6 +109,17 @@ export default function KioskPage() {
     uploadedFileUrl: 'NONE',
     storageProvider: 'Firebase Storage',
     lastUploadError: 'NONE',
+    // FIREBASE EMERGENCY DEBUG
+    fbProjectId: 'NONE',
+    fbStorageBucket: 'NONE',
+    fbUserUid: 'NONE',
+    fbAuthState: 'OFFLINE',
+    fbUploadProgress: '0%',
+    fbTaskState: 'NONE',
+    fbErrorCode: 'NONE',
+    fbErrorMessage: 'NONE',
+    fbException: 'NONE',
+    fbUrlGenerated: 'FALSE',
     // HARDWARE TRUTH
     usbDevicesCount: 0,
     shareCapable: 'UNKNOWN',
@@ -115,6 +128,22 @@ export default function KioskPage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const { app, auth } = initializeFirebase();
+      
+      setRuntimeStatus(prev => ({
+        ...prev,
+        fbProjectId: (app.options as any).projectId || 'UNKNOWN',
+        fbStorageBucket: (app.options as any).storageBucket || 'UNKNOWN'
+      }));
+
+      onAuthStateChanged(auth, (user) => {
+        setRuntimeStatus(prev => ({
+          ...prev,
+          fbUserUid: user?.uid || 'NONE',
+          fbAuthState: user ? 'LOGGED_IN' : 'SIGNED_OUT'
+        }));
+      });
+
       const checkHardware = async () => {
         let usbCount = 0;
         if ('usb' in navigator) {
@@ -218,6 +247,17 @@ export default function KioskPage() {
       return;
     }
 
+    const { storage, db, auth } = initializeFirebase();
+
+    // Ensure Auth before upload
+    if (!auth.currentUser) {
+      try {
+        await signInAnonymously(auth);
+      } catch (e: any) {
+        setRuntimeStatus(prev => ({ ...prev, fbException: 'AUTH_FAILED: ' + e.message }));
+      }
+    }
+
     let savePaths = ['Local: IndexedDB'];
     const localSave = await SessionStore.savePhotoLocally(sessionId, blob);
     if (localSave.success) {
@@ -238,9 +278,7 @@ export default function KioskPage() {
     
     setRuntimeStatus(prev => ({ ...prev, qrSourceUrl: retrievalUrl }));
 
-    const { storage, db } = initializeFirebase();
     const docRef = doc(db, "photos", sessionId);
-    
     const sessionData = {
       id: sessionId,
       storagePath: `photos/${sessionId}.jpg`,
@@ -255,30 +293,48 @@ export default function KioskPage() {
       setRuntimeStatus(prev => ({ ...prev, sessionCreated: 'PASS' }));
 
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
-      await uploadBytes(photoRef, blob, { contentType: 'image/jpeg' });
-      
-      const downloadUrl = await getDownloadURL(photoRef);
-      await updateDoc(docRef, { status: 'complete' });
-      
-      setUploadStatus("complete");
-      setRuntimeStatus(prev => ({ 
-        ...prev, 
-        cloudSync: 'PASS', 
-        uploadCompleted: 'TRUE', 
-        uploadedFileUrl: downloadUrl 
-      }));
+      const uploadTask = uploadBytesResumable(photoRef, blob, { contentType: 'image/jpeg' });
+
+      uploadTask.on('state_changed', 
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setRuntimeStatus(prev => ({
+            ...prev,
+            fbUploadProgress: `${progress.toFixed(1)}%`,
+            fbTaskState: snapshot.state
+          }));
+        },
+        async (error: any) => {
+          setUploadStatus("error");
+          setRuntimeStatus(prev => ({ 
+            ...prev, 
+            uploadFailed: 'TRUE', 
+            fbErrorCode: error.code || 'UNKNOWN',
+            fbErrorMessage: error.message || 'UNKNOWN',
+            fbException: JSON.stringify(error)
+          }));
+        },
+        async () => {
+          const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+          await updateDoc(docRef, { status: 'complete' });
+          setUploadStatus("complete");
+          setRuntimeStatus(prev => ({ 
+            ...prev, 
+            cloudSync: 'PASS', 
+            uploadCompleted: 'TRUE', 
+            uploadedFileUrl: downloadUrl,
+            fbUrlGenerated: 'TRUE',
+            fbTaskState: 'success'
+          }));
+        }
+      );
     } catch (error: any) {
       setUploadStatus("error");
       setRuntimeStatus(prev => ({ 
         ...prev, 
         cloudSync: 'FAIL', 
         uploadFailed: 'TRUE', 
-        lastUploadError: error.message 
-      }));
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: docRef.path,
-        operation: 'create',
-        requestResourceData: sessionData
+        fbException: error.message 
       }));
     }
   }, [originUrl, usbHandle, promoConsent]);
@@ -465,7 +521,13 @@ export default function KioskPage() {
       uploadStarted: 'FALSE',
       uploadCompleted: 'FALSE',
       uploadFailed: 'FALSE',
-      uploadedFileUrl: 'NONE'
+      uploadedFileUrl: 'NONE',
+      fbUploadProgress: '0%',
+      fbTaskState: 'NONE',
+      fbErrorCode: 'NONE',
+      fbErrorMessage: 'NONE',
+      fbException: 'NONE',
+      fbUrlGenerated: 'FALSE'
     }));
   }, [usbHandle]);
 

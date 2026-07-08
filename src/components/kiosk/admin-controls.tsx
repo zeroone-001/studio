@@ -41,6 +41,7 @@ interface AdminControlsProps {
     cloudSync: string;
     sessionCreated: string;
     fileCreated: string;
+    fileSize: string;
     usbBackup: string;
     navigatorShareStarted: string;
     navigatorShareResolved: string;
@@ -50,6 +51,10 @@ interface AdminControlsProps {
     topLevelContext: string;
     userAgent: string;
     lastErrorMessage: string;
+    savePath?: string;
+    qrSourceUrl?: string;
+    shareIntentPayload?: string;
+    lastSaveError?: string;
   };
 }
 
@@ -243,7 +248,7 @@ export function AdminControls({
           )}
 
           {view === 'logs' && (
-            <div className="space-y-3">
+            <div className="space-y-4">
                {runtimeStatus && (
                  <div className="bg-white/5 border border-primary/20 p-3 rounded-xl space-y-2">
                     <h3 className="text-[7px] font-black uppercase text-primary italic mb-2 flex items-center gap-2">
@@ -251,7 +256,10 @@ export function AdminControls({
                     </h3>
                     <div className="grid grid-cols-1 gap-1">
                       {Object.entries(runtimeStatus)
-                        .filter(([k]) => !['userAgent', 'lastErrorMessage', 'secureContext', 'topLevelContext'].includes(k))
+                        .filter(([k]) => ![
+                          'userAgent', 'lastErrorMessage', 'secureContext', 'topLevelContext',
+                          'savePath', 'qrSourceUrl', 'shareIntentPayload', 'lastSaveError'
+                        ].includes(k))
                         .map(([key, val]) => (
                           <div key={key} className="flex justify-between items-center px-1 border-b border-white/5 py-1">
                             <span className="text-[7px] font-bold text-white/40 uppercase tracking-widest">{key.replace(/([A-Z])/g, ' $1')}</span>
@@ -264,12 +272,54 @@ export function AdminControls({
                     </div>
                  </div>
                )}
+
+               {/* ACTUAL RUNTIME DIAGNOSTICS (SESSION AUDIT) */}
+               {runtimeStatus && (
+                 <div className="bg-black/60 border border-indigo-500/30 p-3 rounded-xl space-y-2">
+                    <h3 className="text-[7px] font-black uppercase text-indigo-400 italic mb-2 flex items-center gap-2">
+                      <Database className="w-3 h-3" /> SESSION AUDIT (LAST RUN)
+                    </h3>
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center py-1 border-b border-white/5 px-1">
+                        <span className="text-[7px] text-white/40 uppercase">File Created?</span>
+                        <span className={cn("text-[8px] font-black", runtimeStatus.fileCreated === 'SUCCESS' ? "text-green-500" : "text-red-500")}>
+                          {runtimeStatus.fileCreated === 'SUCCESS' ? "TRUE" : "FALSE"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center py-1 border-b border-white/5 px-1">
+                        <span className="text-[7px] text-white/40 uppercase">File Size</span>
+                        <span className="text-[8px] font-mono text-white/80">{runtimeStatus.fileSize || '0 bytes'}</span>
+                      </div>
+                      <div className="flex flex-col py-1 border-b border-white/5 px-1">
+                        <span className="text-[7px] text-white/40 uppercase mb-0.5">Save Path</span>
+                        <span className="text-[6px] font-mono text-indigo-300 break-all">{runtimeStatus.savePath || 'NONE'}</span>
+                      </div>
+                      <div className="flex flex-col py-1 border-b border-white/5 px-1">
+                        <span className="text-[7px] text-white/40 uppercase mb-0.5">QR Source URL</span>
+                        <span className="text-[6px] font-mono text-amber-300 break-all">{runtimeStatus.qrSourceUrl || 'NONE'}</span>
+                      </div>
+                      <div className="flex flex-col py-1 border-b border-white/5 px-1">
+                        <span className="text-[7px] text-white/40 uppercase mb-0.5">Share Intent Payload</span>
+                        <span className="text-[6px] font-mono text-emerald-300 break-all">{runtimeStatus.shareIntentPayload || 'NONE'}</span>
+                      </div>
+                      <div className="flex flex-col py-1 border-b border-white/5 px-1">
+                        <span className="text-[7px] text-white/40 uppercase mb-0.5">Last Save Error</span>
+                        <span className="text-[6px] font-mono text-red-400 break-all">{runtimeStatus.lastSaveError || 'NONE'}</span>
+                      </div>
+                      <div className="flex flex-col py-1 px-1">
+                        <span className="text-[7px] text-white/40 uppercase mb-0.5">Last Print Error</span>
+                        <span className="text-[6px] font-mono text-red-400 break-all">{runtimeStatus.lastErrorMessage || 'NONE'}</span>
+                      </div>
+                    </div>
+                 </div>
+               )}
+
                <div className="flex justify-between items-center px-1">
-                  <span className="text-[8px] font-black text-white/40 uppercase">History</span>
+                  <span className="text-[8px] font-black text-white/40 uppercase">System Logs</span>
                   <button onClick={() => KioskLogger.clear()} className="text-red-500"><Trash2 className="w-3 h-3" /></button>
                </div>
                <div className="space-y-1">
-                  {logs.slice(0, 10).map((log, i) => (
+                  {logs.slice(0, 5).map((log, i) => (
                     <div key={i} className="text-[7px] bg-white/5 p-2 rounded-lg border border-white/5 flex justify-between">
                       <span className="text-white/80 font-bold">{log.message}</span>
                       <span className={cn("font-black", log.status === 'SUCCESS' ? "text-green-500" : "text-red-500")}>{log.status}</span>

@@ -85,7 +85,11 @@ export default function KioskPage() {
     secureContext: 'CHECKING',
     topLevelContext: 'CHECKING',
     userAgent: '',
-    lastErrorMessage: ''
+    lastErrorMessage: '',
+    savePath: 'NONE',
+    qrSourceUrl: 'NONE',
+    shareIntentPayload: 'NONE',
+    lastSaveError: 'NONE'
   });
 
   useEffect(() => {
@@ -138,12 +142,15 @@ export default function KioskPage() {
       const fileName = `JNL_STUDIO_${sessionId}.jpg`;
       const file = new File([blob], fileName, { type: 'image/jpeg' });
       
+      const payloadString = `File: ${fileName} | Type: ${file.type} | Size: ${file.size} bytes`;
+
       setRuntimeStatus(prev => ({ 
         ...prev, 
         fileCreated: 'SUCCESS', 
         fileSize: `${(blob.size / 1024).toFixed(1)} KB`,
         intentTriggered: 'SUCCESS', 
-        navigatorShareStarted: 'SUCCESS' 
+        navigatorShareStarted: 'SUCCESS',
+        shareIntentPayload: payloadString
       }));
 
       // 2. Dispatch Intent to NokoPrint (Android Only)
@@ -180,9 +187,11 @@ export default function KioskPage() {
     setCurrentSessionId(sessionId);
     
     if (!blob || blob.size === 0) {
-      setRuntimeStatus(prev => ({ ...prev, photoSaved: 'FAILED', lastErrorMessage: 'Empty Image' }));
+      setRuntimeStatus(prev => ({ ...prev, photoSaved: 'FAILED', lastSaveError: 'Empty Image' }));
       return;
     }
+
+    let savePaths = ['Local: IndexedDB'];
 
     // 1. Local IndexedDB Persistence (Instant)
     const localSave = await SessionStore.savePhotoLocally(sessionId, blob);
@@ -190,20 +199,37 @@ export default function KioskPage() {
       setRuntimeStatus(prev => ({ 
         ...prev, 
         photoSaved: 'SUCCESS',
-        fileSize: `${(localSave.size / 1024).toFixed(1)} KB`
+        fileSize: `${(localSave.size / 1024).toFixed(1)} KB`,
+        savePath: savePaths.join(' | ')
       }));
+    } else {
+      setRuntimeStatus(prev => ({ ...prev, lastSaveError: 'Local IndexedDB Write Failed' }));
     }
 
     // 2. USB Archive (Lexar) - If Mounted
     if (usbHandle) {
       const usbSave = await SessionStore.saveToUsb(usbHandle, sessionId, blob);
-      setRuntimeStatus(prev => ({ ...prev, usbBackup: usbSave.success ? 'SUCCESS' : 'FAILED' }));
+      if (usbSave.success) {
+        savePaths.push(`USB: ${usbSave.path}`);
+        setRuntimeStatus(prev => ({ 
+          ...prev, 
+          usbBackup: 'SUCCESS',
+          savePath: savePaths.join(' | ')
+        }));
+      } else {
+        setRuntimeStatus(prev => ({ ...prev, usbBackup: 'FAILED', lastSaveError: 'USB Archive Failed' }));
+      }
     }
 
     // GENERATE QR ONLY AFTER LOCAL SAVE IS CONFIRMED
     const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
     setUploadStatus("uploading");
+    
+    setRuntimeStatus(prev => ({
+      ...prev,
+      qrSourceUrl: retrievalUrl
+    }));
 
     // 3. Cloud Sync (Firebase)
     const { storage, db } = initializeFirebase();
@@ -230,7 +256,7 @@ export default function KioskPage() {
       setRuntimeStatus(prev => ({ ...prev, cloudSync: 'SUCCESS' }));
     } catch (error: any) {
       setUploadStatus("error");
-      setRuntimeStatus(prev => ({ ...prev, cloudSync: 'FAILED', lastErrorMessage: error.message }));
+      setRuntimeStatus(prev => ({ ...prev, cloudSync: 'FAILED', lastSaveError: `Cloud Sync: ${error.message}` }));
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: docRef.path,
         operation: 'create',
@@ -327,8 +353,18 @@ export default function KioskPage() {
     exportCanvas.toBlob((blob) => {
       if (blob && blob.size > 0) {
         setPreparedBlob(blob);
+        setRuntimeStatus(prev => ({ 
+          ...prev, 
+          fileCreated: 'SUCCESS', 
+          fileSize: `${(blob.size / 1024).toFixed(1)} KB` 
+        }));
       } else {
-        setRuntimeStatus(prev => ({ ...prev, photoGenerated: 'FAILED', lastErrorMessage: 'Zero-byte Canvas output' }));
+        setRuntimeStatus(prev => ({ 
+          ...prev, 
+          photoGenerated: 'FAILED', 
+          fileCreated: 'FAILED',
+          lastErrorMessage: 'Zero-byte Canvas output' 
+        }));
       }
       setIsPreparingPrint(false);
     }, 'image/jpeg', 0.95);
@@ -384,7 +420,11 @@ export default function KioskPage() {
       secureContext: window.isSecureContext ? 'YES' : 'NO',
       topLevelContext: window.self === window.top ? 'YES' : 'NO',
       userAgent: navigator.userAgent,
-      lastErrorMessage: ''
+      lastErrorMessage: '',
+      savePath: 'NONE',
+      qrSourceUrl: 'NONE',
+      shareIntentPayload: 'NONE',
+      lastSaveError: 'NONE'
     });
   }, [usbHandle]);
 

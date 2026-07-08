@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Session persistence and Hybrid Sync Queue for JNL Studio Kiosk.
  * Optimized for Honor Pad X10 local storage and microSD archive lifecycle management.
@@ -17,8 +16,6 @@ export interface KioskSession {
   isDownloaded: boolean;
 }
 
-const STORAGE_KEY = 'jnl_kiosk_current_session';
-const SYNC_QUEUE_KEY = 'jnl_kiosk_sync_queue';
 const DB_NAME = 'JNL_Studio_Kiosk_DB';
 const STORE_NAME = 'photos';
 
@@ -27,7 +24,7 @@ export const SessionStore = {
   initDB: (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
       if (typeof window === 'undefined') return reject('IndexedDB not available');
-      const request = indexedDB.open(DB_NAME, 3); // Bumped version for Lexar USB integration
+      const request = indexedDB.open(DB_NAME, 3);
       request.onupgradeneeded = (e: any) => {
         const db = request.result;
         if (!db.objectStoreNames.contains(STORE_NAME)) {
@@ -62,7 +59,7 @@ export const SessionStore = {
     try {
       // Create or get the archive folder
       const studioFolder = await handle.getDirectoryHandle('JNL_STUDIO_ARCHIVE', { create: true });
-      const fileName = `JNL_PORTRAIT_${id}_${Date.now()}.jpg`;
+      const fileName = `JNL_PORTRAIT_${id}.jpg`;
       const fileHandle = await studioFolder.getFileHandle(fileName, { create: true });
       const writable = await fileHandle.createWritable();
       await writable.write(blob);
@@ -71,22 +68,6 @@ export const SessionStore = {
     } catch (e) {
       console.error('Lexar USB Archive Failed', e);
       return false;
-    }
-  },
-
-  // Cleanup temporary local copy for sessions that shouldn't be archived
-  cleanupSession: async (id: string) => {
-    try {
-      if (typeof window === 'undefined') return;
-      const db = await SessionStore.initDB();
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
-      store.delete(id);
-      return new Promise((resolve) => {
-        tx.oncomplete = () => resolve(true);
-      });
-    } catch (e) {
-      console.error('Cleanup Error', e);
     }
   },
 

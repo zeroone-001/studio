@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -131,7 +130,6 @@ export default function KioskPage() {
     KioskLogger.log('info', 'PRINT', 'User Gesture Activated. Requesting Intent...', 'PENDING');
     
     try {
-      // 1. Prepare File synchronously to preserve User Activation
       const timestamp = Date.now();
       const sessionId = `jnl_${timestamp.toString(36)}`;
       const fileName = `JNL_STUDIO_${sessionId}.jpg`;
@@ -459,8 +457,6 @@ export default function KioskPage() {
             onExitOwnerMode={() => setIsOwnerMode(false)}
             onSimulateCash={(amount) => {
               setPaymentReceived(prev => prev + amount);
-              if (amount === 50) setPackageSelected(50);
-              if (amount === 100) setPackageSelected(100);
             }}
             onMountUsb={setUsbHandle}
             runtimeStatus={runtimeStatus}

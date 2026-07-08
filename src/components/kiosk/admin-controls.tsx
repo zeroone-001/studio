@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -137,9 +136,14 @@ export function AdminControls({
   const mountUsb = async () => {
     try {
       // @ts-ignore
-      const handle = await window.showDirectoryPicker();
-      onMountUsb(handle);
-      KioskLogger.log('info', 'HARDWARE', 'Lexar USB Mounted', 'SUCCESS');
+      if (window.showDirectoryPicker) {
+        // @ts-ignore
+        const handle = await window.showDirectoryPicker();
+        onMountUsb(handle);
+        KioskLogger.log('info', 'HARDWARE', 'Lexar USB Mounted', 'SUCCESS');
+      } else {
+        KioskLogger.log('error', 'HARDWARE', 'FileSystem API Not Supported', 'FAILED');
+      }
     } catch (e) {
       KioskLogger.log('error', 'HARDWARE', 'USB Mount Cancelled', 'FAILED');
     }

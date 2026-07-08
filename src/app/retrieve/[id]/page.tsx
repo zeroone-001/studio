@@ -10,6 +10,10 @@ import { KioskLayout } from "@/components/kiosk/kiosk-layout";
 import { NeonButton } from "@/components/kiosk/neon-button";
 import { Download, Loader2, AlertCircle, Image as ImageIcon } from "lucide-react";
 
+/**
+ * Public Retrieval Page.
+ * Strictly login-free. Uses high-frequency polling to detect successful kiosk upload.
+ */
 export default function RetrievePage() {
   const params = useParams();
   const id = params?.id as string;
@@ -29,6 +33,17 @@ export default function RetrievePage() {
       const docSnap = await getDoc(docRef);
       
       if (docSnap.exists()) {
+        const data = docSnap.data();
+        
+        // Prefer the stored downloadUrl if available for instant performance
+        if (data.status === 'complete' && data.downloadUrl) {
+          setImageUrl(data.downloadUrl);
+          setLoading(false);
+          setStatus('complete');
+          return;
+        }
+
+        // Fallback to manual URL generation if binary is uploaded but URL not in doc
         const photoRef = ref(storage, `photos/${id}.jpg`);
         try {
           const url = await getDownloadURL(photoRef);
@@ -37,7 +52,7 @@ export default function RetrievePage() {
           setStatus('complete');
           return;
         } catch (e: any) {
-          // Binary not ready yet
+          // Binary not ready yet or rules blocking
           setStatus('syncing');
         }
       }
@@ -68,6 +83,7 @@ export default function RetrievePage() {
     if (!imageUrl || !id) return;
     try {
       const { db } = initializeFirebase();
+      // Track download status for admin analytics
       updateDoc(doc(db, "photos", id), { isDownloaded: true });
       
       const response = await fetch(imageUrl);

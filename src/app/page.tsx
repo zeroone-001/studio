@@ -130,7 +130,8 @@ export default function KioskPage() {
         fbStorageBucket: (app.options as any).storageBucket || 'UNKNOWN'
       }));
 
-      // Pre-authenticate to speed up soft copy upload later
+      // PRE-AUTHENTICATE (CRITICAL FOR PUBLIC KIOSK)
+      // This happens in the background while the kiosk is on the "Welcome" screen
       signInAnonymously(auth).catch(e => {
         KioskLogger.log('error', 'SESSION', 'Auth Initialization Failed', 'FAILED', e.message);
       });
@@ -241,7 +242,7 @@ export default function KioskPage() {
 
     const { storage, db, auth } = initializeFirebase();
 
-    // Ensure Auth
+    // Ensure Auth is ready
     if (!auth.currentUser) {
       try {
         await signInAnonymously(auth);
@@ -298,7 +299,8 @@ export default function KioskPage() {
         },
         async () => {
           const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-          await updateDoc(docRef, { status: 'complete' });
+          // Store the download URL in Firestore for faster retrieval by the client
+          await updateDoc(docRef, { status: 'complete', downloadUrl: downloadUrl });
           
           // ONLY generate QR code after upload is actually verified
           setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);

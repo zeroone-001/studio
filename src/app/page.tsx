@@ -466,7 +466,7 @@ export default function KioskPage() {
             runtimeStatus={runtimeStatus}
           />
         )}
-        <HealthMonitor />
+        {isOwnerMode && <HealthMonitor />}
         
         {appState === "welcome" && (
           <div className="flex flex-col items-center w-full h-full animate-in fade-in duration-1000">

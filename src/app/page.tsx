@@ -9,7 +9,7 @@ import { AdminControls } from "@/components/kiosk/admin-controls";
 import { HealthMonitor } from "@/components/kiosk/health-monitor";
 import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
-  Target, CheckCircle2, AlertCircle, Loader2, Camera, ChevronRight
+  Target, CheckCircle2, AlertCircle, Loader2, Camera
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -21,8 +21,6 @@ import { initializeFirebase } from "@/firebase";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { doc, setDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 import { 
   SessionState, 
   FILTERS, 
@@ -69,7 +67,7 @@ export default function KioskPage() {
   const [preparedBlob, setPreparedBlob] = useState<Blob | null>(null);
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
 
-  // TRUTH-BASED DIAGNOSTICS (Honor Pad X10)
+  // TRUTH-BASED DIAGNOSTICS (Admin Only)
   const [runtimeStatus, setRuntimeStatus] = useState({
     photoGenerated: 'PENDING',
     photoSaved: 'PENDING',
@@ -92,7 +90,6 @@ export default function KioskPage() {
     qrSourceUrl: 'NONE',
     shareIntentPayload: 'NONE',
     lastSaveError: 'NONE',
-    // IMAGE PIPELINE TRACE
     captureSuccess: 'PENDING',
     canvasExists: 'PENDING',
     canvasWidth: '0',
@@ -101,7 +98,6 @@ export default function KioskPage() {
     filterApplied: 'PENDING',
     blobCreated: 'PENDING',
     blobSize: '0 bytes',
-    // SOFT COPY TRACE
     uploadStarted: 'FALSE',
     uploadCompleted: 'FALSE',
     uploadFailed: 'FALSE',
@@ -109,7 +105,6 @@ export default function KioskPage() {
     uploadedFileUrl: 'NONE',
     storageProvider: 'Firebase Storage',
     lastUploadError: 'NONE',
-    // FIREBASE EMERGENCY DEBUG
     fbProjectId: 'NONE',
     fbStorageBucket: 'NONE',
     fbUserUid: 'NONE',
@@ -120,7 +115,6 @@ export default function KioskPage() {
     fbErrorMessage: 'NONE',
     fbException: 'NONE',
     fbUrlGenerated: 'FALSE',
-    // HARDWARE TRUTH
     usbDevicesCount: 0,
     shareCapable: 'UNKNOWN',
     usbHandleValid: 'FALSE'
@@ -135,6 +129,11 @@ export default function KioskPage() {
         fbProjectId: (app.options as any).projectId || 'UNKNOWN',
         fbStorageBucket: (app.options as any).storageBucket || 'UNKNOWN'
       }));
+
+      // Pre-authenticate to speed up soft copy upload later
+      signInAnonymously(auth).catch(e => {
+        KioskLogger.log('error', 'SESSION', 'Auth Initialization Failed', 'FAILED', e.message);
+      });
 
       onAuthStateChanged(auth, (user) => {
         setRuntimeStatus(prev => ({
@@ -190,8 +189,6 @@ export default function KioskPage() {
   }, [appState]);
 
   const initiatePrint = useCallback(async (blob: Blob) => {
-    KioskLogger.log('info', 'PRINT', 'User Gesture Activated. Requesting Intent...', 'PENDING');
-    
     try {
       if (!blob || blob.size === 0) throw new Error("Null or Empty Blob detected");
 
@@ -200,13 +197,10 @@ export default function KioskPage() {
       const fileName = `JNL_STUDIO_${sessionId}.jpg`;
       const file = new File([blob], fileName, { type: 'image/jpeg' });
       
-      const payloadString = `File: ${fileName} | Type: ${file.type} | Size: ${file.size} bytes`;
-
       setRuntimeStatus(prev => ({ 
         ...prev, 
         intentTriggered: 'PASS', 
-        navigatorShareStarted: 'PASS',
-        shareIntentPayload: payloadString
+        navigatorShareStarted: 'PASS'
       }));
 
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -221,7 +215,6 @@ export default function KioskPage() {
           navigatorShareResolved: 'PASS', 
           nokoprintOpened: 'PASS' 
         }));
-        KioskLogger.log('info', 'PRINT', 'Intent Dispatched to NokoPrint', 'SUCCESS');
       } else {
         throw new Error('Share API blocked or file rejected by OS');
       }
@@ -232,7 +225,6 @@ export default function KioskPage() {
         navigatorShareRejected: 'FAIL', 
         lastErrorMessage: e.message 
       }));
-      KioskLogger.log('error', 'PRINT', 'Intent Launch Failure', 'FAILED', e.message);
     }
   }, []);
 
@@ -249,7 +241,7 @@ export default function KioskPage() {
 
     const { storage, db, auth } = initializeFirebase();
 
-    // Ensure Auth before upload
+    // Ensure Auth
     if (!auth.currentUser) {
       try {
         await signInAnonymously(auth);
@@ -258,22 +250,12 @@ export default function KioskPage() {
       }
     }
 
-    let savePaths = ['Local: IndexedDB'];
-    const localSave = await SessionStore.savePhotoLocally(sessionId, blob);
-    if (localSave.success) {
-      setRuntimeStatus(prev => ({ ...prev, photoSaved: 'PASS', savePath: savePaths.join(' | ') }));
-    }
-
+    await SessionStore.savePhotoLocally(sessionId, blob);
     if (usbHandle) {
-      const usbSave = await SessionStore.saveToUsb(usbHandle, sessionId, blob);
-      if (usbSave.success) {
-        savePaths.push(`USB: ${usbSave.path}`);
-        setRuntimeStatus(prev => ({ ...prev, usbBackup: 'PASS', savePath: savePaths.join(' | ') }));
-      }
+      await SessionStore.saveToUsb(usbHandle, sessionId, blob);
     }
 
     const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
-    setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
     setUploadStatus("uploading");
     
     setRuntimeStatus(prev => ({ ...prev, qrSourceUrl: retrievalUrl }));
@@ -317,7 +299,11 @@ export default function KioskPage() {
         async () => {
           const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
           await updateDoc(docRef, { status: 'complete' });
+          
+          // ONLY generate QR code after upload is actually verified
+          setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
           setUploadStatus("complete");
+          
           setRuntimeStatus(prev => ({ 
             ...prev, 
             cloudSync: 'PASS', 
@@ -879,12 +865,6 @@ export default function KioskPage() {
                 <div className="w-full max-w-2xl">
                    <Progress value={printProgress} className="h-8 bg-white/10 w-full" />
                 </div>
-
-                {runtimeStatus.lastErrorMessage && (
-                  <div className="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-[8px] font-mono text-red-500">
-                    ERROR: {runtimeStatus.lastErrorMessage}
-                  </div>
-                )}
              </div>
 
              <div className="w-[480px] bg-white/5 flex flex-col items-center justify-center p-10">

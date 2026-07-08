@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
@@ -7,7 +8,7 @@ import { ref, getDownloadURL } from "firebase/storage";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { KioskLayout } from "@/components/kiosk/kiosk-layout";
 import { NeonButton } from "@/components/kiosk/neon-button";
-import { Download, Loader2, AlertCircle, Image as ImageIcon, Search } from "lucide-react";
+import { Download, Loader2, AlertCircle, Image as ImageIcon } from "lucide-react";
 
 export default function RetrievePage() {
   const params = useParams();
@@ -19,39 +20,18 @@ export default function RetrievePage() {
   const retryCount = useRef(0);
   const MAX_RETRIES = 120; // 60 seconds at 500ms intervals
 
-  // RETRIEVAL TRACE
-  const [fetchTrace, setFetchTrace] = useState({
-    imageFetchStarted: 'FALSE',
-    imageFetchCompleted: 'FALSE',
-    imageFetchFailed: 'FALSE',
-    fetchStatusCode: 'NONE',
-    fetchUrl: 'NONE',
-    dbRecordFound: 'FALSE'
-  });
-
   const fetchPhoto = useCallback(async () => {
     if (!id) return;
     
-    setFetchTrace(prev => ({ ...prev, imageFetchStarted: 'TRUE' }));
-
     try {
       const { storage, db } = initializeFirebase();
       const docRef = doc(db, "photos", id);
       const docSnap = await getDoc(docRef);
       
       if (docSnap.exists()) {
-        setFetchTrace(prev => ({ ...prev, dbRecordFound: 'TRUE' }));
-        const data = docSnap.data();
-        
         const photoRef = ref(storage, `photos/${id}.jpg`);
         try {
           const url = await getDownloadURL(photoRef);
-          setFetchTrace(prev => ({ 
-            ...prev, 
-            imageFetchCompleted: 'TRUE', 
-            fetchUrl: url,
-            fetchStatusCode: '200 OK'
-          }));
           setImageUrl(url);
           setLoading(false);
           setStatus('complete');
@@ -59,10 +39,7 @@ export default function RetrievePage() {
         } catch (e: any) {
           // Binary not ready yet
           setStatus('syncing');
-          setFetchTrace(prev => ({ ...prev, fetchStatusCode: '404 NOT FOUND (Storage)' }));
         }
-      } else {
-        setFetchTrace(prev => ({ ...prev, fetchStatusCode: '404 NOT FOUND (Firestore)' }));
       }
 
       if (retryCount.current < MAX_RETRIES) {
@@ -71,7 +48,6 @@ export default function RetrievePage() {
       } else {
         setError("Your photo sync is taking longer than expected. Please check your connection.");
         setLoading(false);
-        setFetchTrace(prev => ({ ...prev, imageFetchFailed: 'TRUE' }));
       }
     } catch (err: any) {
       if (retryCount.current < MAX_RETRIES) {
@@ -80,7 +56,6 @@ export default function RetrievePage() {
       } else {
         setError("Unable to connect to JNL Cloud. Please try refreshing.");
         setLoading(false);
-        setFetchTrace(prev => ({ ...prev, imageFetchFailed: 'TRUE', fetchStatusCode: '500 ERROR' }));
       }
     }
   }, [id]);
@@ -128,26 +103,6 @@ export default function RetrievePage() {
                 {status === 'syncing' && (
                   <p className="text-primary text-[10px] font-black uppercase italic animate-pulse">Syncing High-Res Version...</p>
                 )}
-                
-                {/* Retrieval Diagnostics (Truth Reveal) */}
-                <div className="mt-8 pt-6 border-t border-white/5 space-y-2 text-left bg-black/20 p-4 rounded-2xl">
-                   <div className="flex justify-between items-center">
-                     <span className="text-[7px] font-bold text-white/30 uppercase">Fetch Started</span>
-                     <span className="text-[8px] font-black text-indigo-400">{fetchTrace.imageFetchStarted}</span>
-                   </div>
-                   <div className="flex justify-between items-center">
-                     <span className="text-[7px] font-bold text-white/30 uppercase">Firestore Record</span>
-                     <span className="text-[8px] font-black text-indigo-400">{fetchTrace.dbRecordFound}</span>
-                   </div>
-                   <div className="flex justify-between items-center">
-                     <span className="text-[7px] font-bold text-white/30 uppercase">Fetch Status</span>
-                     <span className="text-[8px] font-black text-amber-500">{fetchTrace.fetchStatusCode}</span>
-                   </div>
-                   <div className="flex flex-col pt-1">
-                     <span className="text-[7px] font-bold text-white/30 uppercase">Source Path</span>
-                     <span className="text-[6px] font-mono text-white/20 break-all">{`photos/${id}.jpg`}</span>
-                   </div>
-                </div>
               </div>
             </div>
           ) : error ? (

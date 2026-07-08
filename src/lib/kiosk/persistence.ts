@@ -27,7 +27,7 @@ export const SessionStore = {
   initDB: (): Promise<IDBDatabase> => {
     return new Promise((resolve, reject) => {
       if (typeof window === 'undefined') return reject('IndexedDB not available');
-      const request = indexedDB.open(DB_NAME, 2);
+      const request = indexedDB.open(DB_NAME, 3); // Bumped version for Lexar USB integration
       request.onupgradeneeded = (e: any) => {
         const db = request.result;
         if (!db.objectStoreNames.contains(STORE_NAME)) {
@@ -60,14 +60,16 @@ export const SessionStore = {
   // Permanent Archive to Lexar microSD (microSD is mapped via Directory Picker)
   saveToUsb: async (handle: FileSystemDirectoryHandle, id: string, blob: Blob) => {
     try {
-      const studioFolder = await handle.getDirectoryHandle('JNL POST', { create: true });
-      const fileHandle = await studioFolder.getFileHandle(`${id}.jpg`, { create: true });
+      // Create or get the archive folder
+      const studioFolder = await handle.getDirectoryHandle('JNL_STUDIO_ARCHIVE', { create: true });
+      const fileName = `JNL_PORTRAIT_${id}_${Date.now()}.jpg`;
+      const fileHandle = await studioFolder.getFileHandle(fileName, { create: true });
       const writable = await fileHandle.createWritable();
       await writable.write(blob);
       await writable.close();
       return true;
     } catch (e) {
-      console.error('microSD Archive Failed', e);
+      console.error('Lexar USB Archive Failed', e);
       return false;
     }
   },

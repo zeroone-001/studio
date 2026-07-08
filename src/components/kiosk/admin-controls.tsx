@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -18,7 +19,8 @@ import {
   ChevronDown,
   GripHorizontal,
   Database,
-  QrCode
+  QrCode,
+  HardDrive
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
@@ -30,6 +32,8 @@ interface AdminControlsProps {
   onReset: () => void;
   onExitOwnerMode: () => void;
   onSimulateCash: (amount: number) => void;
+  onMountUsb: (handle: FileSystemDirectoryHandle) => void;
+  usbHandle: FileSystemDirectoryHandle | null;
   runtimeStatus?: {
     photoGenerated: string;
     photoSaved: string;
@@ -38,6 +42,7 @@ interface AdminControlsProps {
     cloudSync: string;
     sessionCreated: string;
     fileCreated: string;
+    usbBackup: string;
     navigatorShareStarted: string;
     navigatorShareResolved: string;
     navigatorShareRejected: string;
@@ -55,6 +60,8 @@ export function AdminControls({
   onReset, 
   onExitOwnerMode,
   onSimulateCash,
+  onMountUsb,
+  usbHandle,
   runtimeStatus
 }: AdminControlsProps) {
   const [isMinimized, setIsMinimized] = useState(false);
@@ -127,6 +134,17 @@ export function AdminControls({
     }
   };
 
+  const mountUsb = async () => {
+    try {
+      // @ts-ignore
+      const handle = await window.showDirectoryPicker();
+      onMountUsb(handle);
+      KioskLogger.log('info', 'HARDWARE', 'Lexar USB Mounted', 'SUCCESS');
+    } catch (e) {
+      KioskLogger.log('error', 'HARDWARE', 'USB Mount Cancelled', 'FAILED');
+    }
+  };
+
   const testPackage = (amount: number) => {
     onSimulateCash(amount);
     onJumpTo('package-selection');
@@ -158,7 +176,6 @@ export function AdminControls({
       onPointerDown={handlePointerDown}
     >
       <div className="bg-zinc-950/95 border-2 border-primary/50 shadow-2xl w-96 rounded-2xl overflow-hidden flex flex-col">
-        {/* Header / Drag Handle */}
         <div className="drag-handle bg-primary/20 p-3 border-b border-white/10 flex items-center justify-between cursor-move">
           <div className="flex items-center gap-2">
             <GripHorizontal className="w-4 h-4 text-primary" />
@@ -170,14 +187,12 @@ export function AdminControls({
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="flex border-b border-white/10">
           <button onClick={() => setView('main')} className={cn("flex-1 py-3 text-[8px] font-black uppercase tracking-widest", view === 'main' ? "bg-primary/10 text-primary border-b-2 border-primary" : "text-white/40 hover:text-white")}>Control</button>
           <button onClick={() => setView('logs')} className={cn("flex-1 py-3 text-[8px] font-black uppercase tracking-widest", view === 'logs' ? "bg-primary/10 text-primary border-b-2 border-primary" : "text-white/40 hover:text-white")}>Trace</button>
           <button onClick={() => setView('diag')} className={cn("flex-1 py-3 text-[8px] font-black uppercase tracking-widest", view === 'diag' ? "bg-primary/10 text-primary border-b-2 border-primary" : "text-white/40 hover:text-white")}>System</button>
         </div>
 
-        {/* Content */}
         <div className="p-4 max-h-[60vh] overflow-y-auto scrollbar-hide space-y-4">
           {view === 'main' && (
             <div className="space-y-4">
@@ -198,12 +213,23 @@ export function AdminControls({
 
               <div className="space-y-2">
                 <label className="text-[7px] font-black uppercase text-white/40 tracking-widest">Hardware Ops</label>
-                <button 
-                  onClick={pairPrinter}
-                  className="w-full py-4 text-[9px] font-black uppercase flex items-center justify-center gap-2 border border-blue-500/30 bg-blue-500/5 text-blue-400 rounded-xl hover:bg-blue-500/10"
-                >
-                  <Printer className="w-4 h-4" /> PAIR PRINTER HUB
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button 
+                    onClick={pairPrinter}
+                    className="py-4 text-[9px] font-black uppercase flex items-center justify-center gap-2 border border-blue-500/30 bg-blue-500/5 text-blue-400 rounded-xl hover:bg-blue-500/10"
+                  >
+                    <Printer className="w-4 h-4" /> PAIR PRINTER
+                  </button>
+                  <button 
+                    onClick={mountUsb}
+                    className={cn(
+                      "py-4 text-[9px] font-black uppercase flex items-center justify-center gap-2 border rounded-xl transition-all",
+                      usbHandle ? "border-green-500/30 bg-green-500/5 text-green-400" : "border-amber-500/30 bg-amber-500/5 text-amber-400"
+                    )}
+                  >
+                    <HardDrive className="w-4 h-4" /> {usbHandle ? "USB READY" : "MOUNT USB"}
+                  </button>
+                </div>
               </div>
 
               <button onClick={onReset} className="w-full bg-red-500/10 border border-red-500/30 py-3 text-[9px] font-black uppercase text-red-500 rounded-xl flex items-center justify-center gap-2">
@@ -261,8 +287,8 @@ export function AdminControls({
                        <span className={cn("text-[8px] font-black italic", usbStatus === 'ONLINE' ? "text-green-500" : "text-red-500")}>{usbStatus}</span>
                      </div>
                      <div className="flex justify-between items-center">
-                       <span className="text-[8px] font-bold text-white/40 uppercase">Source</span>
-                       <span className="text-[8px] font-black italic text-primary">NokoPrint (Intent)</span>
+                       <span className="text-[8px] font-bold text-white/40 uppercase">Lexar Mount</span>
+                       <span className={cn("text-[8px] font-black italic", usbHandle ? "text-green-500" : "text-amber-500")}>{usbHandle ? "READY" : "WAITING"}</span>
                      </div>
                   </div>
                </div>
@@ -278,11 +304,6 @@ export function AdminControls({
                           {runtimeStatus?.cloudSync}
                        </span>
                      </div>
-                     {runtimeStatus?.lastErrorMessage && (
-                       <div className="pt-2 border-t border-white/5">
-                          <span className="text-[6px] font-mono text-red-400 break-all">{runtimeStatus.lastErrorMessage}</span>
-                       </div>
-                     )}
                   </div>
                </div>
 

@@ -2,15 +2,19 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Wifi, Usb, Banknote, Database, CheckCircle2, AlertCircle, Activity, Printer } from "lucide-react";
+import { Wifi, Usb, Banknote, Database, CheckCircle2, AlertCircle, Activity, HardDrive } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SessionStore } from "@/lib/kiosk/persistence";
+
+interface HealthMonitorProps {
+  usbMounted?: boolean;
+}
 
 /**
  * Health Monitor component.
  * Performs real hardware verification for Epson L210 via WebUSB and Android Intent readiness.
  */
-export function HealthMonitor() {
+export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
   const [status, setStatus] = useState({
     online: false,
     storage: "0MB",
@@ -37,7 +41,6 @@ export function HealthMonitor() {
       }
 
       // 2. Real USB Hardware Verification
-      // Only returns devices previously paired with the site
       if ('usb' in navigator) {
         try {
           const devices = await navigator.usb.getDevices();
@@ -63,7 +66,6 @@ export function HealthMonitor() {
       online: isOnline,
       storage: `${stats.usedMB}MB`,
       storagePercent: stats.percent,
-      // Status is READY only if both intent system AND hardware are verified
       printerReady: intentReady && hasUsbDevice,
       usbConnected: hasUsbDevice,
       billAcceptor: hasSerial
@@ -108,22 +110,21 @@ export function HealthMonitor() {
           </span>
         </div>
 
+        {/* Lexar USB Mount Status */}
+        <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
+          <HardDrive className={cn("w-3.5 h-3.5", usbMounted ? "text-green-500" : "text-white/20")} />
+          <span className={usbMounted ? "text-green-500" : "text-white/40"}>
+            {usbMounted ? "LEXAR READY" : "NO USB ARCHIVE"}
+          </span>
+        </div>
+
         {/* Storage Health */}
         <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
           <Database className={cn("w-3.5 h-3.5", parseInt(status.storagePercent) > 80 ? "text-red-500" : "text-blue-400")} />
           <span>Cache: {status.storagePercent}%</span>
         </div>
-
-        {/* Bill Acceptor Hardware */}
-        <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
-          <Banknote className={cn("w-3.5 h-3.5", status.billAcceptor ? "text-green-500" : "text-white/20")} />
-          <span className={status.billAcceptor ? "text-green-500" : "text-white/40"}>
-            {status.billAcceptor ? "Cash Ready" : "No Acceptor"}
-          </span>
-        </div>
       </div>
       
-      {/* Hardware Badge */}
       <div className="flex items-center gap-3 bg-black/40 px-4 py-1.5 rounded-full border border-white/5 opacity-50">
         <Activity className="w-3 h-3 text-primary animate-pulse" />
         <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white">HARDWARE VERIFIED</span>

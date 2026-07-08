@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -62,7 +63,8 @@ export default function KioskPage() {
   
   const [originUrl, setOriginUrl] = useState("https://jnl-studio-booth.web.app");
 
-  // PRINT PRE-SPOOLING SYSTEM
+  // HARDWARE HANDLES
+  const [usbHandle, setUsbHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [preparedBlob, setPreparedBlob] = useState<Blob | null>(null);
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
 
@@ -75,6 +77,7 @@ export default function KioskPage() {
     cloudSync: 'PENDING',
     sessionCreated: 'PENDING',
     fileCreated: 'PENDING',
+    usbBackup: 'PENDING',
     navigatorShareStarted: 'PENDING',
     navigatorShareResolved: 'PENDING',
     navigatorShareRejected: 'PENDING',
@@ -101,10 +104,8 @@ export default function KioskPage() {
   useEffect(() => {
     if (appState === "payment") {
       if (paymentReceived >= 100) {
-        setPackageSelected(100);
         setAppState("package-selection");
       } else if (paymentReceived >= 50) {
-        setPackageSelected(50);
         setAppState("package-selection");
       }
     }
@@ -129,18 +130,11 @@ export default function KioskPage() {
   const initiatePrint = useCallback(async (blob: Blob) => {
     KioskLogger.log('info', 'PRINT', 'User Gesture Activated. Requesting Intent...', 'PENDING');
     
-    // Watchdog for NokoPrint
-    const printWatchdog = setTimeout(() => {
-      setRuntimeStatus(prev => {
-        if (prev.intentAcknowledged === 'PENDING') {
-          return { ...prev, intentAcknowledged: 'FAILED', lastErrorMessage: 'NokoPrint did not respond in time' };
-        }
-        return prev;
-      });
-    }, 5000);
-
     try {
-      const fileName = `JNL_Studio_${Date.now()}.jpg`;
+      // 1. Prepare File synchronously to preserve User Activation
+      const timestamp = Date.now();
+      const sessionId = `jnl_${timestamp.toString(36)}`;
+      const fileName = `JNL_STUDIO_${sessionId}.jpg`;
       const file = new File([blob], fileName, { type: 'image/jpeg' });
       
       setRuntimeStatus(prev => ({ 
@@ -150,13 +144,13 @@ export default function KioskPage() {
         navigatorShareStarted: 'SUCCESS' 
       }));
 
+      // 2. Dispatch Intent to NokoPrint (Android Only)
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
           title: 'JNL Studio Portrait',
           text: 'Open with NokoPrint'
         });
-        clearTimeout(printWatchdog);
         setRuntimeStatus(prev => ({ 
           ...prev, 
           intentAcknowledged: 'SUCCESS', 
@@ -165,17 +159,9 @@ export default function KioskPage() {
         }));
         KioskLogger.log('info', 'PRINT', 'Intent Dispatched to NokoPrint', 'SUCCESS');
       } else {
-        clearTimeout(printWatchdog);
-        setRuntimeStatus(prev => ({ 
-          ...prev, 
-          intentTriggered: 'FAILED', 
-          navigatorShareRejected: 'FAILED', 
-          intentAcknowledged: 'FAILED' 
-        }));
-        KioskLogger.log('error', 'PRINT', 'Navigator Share API Blocked or Unavailable', 'FAILED');
+        throw new Error('Share API blocked or file rejected by OS');
       }
     } catch (e: any) {
-      clearTimeout(printWatchdog);
       setRuntimeStatus(prev => ({ 
         ...prev, 
         intentAcknowledged: 'FAILED', 
@@ -186,7 +172,7 @@ export default function KioskPage() {
     }
   }, []);
 
-  // CRITICAL: Decoupled Cloud Sync Pipeline (Non-blocking QR)
+  // CRITICAL: Decoupled Cloud Sync & Storage Pipeline
   const handleCloudSync = useCallback(async (blob: Blob) => {
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
@@ -196,21 +182,19 @@ export default function KioskPage() {
     setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
     setUploadStatus("uploading");
 
-    // Watchdog for Cloud Sync
-    const syncWatchdog = setTimeout(() => {
-      setRuntimeStatus(prev => {
-        if (prev.cloudSync === 'PENDING') {
-          return { ...prev, cloudSync: 'FAILED', lastErrorMessage: 'Cloud Sync timed out' };
-        }
-        return prev;
-      });
-    }, 10000); // Extended for large portraits
-    
-    // Save to local IndexedDB (Fast gallery fallback)
+    // 1. Local IndexedDB Persistence (Instant)
     SessionStore.savePhotoLocally(sessionId, blob).then(() => {
       setRuntimeStatus(prev => ({ ...prev, photoSaved: 'SUCCESS' }));
-    }).catch(() => {});
+    });
 
+    // 2. USB Backup (Lexar) - If Mounted
+    if (usbHandle) {
+      SessionStore.saveToUsb(usbHandle, sessionId, blob).then(success => {
+        setRuntimeStatus(prev => ({ ...prev, usbBackup: success ? 'SUCCESS' : 'FAILED' }));
+      });
+    }
+
+    // 3. Cloud Sync (Firebase)
     const { storage, db } = initializeFirebase();
     const docRef = doc(db, "photos", sessionId);
     
@@ -219,27 +203,21 @@ export default function KioskPage() {
       storagePath: `photos/${sessionId}.jpg`,
       timestamp: serverTimestamp(),
       isDownloaded: false,
-      promoConsent: null,
+      promoConsent: promoConsent,
       status: 'uploading'
     };
 
     try {
-      // 1. Create Firestore metadata record
       await setDoc(docRef, sessionData);
       setRuntimeStatus(prev => ({ ...prev, sessionCreated: 'SUCCESS' }));
 
-      // 2. Upload high-res photo to Storage
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
-      await uploadBytes(photoRef, blob);
+      await uploadBytes(photoRef, blob, { contentType: 'image/jpeg' });
       
-      // 3. Mark complete
       await updateDoc(docRef, { status: 'complete' });
-      
-      clearTimeout(syncWatchdog);
       setUploadStatus("complete");
       setRuntimeStatus(prev => ({ ...prev, cloudSync: 'SUCCESS' }));
     } catch (error: any) {
-      clearTimeout(syncWatchdog);
       setUploadStatus("error");
       setRuntimeStatus(prev => ({ ...prev, cloudSync: 'FAILED', lastErrorMessage: error.message }));
       errorEmitter.emit('permission-error', new FirestorePermissionError({
@@ -248,7 +226,7 @@ export default function KioskPage() {
         requestResourceData: sessionData
       }));
     }
-  }, [originUrl]);
+  }, [originUrl, usbHandle, promoConsent]);
 
   const preSpoolPrintFile = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
@@ -384,6 +362,7 @@ export default function KioskPage() {
       cloudSync: 'PENDING',
       sessionCreated: 'PENDING',
       fileCreated: 'PENDING',
+      usbBackup: usbHandle ? 'PENDING' : 'OFFLINE',
       navigatorShareStarted: 'PENDING',
       navigatorShareResolved: 'PENDING',
       navigatorShareRejected: 'PENDING',
@@ -393,7 +372,7 @@ export default function KioskPage() {
       userAgent: navigator.userAgent,
       lastErrorMessage: ''
     });
-  }, []);
+  }, [usbHandle]);
 
   const startShotSequence = async () => {
     const totalShots = packageSelected === 50 ? 3 : 6;
@@ -478,11 +457,17 @@ export default function KioskPage() {
             onJumpTo={setAppState}
             onReset={resetSession}
             onExitOwnerMode={() => setIsOwnerMode(false)}
-            onSimulateCash={(amount) => setPaymentReceived(prev => prev + amount)}
+            onSimulateCash={(amount) => {
+              setPaymentReceived(prev => prev + amount);
+              if (amount === 50) setPackageSelected(50);
+              if (amount === 100) setPackageSelected(100);
+            }}
+            onMountUsb={setUsbHandle}
             runtimeStatus={runtimeStatus}
+            usbHandle={usbHandle}
           />
         )}
-        {isOwnerMode && <HealthMonitor />}
+        {isOwnerMode && <HealthMonitor usbMounted={!!usbHandle} />}
         
         {appState === "welcome" && (
           <div className="flex flex-col items-center w-full h-full animate-in fade-in duration-1000">
@@ -555,7 +540,6 @@ export default function KioskPage() {
 
         {appState === "setup" && (
           <div className="w-full h-full max-w-[98%] flex flex-row gap-4 items-start py-2 px-2 overflow-hidden">
-             {/* Left Panel: Blueprints & Filters */}
              <div className="flex-[0.4] space-y-3 pr-2 scrollbar-hide h-full pb-6">
                 <div className="space-y-2">
                   <h2 className="font-headline font-black text-lg italic uppercase text-primary">Layout Selection</h2>
@@ -581,7 +565,6 @@ export default function KioskPage() {
                   </div>
                 </div>
              </div>
-             {/* Right Panel: Live View */}
              <div className="flex-1 flex flex-col gap-3 h-full pb-4">
                 <div className="relative flex-1 bg-zinc-900 border-4 border-white overflow-hidden shadow-2xl">
                    <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover" style={{ filter: selectedFilter.filter }} />
@@ -690,9 +673,7 @@ export default function KioskPage() {
               disabled={isPreparingPrint || !preparedBlob}
               onClick={() => {
                 if (preparedBlob) {
-                  // PRIORITY: Synchronous intent dispatch
                   initiatePrint(preparedBlob);
-                  // BACKGROUND: Parallel cloud sync
                   handleCloudSync(preparedBlob);
                 }
                 setAppState("printing");
@@ -706,7 +687,6 @@ export default function KioskPage() {
 
         {appState === "printing" && (
           <div className="w-full h-full flex flex-row overflow-hidden relative">
-             {/* Main Progress Area */}
              <div className="flex-1 flex flex-col items-center justify-center p-12 border-r border-white/10">
                 <div className="mb-12 min-h-[40px]">
                    {promoConsent !== null && (
@@ -739,7 +719,6 @@ export default function KioskPage() {
                    <Progress value={printProgress} className="h-8 bg-white/10 w-full" />
                 </div>
 
-                {/* Live Blocked Trace (Visible for Triage) */}
                 {runtimeStatus.lastErrorMessage && (
                   <div className="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-[8px] font-mono text-red-500">
                     ERROR: {runtimeStatus.lastErrorMessage}
@@ -747,7 +726,6 @@ export default function KioskPage() {
                 )}
              </div>
 
-             {/* Right Panel: Soft Copy QR (INSTANT DISPLAY) */}
              <div className="w-[480px] bg-white/5 flex flex-col items-center justify-center p-10">
                 {softCopyQrUrl ? (
                   <div className="animate-in fade-in zoom-in-95 duration-700 flex flex-col items-center space-y-8">
@@ -783,7 +761,6 @@ export default function KioskPage() {
                 )}
              </div>
 
-             {/* Bilingual Promotional Consent Overlay */}
              {promoConsent === null && (
                <div className="absolute inset-0 bg-black/95 z-[200] flex items-center justify-center p-6 backdrop-blur-md">
                  <div className="bg-zinc-950 border-4 border-primary p-12 flex flex-col items-center space-y-8 rounded-[4rem] w-full max-w-4xl shadow-2xl">

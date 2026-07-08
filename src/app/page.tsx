@@ -18,8 +18,18 @@ import { Progress } from "@/components/ui/progress";
 import { SessionStore } from "@/lib/kiosk/persistence";
 import { KioskLogger } from "@/lib/kiosk/logger";
 import { initializeFirebase } from "@/firebase";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { doc, setDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
+import { 
+  doc, 
+  setDoc, 
+  serverTimestamp, 
+  updateDoc, 
+  collection, 
+  query, 
+  where, 
+  onSnapshot, 
+  deleteDoc 
+} from "firebase/firestore";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import { 
   SessionState, 
@@ -62,12 +72,10 @@ export default function KioskPage() {
   
   const [originUrl, setOriginUrl] = useState("https://jnl-studio-booth.web.app");
 
-  // HARDWARE HANDLES
   const [usbHandle, setUsbHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [preparedBlob, setPreparedBlob] = useState<Blob | null>(null);
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
 
-  // TRUTH-BASED DIAGNOSTICS (Admin Only)
   const [runtimeStatus, setRuntimeStatus] = useState({
     photoGenerated: 'PENDING',
     photoSaved: 'PENDING',
@@ -120,6 +128,7 @@ export default function KioskPage() {
     usbHandleValid: 'FALSE'
   });
 
+  // INITIALIZATION & PRE-AUTH
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const { app, auth } = initializeFirebase();
@@ -130,8 +139,6 @@ export default function KioskPage() {
         fbStorageBucket: (app.options as any).storageBucket || 'UNKNOWN'
       }));
 
-      // PRE-AUTHENTICATE (CRITICAL FOR PUBLIC KIOSK)
-      // This happens in the background while the kiosk is on the "Welcome" screen
       signInAnonymously(auth).catch(e => {
         KioskLogger.log('error', 'SESSION', 'Auth Initialization Failed', 'FAILED', e.message);
       });
@@ -162,6 +169,40 @@ export default function KioskPage() {
       checkHardware();
       setOriginUrl(window.location.origin);
     }
+  }, []);
+
+  // TEMPORARY STORAGE CLEANUP (Runs on Kiosk Background)
+  useEffect(() => {
+    const { db, storage } = initializeFirebase();
+    const photosRef = collection(db, "photos");
+    const q = query(photosRef, where("status", "==", "complete"));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      snapshot.docChanges().forEach(async (change) => {
+        if (change.type === "added" || change.type === "modified") {
+          const data = change.doc.data();
+          const docId = change.doc.id;
+          
+          const now = Date.now();
+          const timestamp = data.timestamp?.toMillis?.() || 0;
+          const isStale = timestamp > 0 && (now - timestamp > 10 * 60 * 1000); // 10 minutes
+
+          if (data.isDownloaded || isStale) {
+            KioskLogger.log('info', 'CLOUD', `Purging ${isStale ? 'Stale' : 'Accessed'} Photo: ${docId}`, 'SUCCESS');
+            
+            try {
+              const photoRef = ref(storage, data.storagePath);
+              await deleteObject(photoRef);
+            } catch (e) {}
+
+            try {
+              await deleteDoc(doc(db, "photos", docId));
+            } catch (e) {}
+          }
+        }
+      });
+    });
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -242,7 +283,6 @@ export default function KioskPage() {
 
     const { storage, db, auth } = initializeFirebase();
 
-    // Ensure Auth is ready
     if (!auth.currentUser) {
       try {
         await signInAnonymously(auth);
@@ -251,11 +291,13 @@ export default function KioskPage() {
       }
     }
 
+    // ALWAYS SAVE TO PERMANENT USB MASTER ARCHIVE
     await SessionStore.savePhotoLocally(sessionId, blob);
     if (usbHandle) {
       await SessionStore.saveToUsb(usbHandle, sessionId, blob);
     }
 
+    // UPLOAD TEMPORARY SOFT COPY
     const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
     setUploadStatus("uploading");
     
@@ -299,10 +341,9 @@ export default function KioskPage() {
         },
         async () => {
           const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-          // Store the download URL in Firestore for faster retrieval by the client
           await updateDoc(docRef, { status: 'complete', downloadUrl: downloadUrl });
           
-          // ONLY generate QR code after upload is actually verified
+          // QR CODE GENERATED ONLY AFTER VERIFIED UPLOAD
           setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
           setUploadStatus("complete");
           
@@ -874,7 +915,7 @@ export default function KioskPage() {
                   <div className="animate-in fade-in zoom-in-95 duration-700 flex flex-col items-center space-y-8">
                      <div className="text-center space-y-2">
                        <h3 className="text-3xl font-black italic uppercase text-primary">HD SOFT COPY</h3>
-                       <p className="text-[10px] font-black uppercase text-white/30 tracking-widest">Available for 24 hours</p>
+                       <p className="text-[10px] font-black uppercase text-white/30 tracking-widest">Available for 10 minutes only</p>
                      </div>
                      <div className="bg-white p-6 rounded-[3rem] shadow-[0_0_50px_rgba(255,51,153,0.1)]">
                         <img src={softCopyQrUrl} alt="Scan to save" className="w-64 h-64" />

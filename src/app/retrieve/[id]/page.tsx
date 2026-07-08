@@ -12,7 +12,7 @@ import { Download, Loader2, AlertCircle, Image as ImageIcon } from "lucide-react
 
 /**
  * Public Retrieval Page.
- * Strictly login-free. Uses high-frequency polling to detect successful kiosk upload.
+ * Login-free, token-based temporary access.
  */
 export default function RetrievePage() {
   const params = useParams();
@@ -35,7 +35,6 @@ export default function RetrievePage() {
       if (docSnap.exists()) {
         const data = docSnap.data();
         
-        // Prefer the stored downloadUrl if available for instant performance
         if (data.status === 'complete' && data.downloadUrl) {
           setImageUrl(data.downloadUrl);
           setLoading(false);
@@ -43,7 +42,6 @@ export default function RetrievePage() {
           return;
         }
 
-        // Fallback to manual URL generation if binary is uploaded but URL not in doc
         const photoRef = ref(storage, `photos/${id}.jpg`);
         try {
           const url = await getDownloadURL(photoRef);
@@ -52,7 +50,6 @@ export default function RetrievePage() {
           setStatus('complete');
           return;
         } catch (e: any) {
-          // Binary not ready yet or rules blocking
           setStatus('syncing');
         }
       }
@@ -83,8 +80,8 @@ export default function RetrievePage() {
     if (!imageUrl || !id) return;
     try {
       const { db } = initializeFirebase();
-      // Track download status for admin analytics
-      updateDoc(doc(db, "photos", id), { isDownloaded: true });
+      // MARK FOR DELETION (Kiosk will detect this and purge from Cloud)
+      await updateDoc(doc(db, "photos", id), { isDownloaded: true });
       
       const response = await fetch(imageUrl);
       const blob = await response.blob();
@@ -138,7 +135,7 @@ export default function RetrievePage() {
               <div className="space-y-6">
                 <div className="space-y-1">
                   <h2 className="text-3xl font-black italic uppercase text-primary">HD SOFT COPY</h2>
-                  <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Available for 24 Hours Only</p>
+                  <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Available for 10 Minutes Only</p>
                 </div>
                 <NeonButton onClick={handleDownload} className="w-full flex items-center justify-center gap-3 !py-6 text-xl">
                   <Download className="w-6 h-6" /> DOWNLOAD NOW

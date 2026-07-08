@@ -8,6 +8,7 @@
       "properties": {
         "id": { "type": "string", "description": "Unique session ID" },
         "storagePath": { "type": "string", "description": "Path to photo in Firebase Storage" },
+        "downloadUrl": { "type": "string", "description": "Temporary public access link" },
         "timestamp": { "type": "string", "format": "date-time" },
         "isDownloaded": { "type": "boolean", "description": "Whether the customer has scanned and downloaded the photo." },
         "promoConsent": { "type": "boolean", "description": "Whether the customer allows sharing on Facebook." },
@@ -22,7 +23,7 @@
   "firestore": {
     "/photos/{photoId}": {
       "schema": "PhotoResult",
-      "description": "Collection for digital photo retrieval links."
+      "description": "Collection for digital photo retrieval links. Auto-deleted after 10 mins or on access."
     }
   }
 }

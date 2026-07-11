@@ -27,6 +27,7 @@ export default function RetrievePage() {
 
   const fetchPhoto = useCallback(async () => {
     if (!id) return;
+    console.log(`[RETRIEVAL] Fetching Portrait ID: ${id} (Attempt ${retryCount.current + 1})`);
     
     try {
       const { storage, db } = initializeFirebase();
@@ -35,9 +36,11 @@ export default function RetrievePage() {
       
       if (docSnap.exists()) {
         const data = docSnap.data();
+        console.log(`[RETRIEVAL] Firestore Status: ${data.status}`);
         
         // Success via Document Metadata
         if (data.status === 'complete' && data.downloadUrl) {
+          console.log(`[RETRIEVAL] Success: URL found in Metadata`);
           setImageUrl(data.downloadUrl);
           setLoading(false);
           setStatus('complete');
@@ -48,23 +51,29 @@ export default function RetrievePage() {
         const photoRef = ref(storage, `photos/${id}.jpg`);
         try {
           const url = await getDownloadURL(photoRef);
+          console.log(`[RETRIEVAL] Success: URL fetched from Storage Direct`);
           setImageUrl(url);
           setLoading(false);
           setStatus('complete');
           return;
         } catch (e: any) {
+          console.log(`[RETRIEVAL] Storage Direct failed: ${e.code}`);
           setStatus('syncing');
         }
+      } else {
+        console.log(`[RETRIEVAL] Firestore Document NOT FOUND yet`);
       }
 
       if (retryCount.current < MAX_RETRIES) {
         retryCount.current += 1;
         setTimeout(fetchPhoto, 500); 
       } else {
+        console.error(`[RETRIEVAL] Timeout reached after 60 seconds`);
         setError("Your photo sync is taking longer than expected. Please try again.");
         setLoading(false);
       }
     } catch (err: any) {
+      console.error(`[RETRIEVAL] Connection Error: ${err.message}`);
       if (retryCount.current < MAX_RETRIES) {
         retryCount.current += 1;
         setTimeout(fetchPhoto, 1000);

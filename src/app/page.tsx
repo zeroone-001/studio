@@ -260,6 +260,7 @@ export default function KioskPage() {
   }, [appState]);
 
   const initiatePrint = useCallback(async (blob: Blob) => {
+    KioskLogger.log('info', 'PRINT', 'Initiating Print Dispatch', 'PENDING');
     try {
       if (!blob || blob.size === 0) throw new Error("Null or Empty Blob detected");
 
@@ -272,19 +273,22 @@ export default function KioskPage() {
       setRuntimeStatus(prev => ({ 
         ...prev, 
         intentTriggered: 'PASS', 
-        navigatorShareStarted: 'PASS'
+        navigatorShareStarted: 'PASS',
+        fileCreated: 'PASS',
+        fileSize: `${(blob.size / 1024).toFixed(1)} KB`
       }));
 
-      KioskLogger.log('info', 'PRINT', `Dispatching Intent to NokoPrint: ${fileName}`, 'PENDING');
+      KioskLogger.log('info', 'PRINT', `File Object Formed: ${fileName} (${blob.size} bytes)`, 'SUCCESS');
 
       // DIRECT ANDROID INTENT TRIGGER (MUST BE ON USER GESTURE THREAD)
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        KioskLogger.log('info', 'PRINT', 'Dispatching Share Intent to OS', 'PENDING');
         await navigator.share({
           files: [file],
           title: 'JNL Studio Portrait',
           text: 'Print with NokoPrint'
         });
-        KioskLogger.log('info', 'PRINT', 'Intent Dispatched to OS', 'SUCCESS');
+        KioskLogger.log('info', 'PRINT', 'Intent Acknowledged by OS', 'SUCCESS');
         setRuntimeStatus(prev => ({ 
           ...prev, 
           intentAcknowledged: 'PASS', 
@@ -292,7 +296,7 @@ export default function KioskPage() {
           nokoprintOpened: 'PASS' 
         }));
       } else {
-        throw new Error('OS Share/Print API not responding');
+        throw new Error('OS Share/Print API not responding or not capable of file sharing');
       }
     } catch (e: any) {
       KioskLogger.log('error', 'PRINT', 'Intent Dispatch Failed', 'FAILED', e.message);
@@ -308,39 +312,54 @@ export default function KioskPage() {
   const handleCloudSync = useCallback(async (blob: Blob) => {
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
+    KioskLogger.log('info', 'SESSION', `Output Pipeline Start: ${sessionId}`, 'PENDING');
     
-    setRuntimeStatus(prev => ({ ...prev, uploadStarted: 'TRUE', uploadTarget: `photos/${sessionId}.jpg` }));
+    setRuntimeStatus(prev => ({ 
+      ...prev, 
+      uploadStarted: 'TRUE', 
+      uploadTarget: `photos/${sessionId}.jpg`,
+      photoGenerated: 'PASS'
+    }));
 
     if (!blob || blob.size === 0) {
+      KioskLogger.log('error', 'SESSION', 'Abort: Blob is null or zero size', 'FAILED');
       setRuntimeStatus(prev => ({ ...prev, photoSaved: 'FAIL', lastSaveError: 'Empty Image', uploadFailed: 'TRUE' }));
       return;
     }
 
+    // 1. Local IndexedDB Persistence (Instant)
     const localSave = await SessionStore.savePhotoLocally(sessionId, blob);
     if (localSave.success) {
-      KioskLogger.log('info', 'SESSION', `Local IndexedDB Save Verified: ${localSave.size} bytes`, 'SUCCESS');
+      setRuntimeStatus(prev => ({ ...prev, photoSaved: 'PASS' }));
     }
 
+    // 2. USB Archive (If mounted)
     if (usbHandle) {
+      KioskLogger.log('info', 'HARDWARE', 'Attempting USB Archive Save', 'PENDING');
       const usbResult = await SessionStore.saveToHandle(usbHandle, 'JNL_STUDIO_ARCHIVE', sessionId, blob);
       if (usbResult.success) {
         setRuntimeStatus(prev => ({ ...prev, usbBackup: 'PASS', usbHandleValid: 'TRUE' }));
       }
     }
 
+    // 3. Local Gallery (If mounted)
     if (galleryHandle) {
+      KioskLogger.log('info', 'HARDWARE', 'Attempting Gallery Save', 'PENDING');
       await SessionStore.saveToHandle(galleryHandle, 'JNL_STUDIO_GALLERY', sessionId, blob);
     }
 
+    // 4. Firebase Cloud Sync
     const { storage, db, auth } = initializeFirebase();
 
     if (!auth.currentUser) {
       try {
+        KioskLogger.log('info', 'SESSION', 'Ensuring Auth State', 'PENDING');
         await signInAnonymously(auth);
       } catch (e: any) {}
     }
 
     setUploadStatus("uploading");
+    KioskLogger.log('info', 'CLOUD', 'Starting Firebase Upload Task', 'PENDING');
 
     const docRef = doc(db, "photos", sessionId);
     const sessionData = {
@@ -359,13 +378,6 @@ export default function KioskPage() {
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       const uploadTask = uploadBytesResumable(photoRef, blob, { contentType: 'image/jpeg' });
 
-      const cloudTimeout = setTimeout(() => {
-        if (uploadStatus !== "complete") {
-          setUploadStatus("error");
-          KioskLogger.log('warn', 'CLOUD', 'Upload Timeout (Proceeding to physical print)', 'FAILED');
-        }
-      }, 5000);
-
       uploadTask.on('state_changed', 
         (snapshot) => {
           const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
@@ -376,15 +388,15 @@ export default function KioskPage() {
           }));
         },
         async (error: any) => {
-          clearTimeout(cloudTimeout);
+          KioskLogger.log('error', 'CLOUD', `Upload Task Aborted: ${error.code}`, 'FAILED', error.message);
           setUploadStatus("error");
           setRuntimeStatus(prev => ({ ...prev, uploadFailed: 'TRUE', fbErrorCode: error.code }));
         },
         async () => {
-          clearTimeout(cloudTimeout);
           const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
           await updateDoc(docRef, { status: 'complete', downloadUrl: downloadUrl });
           
+          KioskLogger.log('info', 'CLOUD', 'Public URL Generated', 'SUCCESS');
           setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(downloadUrl)}`);
           setUploadStatus("complete");
           
@@ -393,11 +405,13 @@ export default function KioskPage() {
             cloudSync: 'PASS', 
             uploadCompleted: 'TRUE', 
             uploadedFileUrl: downloadUrl,
-            fbUrlGenerated: 'TRUE'
+            fbUrlGenerated: 'TRUE',
+            qrSourceUrl: downloadUrl
           }));
         }
       );
     } catch (error: any) {
+      KioskLogger.log('error', 'CLOUD', 'Sync Pipeline Crash', 'FAILED', error.message);
       setUploadStatus("error");
     }
   }, [usbHandle, galleryHandle, promoConsent, uploadStatus]);
@@ -405,6 +419,7 @@ export default function KioskPage() {
   const preSpoolPrintFile = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
     
+    KioskLogger.log('info', 'SESSION', 'Spooling High-Res Canvas', 'PENDING');
     setIsPreparingPrint(true);
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1600;
@@ -412,6 +427,7 @@ export default function KioskPage() {
     const ctx = exportCanvas.getContext('2d');
     
     if (!ctx) {
+      KioskLogger.log('error', 'SESSION', 'Canvas Context Creation Failed', 'FAILED');
       setIsPreparingPrint(false);
       return;
     }
@@ -484,6 +500,7 @@ export default function KioskPage() {
           const lines: string[] = [];
           let currentLine = words[0];
 
+          for (let i = 1; i < words[0].length === 0 ? 0 : 1; i++) {} // Safety for split
           for (let i = 1; i < words.length; i++) {
             const testLine = currentLine + ' ' + words[i];
             const metrics = ctx.measureText(testLine);
@@ -530,6 +547,7 @@ export default function KioskPage() {
 
     exportCanvas.toBlob((blob) => {
       if (blob && blob.size > 0) {
+        KioskLogger.log('info', 'SESSION', `Print Blob Spooled: ${blob.size} bytes`, 'SUCCESS');
         setPreparedBlob(blob);
       }
       setIsPreparingPrint(false);

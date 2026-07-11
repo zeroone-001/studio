@@ -16,11 +16,6 @@ interface USBDeviceStats {
   pid: string;
 }
 
-/**
- * Health Monitor component.
- * Performs real hardware verification for Android USB Host and Intent readiness.
- * Optimized for Honor Pad X10 + Epson L210 via OTG.
- */
 export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
   const [status, setStatus] = useState({
     online: false,
@@ -42,13 +37,10 @@ export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
     if (typeof navigator !== 'undefined') {
       isOnline = navigator.onLine;
 
-      // 1. Check for Android Intent System (NokoPrint/Android bridge)
-      // On Android, navigator.share is the gateway to NokoPrint
       if (navigator.share && navigator.canShare) {
         intentReady = true;
       }
 
-      // 2. Real WebUSB Hardware Verification (Android Host Mode)
       if ('usb' in navigator) {
         try {
           const devices = await navigator.usb.getDevices();
@@ -83,13 +75,11 @@ export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
   return (
     <div className="fixed bottom-4 left-6 right-6 z-[60] flex justify-between items-center pointer-events-none select-none animate-in fade-in slide-in-from-bottom-4">
       <div className="flex items-center gap-6 pointer-events-auto bg-black/80 backdrop-blur-xl px-6 py-2 rounded-full border border-white/10 shadow-2xl">
-        {/* Wifi / Cloud Status */}
         <div className="flex items-center gap-2 text-[9px] font-black uppercase text-white tracking-widest">
           <Wifi className={cn("w-3.5 h-3.5", status.online ? "text-green-500" : "text-red-500")} />
           <span>Cloud</span>
         </div>
         
-        {/* Android Printer Bridge Status */}
         <div className="flex items-center gap-2 border-l border-white/10 pl-6">
           {status.printerReady ? (
             <div className="flex items-center gap-2 text-[10px] font-black uppercase text-green-400">
@@ -104,7 +94,6 @@ export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
           )}
         </div>
 
-        {/* USB Host Status (OTG Devices) */}
         <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
           <Usb className={cn("w-3.5 h-3.5", status.usbConnected ? "text-blue-400" : "text-white/20")} />
           <div className="flex flex-col">
@@ -119,7 +108,6 @@ export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
           </div>
         </div>
 
-        {/* Lexar USB Handle Status */}
         <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
           <HardDrive className={cn("w-3.5 h-3.5", usbMounted ? "text-green-500" : "text-white/20")} />
           <span className={usbMounted ? "text-green-500" : "text-white/40"}>
@@ -127,7 +115,6 @@ export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
           </span>
         </div>
 
-        {/* Local IndexedDB Health */}
         <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
           <Database className={cn("w-3.5 h-3.5", parseInt(status.storagePercent) > 80 ? "text-red-500" : "text-blue-400")} />
           <span>Local: {status.storagePercent}%</span>

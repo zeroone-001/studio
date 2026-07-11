@@ -1,9 +1,9 @@
 
 export const firebaseConfig = {
-  apiKey: "AIzaSyB3C-jnl-studio-real-key",
-  authDomain: "studio-1669569175.firebaseapp.com",
-  projectId: "studio-1669569175",
-  storageBucket: "studio-1669569175.firebasestorage.app",
-  messagingSenderId: "123456789012",
-  appId: "1:123456789012:web:a1b2c3d4e5f6g7h8i9j0"
+  apiKey: "AIzaSyA-De-gj4xNB8Py3bFz6UGKViSWHjl6gh4",
+  authDomain: "studio-1669569175-a1589.firebaseapp.com",
+  projectId: "studio-1669569175-a1589",
+  storageBucket: "studio-1669569175-a1589.firebasestorage.app",
+  messagingSenderId: "221551098020",
+  appId: "1:221551098020:web:08a7e2404e882723160e31",
 };

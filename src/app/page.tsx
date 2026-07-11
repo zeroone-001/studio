@@ -126,7 +126,6 @@ export default function KioskPage() {
     usbDevicesCount: 0,
     shareCapable: 'UNKNOWN',
     usbHandleValid: 'FALSE',
-    // RAW CONFIG DIAGNOSTICS
     rawApiKey: 'NONE',
     rawApiKeyType: 'NONE',
     rawApiKeyLength: 0,
@@ -138,7 +137,6 @@ export default function KioskPage() {
     rawConfigSrc: '@/firebase/config.ts'
   });
 
-  // INITIALIZATION & PRE-AUTH
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const { app, auth } = initializeFirebase();
@@ -158,7 +156,6 @@ export default function KioskPage() {
         rawAppId: config.appId || 'NONE'
       }));
 
-      // Background sign-in ensures we are ready for high-res upload during capture
       signInAnonymously(auth).then(() => {
         KioskLogger.log('info', 'SESSION', 'Anonymous Auth Successful', 'SUCCESS');
       }).catch(e => {
@@ -196,7 +193,6 @@ export default function KioskPage() {
     }
   }, []);
 
-  // TEMPORARY STORAGE CLEANUP (Runs on Kiosk Background)
   useEffect(() => {
     const { db, storage } = initializeFirebase();
     const photosRef = collection(db, "photos");
@@ -210,7 +206,7 @@ export default function KioskPage() {
           
           const now = Date.now();
           const timestamp = data.timestamp?.toMillis?.() || 0;
-          const isStale = timestamp > 0 && (now - timestamp > 10 * 60 * 1000); // 10 minutes
+          const isStale = timestamp > 0 && (now - timestamp > 10 * 60 * 1000); 
 
           if (data.isDownloaded || isStale) {
             KioskLogger.log('info', 'CLOUD', `Purging ${isStale ? 'Stale' : 'Accessed'} Photo: ${docId}`, 'SUCCESS');
@@ -310,7 +306,6 @@ export default function KioskPage() {
       return;
     }
 
-    // MANDATORY PRODUCTION SEQUENCE: Local Save -> USB Archive -> Cloud Sync
     await SessionStore.savePhotoLocally(sessionId, blob);
     KioskLogger.log('info', 'SESSION', `Local IndexedDB Save Complete: ${sessionId}`, 'SUCCESS');
 
@@ -329,7 +324,6 @@ export default function KioskPage() {
 
     const { storage, db, auth } = initializeFirebase();
 
-    // Ensure Auth is ready for production storage rules
     if (!auth.currentUser) {
       try {
         await signInAnonymously(auth);
@@ -339,7 +333,6 @@ export default function KioskPage() {
       }
     }
 
-    // UPLOAD TEMPORARY SOFT COPY WITH FAST PRODUCTION TIMEOUT
     const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
     setUploadStatus("uploading");
     setRuntimeStatus(prev => ({ ...prev, qrSourceUrl: retrievalUrl }));
@@ -361,7 +354,6 @@ export default function KioskPage() {
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       const uploadTask = uploadBytesResumable(photoRef, blob, { contentType: 'image/jpeg' });
 
-      // HARD PRODUCTION TIMEOUT: 5 Seconds for Soft Copy to prevent kiosk hang
       const cloudTimeout = setTimeout(() => {
         if (uploadStatus !== "complete") {
           setUploadStatus("error");
@@ -400,7 +392,7 @@ export default function KioskPage() {
           const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
           await updateDoc(docRef, { status: 'complete', downloadUrl: downloadUrl });
           
-          setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
+          setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(downloadUrl)}`);
           setUploadStatus("complete");
           KioskLogger.log('info', 'CLOUD', 'Soft Copy Upload Verified', 'SUCCESS');
           
@@ -507,10 +499,40 @@ export default function KioskPage() {
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(offsetX, footerY, STRIP_W, 200);
 
-      ctx.fillStyle = '#000000';
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 32px Inter, sans-serif';
-      ctx.fillText(`"${selectedQuote.text}"`, offsetX + (STRIP_W / 2), footerY + 90);
+      const drawWrappedText = (text: string, x: number, y: number, maxWidth: number, baseFontSize: number) => {
+        let fontSize = baseFontSize;
+        ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+        
+        const words = text.split(' ');
+        let lines: string[] = [];
+        let currentLine = words[0];
+
+        for (let i = 1; i < words.length; i++) {
+          const testLine = currentLine + " " + words[i];
+          const metrics = ctx.measureText(testLine);
+          if (metrics.width > maxWidth && i > 0) {
+            lines.push(currentLine);
+            currentLine = words[i];
+          } else {
+            currentLine = testLine;
+          }
+        }
+        lines.push(currentLine);
+
+        if (lines.length > 2) {
+          fontSize = baseFontSize * 0.75;
+          ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+          return drawWrappedText(text, x, y - 5, maxWidth, fontSize);
+        }
+
+        ctx.fillStyle = '#000000';
+        ctx.textAlign = 'center';
+        lines.forEach((line, index) => {
+          ctx.fillText(`"${line}${index === lines.length - 1 ? '"' : ''}`, x, y + (index * (fontSize + 5)));
+        });
+      };
+
+      drawWrappedText(selectedQuote.text, offsetX + (STRIP_W / 2), footerY + 80, STRIP_W - 100, 32);
       
       ctx.textAlign = 'left';
       ctx.font = '900 24px Inter, sans-serif';
@@ -526,7 +548,6 @@ export default function KioskPage() {
 
     setRuntimeStatus(prev => ({ ...prev, photoGenerated: 'PASS' }));
     
-    // PRODUCTION QUALITY OPTIMIZATION: 0.90 Quality for ultra-fast soft copy delivery
     exportCanvas.toBlob((blob) => {
       if (blob && blob.size > 0) {
         setPreparedBlob(blob);

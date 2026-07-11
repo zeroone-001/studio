@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -170,7 +171,6 @@ export const BlueprintFrame = React.memo(({
         })}
       </div>
 
-      {/* FOOTER AREA - OPTIMIZED PADDING AND SCALE */}
       <div 
         className="absolute left-0 right-0 bottom-0 bg-white z-[60] flex flex-col items-center px-2"
         style={{ height: '8.33%' }}
@@ -179,7 +179,12 @@ export const BlueprintFrame = React.memo(({
         
         <div className="flex-1 flex items-center justify-center w-full px-2 text-center overflow-hidden py-0.5">
           {quoteText && (
-            <p className="font-bold text-black italic text-center leading-tight line-clamp-2" style={{ fontSize: isStrip ? '12px' : '20px' }}>
+            <p 
+              className="font-bold text-black italic text-center leading-tight line-clamp-2 transition-all duration-300" 
+              style={{ 
+                fontSize: isStrip ? (quoteText.length > 25 ? '10px' : '12px') : (quoteText.length > 30 ? '16px' : '20px')
+              }}
+            >
               "{quoteText}"
             </p>
           )}

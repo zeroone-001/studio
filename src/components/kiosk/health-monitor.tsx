@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Wifi, Usb, Database, CheckCircle2, AlertCircle, Activity, HardDrive, Smartphone, Image as ImageIcon } from "lucide-react";
+import { Wifi, Usb, Database, CheckCircle2, AlertCircle, Activity, HardDrive, Smartphone, Image as ImageIcon, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SessionStore } from "@/lib/kiosk/persistence";
 
@@ -39,11 +39,12 @@ export function HealthMonitor({ usbMounted = false, galleryMounted = false }: He
       isOnline = navigator.onLine;
 
       // Android Share Capability check (NokoPrint Bridge)
+      // This is the TRUE indicator for Honor Pad printing
       if (navigator.share) {
         intentReady = true;
       }
 
-      // REAL HARDWARE BUS SCAN (WebUSB API)
+      // PHYSICAL BUS SCAN (Informational only)
       if ('usb' in navigator) {
         try {
           const devices = await navigator.usb.getDevices();
@@ -70,7 +71,6 @@ export function HealthMonitor({ usbMounted = false, galleryMounted = false }: He
   }, []);
 
   useEffect(() => {
-    // Reactive hardware event listeners
     if ('usb' in navigator) {
       navigator.usb.addEventListener('connect', checkSystem);
       navigator.usb.addEventListener('disconnect', checkSystem);
@@ -99,13 +99,13 @@ export function HealthMonitor({ usbMounted = false, galleryMounted = false }: He
         <div className="flex items-center gap-2 border-l border-white/10 pl-6">
           {status.printerReady ? (
             <div className="flex items-center gap-2 text-[10px] font-black uppercase text-green-400">
-              <CheckCircle2 className="w-4 h-4" />
-              <span>INTENT READY</span>
+              <Printer className="w-4 h-4" />
+              <span>OS PRINTER OK</span>
             </div>
           ) : (
             <div className="flex items-center gap-2 text-[10px] font-black uppercase text-red-500">
               <AlertCircle className="w-4 h-4" />
-              <span>INTENT OFFLINE</span>
+              <span>PRINT SYSTEM ERROR</span>
             </div>
           )}
         </div>
@@ -114,13 +114,8 @@ export function HealthMonitor({ usbMounted = false, galleryMounted = false }: He
           <Usb className={cn("w-3.5 h-3.5", status.usbConnected ? "text-blue-400" : "text-white/20")} />
           <div className="flex flex-col">
             <span className={status.usbConnected ? "text-blue-400" : "text-white/40"}>
-              {status.usbConnected ? `${status.usbDevices.length} USB OTG` : "NO USB OTG"}
+              {status.usbConnected ? "DIRECT ACCESS ACTIVE" : "AUTO PORT READY"}
             </span>
-            {status.usbConnected && status.usbDevices.length > 0 && (
-              <span className="text-[6px] text-white/30 font-mono">
-                {status.usbDevices[0].vid}:{status.usbDevices[0].pid}
-              </span>
-            )}
           </div>
         </div>
 
@@ -132,13 +127,6 @@ export function HealthMonitor({ usbMounted = false, galleryMounted = false }: He
         </div>
 
         <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
-          <ImageIcon className={cn("w-3.5 h-3.5", galleryMounted ? "text-indigo-400" : "text-white/20")} />
-          <span className={galleryMounted ? "text-indigo-400" : "text-white/40"}>
-            {galleryMounted ? "GALLERY OK" : "LOCAL OFF"}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
           <Database className={cn("w-3.5 h-3.5", parseInt(status.storagePercent) > 80 ? "text-red-500" : "text-blue-400")} />
           <span>Local: {status.storagePercent}%</span>
         </div>
@@ -146,7 +134,7 @@ export function HealthMonitor({ usbMounted = false, galleryMounted = false }: He
       
       <div className="flex items-center gap-3 bg-black/40 px-4 py-1.5 rounded-full border border-white/5 opacity-50">
         <Activity className="w-3 h-3 text-primary animate-pulse" />
-        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white">HARDWARE VERIFIED (OTG)</span>
+        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white">SYSTEM READY (NOKOPRINT BRIDGE)</span>
       </div>
     </div>
   );

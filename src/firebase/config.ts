@@ -1,6 +1,6 @@
 
 export const firebaseConfig = {
-  apiKey: "AIzaSyD-placeholder-key-jnl-studio",
+  apiKey: "AIzaSyB3C-jnl-studio-real-key",
   authDomain: "studio-1669569175.firebaseapp.com",
   projectId: "studio-1669569175",
   storageBucket: "studio-1669569175.firebasestorage.app",

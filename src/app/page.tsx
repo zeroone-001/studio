@@ -139,8 +139,10 @@ export default function KioskPage() {
         fbStorageBucket: (app.options as any).storageBucket || 'UNKNOWN'
       }));
 
+      // Background sign-in ensures we are ready for high-res upload during capture
       signInAnonymously(auth).catch(e => {
         KioskLogger.log('error', 'SESSION', 'Auth Initialization Failed', 'FAILED', e.message);
+        setRuntimeStatus(prev => ({ ...prev, fbException: 'AUTH_FAILED: ' + e.message, fbAuthState: 'ERROR' }));
       });
 
       onAuthStateChanged(auth, (user) => {
@@ -154,8 +156,10 @@ export default function KioskPage() {
       const checkHardware = async () => {
         let usbCount = 0;
         if ('usb' in navigator) {
-          const devices = await navigator.usb.getDevices();
-          usbCount = devices.length;
+          try {
+            const devices = await navigator.usb.getDevices();
+            usbCount = devices.length;
+          } catch (e) {}
         }
         setRuntimeStatus(prev => ({
           ...prev,
@@ -281,14 +285,18 @@ export default function KioskPage() {
       return;
     }
 
-    // ALWAYS SAVE LOCALLY FIRST (Zero Latency)
+    // MANDATORY PRODUCTION SEQUENCE: Local Save -> USB Archive -> Cloud Sync
     await SessionStore.savePhotoLocally(sessionId, blob);
     if (usbHandle) {
       await SessionStore.saveToUsb(usbHandle, sessionId, blob);
+      setRuntimeStatus(prev => ({ ...prev, usbBackup: 'PASS', usbHandleValid: 'TRUE' }));
+    } else {
+      setRuntimeStatus(prev => ({ ...prev, usbBackup: 'OFFLINE' }));
     }
 
     const { storage, db, auth } = initializeFirebase();
 
+    // Ensure Auth is ready for production storage rules
     if (!auth.currentUser) {
       try {
         await signInAnonymously(auth);
@@ -297,10 +305,9 @@ export default function KioskPage() {
       }
     }
 
-    // UPLOAD TEMPORARY SOFT COPY WITH FAST TIMEOUT
+    // UPLOAD TEMPORARY SOFT COPY WITH FAST PRODUCTION TIMEOUT
     const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
     setUploadStatus("uploading");
-    
     setRuntimeStatus(prev => ({ ...prev, qrSourceUrl: retrievalUrl }));
 
     const docRef = doc(db, "photos", sessionId);
@@ -320,7 +327,7 @@ export default function KioskPage() {
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       const uploadTask = uploadBytesResumable(photoRef, blob, { contentType: 'image/jpeg' });
 
-      // HARD PRODUCTION TIMEOUT: 5 Seconds for Soft Copy
+      // HARD PRODUCTION TIMEOUT: 5 Seconds for Soft Copy to prevent kiosk hang
       const cloudTimeout = setTimeout(() => {
         if (uploadStatus !== "complete") {
           setUploadStatus("error");
@@ -480,7 +487,7 @@ export default function KioskPage() {
 
     setRuntimeStatus(prev => ({ ...prev, photoGenerated: 'PASS' }));
     
-    // PRODUCTION OPTIMIZATION: 0.90 Quality for faster upload
+    // PRODUCTION QUALITY OPTIMIZATION: 0.90 Quality for ultra-fast soft copy delivery
     exportCanvas.toBlob((blob) => {
       if (blob && blob.size > 0) {
         setPreparedBlob(blob);

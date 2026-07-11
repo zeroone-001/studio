@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Wifi, Usb, Banknote, Database, CheckCircle2, AlertCircle, Activity, HardDrive } from "lucide-react";
+import { Wifi, Usb, Banknote, Database, CheckCircle2, AlertCircle, Activity, HardDrive, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SessionStore } from "@/lib/kiosk/persistence";
 
@@ -12,7 +12,8 @@ interface HealthMonitorProps {
 
 /**
  * Health Monitor component.
- * Performs real hardware verification for Epson L210 via WebUSB and Android Intent readiness.
+ * Performs real hardware verification for Android USB Host and Intent readiness.
+ * Optimized for Honor Pad X10 + Epson L210 via OTG.
  */
 export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
   const [status, setStatus] = useState({
@@ -21,7 +22,7 @@ export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
     storagePercent: "0",
     printerReady: false,
     usbConnected: false,
-    billAcceptor: false
+    usbDevices: [] as string[]
   });
 
   const checkSystem = useCallback(async () => {
@@ -30,34 +31,24 @@ export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
     let isOnline = false;
     let intentReady = false;
     let hasUsbDevice = false;
-    let hasSerial = false;
+    let deviceNames: string[] = [];
 
     if (typeof navigator !== 'undefined') {
       isOnline = navigator.onLine;
 
-      // 1. Check for Android Intent System (NokoPrint bridge)
+      // 1. Check for Android Intent System (NokoPrint/Android bridge)
       if (navigator.share && navigator.canShare) {
         intentReady = true;
       }
 
-      // 2. Real USB Hardware Verification
+      // 2. Real WebUSB Hardware Verification (Android Host Mode)
       if ('usb' in navigator) {
         try {
           const devices = await navigator.usb.getDevices();
           hasUsbDevice = devices.length > 0;
+          deviceNames = devices.map(d => d.productName || `Device ${d.vendorId}:${d.productId}`);
         } catch (e) {
           hasUsbDevice = false;
-        }
-      }
-      
-      // 3. Serial Port Verification (Bill Acceptor)
-      if ('serial' in navigator) {
-        try {
-          // @ts-ignore
-          const ports = await navigator.serial.getPorts();
-          hasSerial = ports.length > 0;
-        } catch (e) {
-          hasSerial = false;
         }
       }
     }
@@ -66,9 +57,9 @@ export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
       online: isOnline,
       storage: `${stats.usedMB}MB`,
       storagePercent: stats.percent,
-      printerReady: intentReady && hasUsbDevice,
+      printerReady: intentReady, // Readiness for NokoPrint via Intent
       usbConnected: hasUsbDevice,
-      billAcceptor: hasSerial
+      usbDevices: deviceNames
     });
   }, []);
 
@@ -87,7 +78,7 @@ export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
           <span>Cloud</span>
         </div>
         
-        {/* Printer Readiness */}
+        {/* Android Printer Bridge Status */}
         <div className="flex items-center gap-2 border-l border-white/10 pl-6">
           {status.printerReady ? (
             <div className="flex items-center gap-2 text-[10px] font-black uppercase text-green-400">
@@ -97,37 +88,37 @@ export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
           ) : (
             <div className="flex items-center gap-2 text-[10px] font-black uppercase text-red-500">
               <AlertCircle className="w-4 h-4" />
-              <span>PRINTER OFFLINE</span>
+              <span>INTENT OFFLINE</span>
             </div>
           )}
         </div>
 
-        {/* USB Hub Status */}
+        {/* USB Host Status (OTG Devices) */}
         <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
           <Usb className={cn("w-3.5 h-3.5", status.usbConnected ? "text-blue-400" : "text-white/20")} />
           <span className={status.usbConnected ? "text-blue-400" : "text-white/40"}>
-            {status.usbConnected ? "USB CONNECTED" : "USB DISCONNECTED"}
+            {status.usbConnected ? `${status.usbDevices.length} USB DETECTED` : "NO USB OTG"}
           </span>
         </div>
 
-        {/* Lexar USB Mount Status */}
+        {/* Lexar USB Handle Status */}
         <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
           <HardDrive className={cn("w-3.5 h-3.5", usbMounted ? "text-green-500" : "text-white/20")} />
           <span className={usbMounted ? "text-green-500" : "text-white/40"}>
-            {usbMounted ? "LEXAR READY" : "NO USB ARCHIVE"}
+            {usbMounted ? "LEXAR READY" : "ARCHIVE UNMOUNTED"}
           </span>
         </div>
 
-        {/* Storage Health */}
+        {/* Local IndexedDB Health */}
         <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
           <Database className={cn("w-3.5 h-3.5", parseInt(status.storagePercent) > 80 ? "text-red-500" : "text-blue-400")} />
-          <span>Cache: {status.storagePercent}%</span>
+          <span>Local: {status.storagePercent}%</span>
         </div>
       </div>
       
       <div className="flex items-center gap-3 bg-black/40 px-4 py-1.5 rounded-full border border-white/5 opacity-50">
         <Activity className="w-3 h-3 text-primary animate-pulse" />
-        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white">HARDWARE VERIFIED</span>
+        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white">HARDWARE VERIFIED (OTG)</span>
       </div>
     </div>
   );

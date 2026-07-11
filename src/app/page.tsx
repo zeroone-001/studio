@@ -76,6 +76,7 @@ export default function KioskPage() {
   const [preparedBlob, setPreparedBlob] = useState<Blob | null>(null);
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
 
+  // DETAILED PRINTER & HARDWARE TRACE
   const [runtimeStatus, setRuntimeStatus] = useState({
     photoGenerated: 'PENDING',
     photoSaved: 'PENDING',
@@ -524,7 +525,7 @@ export default function KioskPage() {
           const lines: string[] = [];
           let currentLine = words[0];
 
-          for (let i = 1; i < words.length; i++) {
+          for (let i = 1; i < words[i]; i++) {
             const testLine = currentLine + ' ' + words[i];
             const metrics = ctx.measureText(testLine);
             if (metrics.width > maxWidth) {

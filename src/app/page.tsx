@@ -125,18 +125,37 @@ export default function KioskPage() {
     fbUrlGenerated: 'FALSE',
     usbDevicesCount: 0,
     shareCapable: 'UNKNOWN',
-    usbHandleValid: 'FALSE'
+    usbHandleValid: 'FALSE',
+    // RAW CONFIG DIAGNOSTICS
+    rawApiKey: 'NONE',
+    rawApiKeyType: 'NONE',
+    rawApiKeyLength: 0,
+    rawAuthDomain: 'NONE',
+    rawProjectId: 'NONE',
+    rawStorageBucket: 'NONE',
+    rawMessagingId: 'NONE',
+    rawAppId: 'NONE',
+    rawConfigSrc: '@/firebase/config.ts'
   });
 
   // INITIALIZATION & PRE-AUTH
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const { app, auth } = initializeFirebase();
+      const config = app.options as any;
       
       setRuntimeStatus(prev => ({
         ...prev,
-        fbProjectId: (app.options as any).projectId || 'UNKNOWN',
-        fbStorageBucket: (app.options as any).storageBucket || 'UNKNOWN'
+        fbProjectId: config.projectId || 'UNKNOWN',
+        fbStorageBucket: config.storageBucket || 'UNKNOWN',
+        rawApiKey: config.apiKey || 'MISSING',
+        rawApiKeyType: typeof config.apiKey,
+        rawApiKeyLength: config.apiKey?.length || 0,
+        rawAuthDomain: config.authDomain || 'NONE',
+        rawProjectId: config.projectId || 'NONE',
+        rawStorageBucket: config.storageBucket || 'NONE',
+        rawMessagingId: config.messagingSenderId || 'NONE',
+        rawAppId: config.appId || 'NONE'
       }));
 
       // Background sign-in ensures we are ready for high-res upload during capture
@@ -144,7 +163,7 @@ export default function KioskPage() {
         KioskLogger.log('info', 'SESSION', 'Anonymous Auth Successful', 'SUCCESS');
       }).catch(e => {
         KioskLogger.log('error', 'SESSION', 'Auth Initialization Failed', 'FAILED', e.message);
-        setRuntimeStatus(prev => ({ ...prev, fbException: 'AUTH_FAILED: ' + e.message, fbAuthState: 'ERROR', fbErrorCode: e.code }));
+        setRuntimeStatus(prev => ({ ...prev, fbException: 'AUTH_FAILED: ' + e.message, fbAuthState: 'ERROR', fbErrorCode: e.code, fbErrorMessage: e.message }));
       });
 
       onAuthStateChanged(auth, (user) => {
@@ -316,7 +335,7 @@ export default function KioskPage() {
         await signInAnonymously(auth);
       } catch (e: any) {
         KioskLogger.log('error', 'SESSION', 'Fallback Auth Failed', 'FAILED', e.message);
-        setRuntimeStatus(prev => ({ ...prev, fbException: 'AUTH_FAILED: ' + e.message }));
+        setRuntimeStatus(prev => ({ ...prev, fbException: 'AUTH_FAILED: ' + e.message, fbErrorMessage: e.message }));
       }
     }
 
@@ -402,7 +421,8 @@ export default function KioskPage() {
         ...prev, 
         cloudSync: 'FAIL', 
         uploadFailed: 'TRUE', 
-        fbException: error.message 
+        fbException: error.message,
+        fbErrorMessage: error.message
       }));
     }
   }, [originUrl, usbHandle, promoConsent, uploadStatus]);

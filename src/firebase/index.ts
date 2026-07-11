@@ -18,6 +18,14 @@ let storage: FirebaseStorage;
 let auth: Auth;
 
 export function initializeFirebase() {
+  // CRITICAL DIAGNOSTIC PROOF
+  console.log('--- FIREBASE RUNTIME CONFIG PROOF ---');
+  console.log('Import Source: src/firebase/config.ts');
+  console.log('Config Object:', JSON.stringify(firebaseConfig, null, 2));
+  console.log('apiKey Type:', typeof firebaseConfig.apiKey);
+  console.log('apiKey Length:', firebaseConfig.apiKey?.length);
+  console.log('--------------------------------------');
+
   if (!getApps().length) {
     app = initializeApp(firebaseConfig);
     

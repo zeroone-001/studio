@@ -24,7 +24,8 @@ import {
   Cloud,
   Smartphone,
   ShieldAlert,
-  Terminal
+  Terminal,
+  FileCode
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
@@ -92,6 +93,16 @@ interface AdminControlsProps {
     usbDevicesCount: number;
     shareCapable: string;
     usbHandleValid: string;
+    // RAW CONFIG DIAGNOSTICS
+    rawApiKey: string;
+    rawApiKeyType: string;
+    rawApiKeyLength: number;
+    rawAuthDomain: string;
+    rawProjectId: string;
+    rawStorageBucket: string;
+    rawMessagingId: string;
+    rawAppId: string;
+    rawConfigSrc: string;
   };
 }
 
@@ -196,7 +207,7 @@ export function AdminControls({
     onJumpTo('package-selection');
   };
 
-  const TraceItem = ({ label, value }: { label: string, value?: string }) => (
+  const TraceItem = ({ label, value }: { label: string, value?: string | number }) => (
     <div className="flex justify-between items-center px-1 border-b border-white/5 py-1">
       <span className="text-[7px] font-bold text-white/40 uppercase tracking-widest">{label}</span>
       <div className="flex items-center gap-1">
@@ -307,20 +318,43 @@ export function AdminControls({
 
           {view === 'logs' && (
             <div className="space-y-4">
+               {/* FIREBASE RUNTIME CONFIG PROOF */}
+               <div className="bg-indigo-500/10 border-2 border-indigo-500/40 p-3 rounded-xl space-y-2">
+                  <h3 className="text-[8px] font-black uppercase text-indigo-400 italic mb-2 flex items-center gap-2">
+                    <FileCode className="w-3 h-3" /> RUNTIME CONFIG PROOF
+                  </h3>
+                  <div className="grid grid-cols-1 gap-1">
+                     <div className="flex flex-col py-1 border-b border-white/10">
+                       <span className="text-[6px] text-white/40 uppercase">Config Source</span>
+                       <span className="text-[7px] font-mono text-white/80">{runtimeStatus?.rawConfigSrc}</span>
+                     </div>
+                     <div className="flex flex-col py-1 border-b border-white/10">
+                       <span className="text-[6px] text-white/40 uppercase">apiKey (Literal)</span>
+                       <span className="text-[7px] font-mono text-amber-400 break-all">{runtimeStatus?.rawApiKey}</span>
+                     </div>
+                     <TraceItem label="apiKey Type" value={runtimeStatus?.rawApiKeyType} />
+                     <TraceItem label="apiKey Length" value={runtimeStatus?.rawApiKeyLength} />
+                     <div className="flex flex-col py-1 border-b border-white/10">
+                       <span className="text-[6px] text-white/40 uppercase">authDomain</span>
+                       <span className="text-[7px] font-mono text-white/60">{runtimeStatus?.rawAuthDomain}</span>
+                     </div>
+                     <div className="flex flex-col py-1 border-b border-white/10">
+                       <span className="text-[6px] text-white/40 uppercase">projectId</span>
+                       <span className="text-[7px] font-mono text-white/60">{runtimeStatus?.rawProjectId}</span>
+                     </div>
+                     <div className="flex flex-col py-1 border-b border-white/10">
+                       <span className="text-[6px] text-white/40 uppercase">appId</span>
+                       <span className="text-[7px] font-mono text-white/60">{runtimeStatus?.rawAppId}</span>
+                     </div>
+                  </div>
+               </div>
+
                {/* EMERGENCY FIREBASE STORAGE DEBUG */}
                <div className="bg-red-500/10 border-2 border-red-500/40 p-3 rounded-xl space-y-2">
                   <h3 className="text-[8px] font-black uppercase text-red-500 italic mb-2 flex items-center gap-2">
-                    <ShieldAlert className="w-3 h-3" /> FIREBASE STORAGE DEBUG
+                    <ShieldAlert className="w-3 h-3" /> FIREBASE STATUS TRACE
                   </h3>
                   <div className="grid grid-cols-1 gap-1">
-                     <div className="flex flex-col py-1 border-b border-red-500/10">
-                       <span className="text-[6px] text-white/40 uppercase">Project ID</span>
-                       <span className="text-[7px] font-mono text-white/80">{runtimeStatus?.fbProjectId}</span>
-                     </div>
-                     <div className="flex flex-col py-1 border-b border-red-500/10">
-                       <span className="text-[6px] text-white/40 uppercase">Storage Bucket</span>
-                       <span className="text-[7px] font-mono text-white/80">{runtimeStatus?.fbStorageBucket}</span>
-                     </div>
                      <TraceItem label="Auth State" value={runtimeStatus?.fbAuthState} />
                      <div className="flex flex-col py-1 border-b border-red-500/10">
                        <span className="text-[6px] text-white/40 uppercase">User UID</span>
@@ -349,55 +383,6 @@ export function AdminControls({
                      <TraceItem label="Download URL Generated" value={runtimeStatus?.fbUrlGenerated} />
                   </div>
                </div>
-
-               {runtimeStatus && (
-                 <div className="bg-black/60 border border-green-500/30 p-3 rounded-xl space-y-2">
-                    <h3 className="text-[7px] font-black uppercase text-green-400 italic mb-2 flex items-center gap-2">
-                      <Zap className="w-3 h-3" /> IMAGE GENERATION TRACE
-                    </h3>
-                    <div className="grid grid-cols-1 gap-1">
-                       <TraceItem label="Capture Success" value={runtimeStatus.captureSuccess} />
-                       <TraceItem label="Canvas Exists" value={runtimeStatus.canvasExists} />
-                       <div className="flex justify-between items-center px-1 border-b border-white/5 py-1">
-                         <span className="text-[7px] font-bold text-white/40 uppercase tracking-widest">Canvas Resolution</span>
-                         <span className="text-[8px] font-mono text-white/80">{runtimeStatus.canvasWidth}x{runtimeStatus.canvasHeight}</span>
-                       </div>
-                       <TraceItem label="Frame Applied" value={runtimeStatus.frameApplied} />
-                       <TraceItem label="Filter Applied" value={runtimeStatus.filterApplied} />
-                       <TraceItem label="Blob Created" value={runtimeStatus.blobCreated} />
-                       <div className="flex justify-between items-center px-1 border-b border-white/5 py-1">
-                         <span className="text-[7px] font-bold text-white/40 uppercase tracking-widest">Blob Byte Size</span>
-                         <span className="text-[8px] font-mono text-white/80">{runtimeStatus.blobSize}</span>
-                       </div>
-                       <TraceItem label="File Created" value={runtimeStatus.fileCreated} />
-                    </div>
-                 </div>
-               )}
-
-               {runtimeStatus && (
-                 <div className="bg-black/60 border border-indigo-500/30 p-3 rounded-xl space-y-2">
-                    <h3 className="text-[7px] font-black uppercase text-indigo-400 italic mb-2 flex items-center gap-2">
-                      <Cloud className="w-3 h-3" /> SOFT COPY PIPELINE
-                    </h3>
-                    <div className="grid grid-cols-1 gap-1">
-                       <TraceItem label="Upload Started" value={runtimeStatus.uploadStarted} />
-                       <TraceItem label="Upload Completed" value={runtimeStatus.uploadCompleted} />
-                       <TraceItem label="Upload Failed" value={runtimeStatus.uploadFailed} />
-                       <div className="flex flex-col py-1 border-b border-white/5 px-1">
-                         <span className="text-[7px] text-white/40 uppercase mb-0.5">Target Path</span>
-                         <span className="text-[6px] font-mono text-indigo-300 break-all">{runtimeStatus.uploadTarget}</span>
-                       </div>
-                       <div className="flex flex-col py-1 border-b border-white/5 px-1">
-                         <span className="text-[7px] text-white/40 uppercase mb-0.5">Storage Provider</span>
-                         <span className="text-[6px] font-mono text-white/60">{runtimeStatus.storageProvider}</span>
-                       </div>
-                       <div className="flex flex-col py-1 border-b border-white/5 px-1">
-                         <span className="text-[7px] text-white/40 uppercase mb-0.5">Final Binary URL</span>
-                         <span className="text-[6px] font-mono text-emerald-300 break-all">{runtimeStatus.uploadedFileUrl}</span>
-                       </div>
-                    </div>
-                 </div>
-               )}
 
                <div className="flex justify-between items-center px-1">
                   <span className="text-[8px] font-black text-white/40 uppercase">System Logs</span>

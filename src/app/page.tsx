@@ -140,9 +140,11 @@ export default function KioskPage() {
       }));
 
       // Background sign-in ensures we are ready for high-res upload during capture
-      signInAnonymously(auth).catch(e => {
+      signInAnonymously(auth).then(() => {
+        KioskLogger.log('info', 'SESSION', 'Anonymous Auth Successful', 'SUCCESS');
+      }).catch(e => {
         KioskLogger.log('error', 'SESSION', 'Auth Initialization Failed', 'FAILED', e.message);
-        setRuntimeStatus(prev => ({ ...prev, fbException: 'AUTH_FAILED: ' + e.message, fbAuthState: 'ERROR' }));
+        setRuntimeStatus(prev => ({ ...prev, fbException: 'AUTH_FAILED: ' + e.message, fbAuthState: 'ERROR', fbErrorCode: e.code }));
       });
 
       onAuthStateChanged(auth, (user) => {
@@ -249,12 +251,15 @@ export default function KioskPage() {
         navigatorShareStarted: 'PASS'
       }));
 
+      KioskLogger.log('info', 'PRINT', `Attempting Intent Launch for: ${fileName}`, 'PENDING');
+
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
           title: 'JNL Studio Portrait',
           text: 'Open with NokoPrint'
         });
+        KioskLogger.log('info', 'PRINT', 'Share Intent Dispatched Successfully', 'SUCCESS');
         setRuntimeStatus(prev => ({ 
           ...prev, 
           intentAcknowledged: 'PASS', 
@@ -265,6 +270,7 @@ export default function KioskPage() {
         throw new Error('Share API blocked or file rejected by OS');
       }
     } catch (e: any) {
+      KioskLogger.log('error', 'PRINT', 'Intent Dispatch Failed', 'FAILED', e.message);
       setRuntimeStatus(prev => ({ 
         ...prev, 
         intentAcknowledged: 'FAIL', 
@@ -287,9 +293,17 @@ export default function KioskPage() {
 
     // MANDATORY PRODUCTION SEQUENCE: Local Save -> USB Archive -> Cloud Sync
     await SessionStore.savePhotoLocally(sessionId, blob);
+    KioskLogger.log('info', 'SESSION', `Local IndexedDB Save Complete: ${sessionId}`, 'SUCCESS');
+
     if (usbHandle) {
-      await SessionStore.saveToUsb(usbHandle, sessionId, blob);
-      setRuntimeStatus(prev => ({ ...prev, usbBackup: 'PASS', usbHandleValid: 'TRUE' }));
+      const usbResult = await SessionStore.saveToUsb(usbHandle, sessionId, blob);
+      if (usbResult.success) {
+        KioskLogger.log('info', 'HARDWARE', `Lexar Archive Success: ${usbResult.path}`, 'SUCCESS');
+        setRuntimeStatus(prev => ({ ...prev, usbBackup: 'PASS', usbHandleValid: 'TRUE' }));
+      } else {
+        KioskLogger.log('error', 'HARDWARE', `Lexar Archive Failed`, 'FAILED');
+        setRuntimeStatus(prev => ({ ...prev, usbBackup: 'FAIL' }));
+      }
     } else {
       setRuntimeStatus(prev => ({ ...prev, usbBackup: 'OFFLINE' }));
     }
@@ -301,6 +315,7 @@ export default function KioskPage() {
       try {
         await signInAnonymously(auth);
       } catch (e: any) {
+        KioskLogger.log('error', 'SESSION', 'Fallback Auth Failed', 'FAILED', e.message);
         setRuntimeStatus(prev => ({ ...prev, fbException: 'AUTH_FAILED: ' + e.message }));
       }
     }
@@ -331,6 +346,7 @@ export default function KioskPage() {
       const cloudTimeout = setTimeout(() => {
         if (uploadStatus !== "complete") {
           setUploadStatus("error");
+          KioskLogger.log('warn', 'CLOUD', 'Upload Timeout Reached (Switching to Offline)', 'FAILED');
           setRuntimeStatus(prev => ({ 
             ...prev, 
             uploadFailed: 'TRUE', 
@@ -351,6 +367,7 @@ export default function KioskPage() {
         async (error: any) => {
           clearTimeout(cloudTimeout);
           setUploadStatus("error");
+          KioskLogger.log('error', 'CLOUD', 'Firebase Storage Error', 'FAILED', error.code);
           setRuntimeStatus(prev => ({ 
             ...prev, 
             uploadFailed: 'TRUE', 
@@ -366,6 +383,7 @@ export default function KioskPage() {
           
           setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
           setUploadStatus("complete");
+          KioskLogger.log('info', 'CLOUD', 'Soft Copy Upload Verified', 'SUCCESS');
           
           setRuntimeStatus(prev => ({ 
             ...prev, 
@@ -379,6 +397,7 @@ export default function KioskPage() {
       );
     } catch (error: any) {
       setUploadStatus("error");
+      KioskLogger.log('error', 'CLOUD', 'Database Entry Failed', 'FAILED', error.message);
       setRuntimeStatus(prev => ({ 
         ...prev, 
         cloudSync: 'FAIL', 

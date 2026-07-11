@@ -2,12 +2,18 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Wifi, Usb, Banknote, Database, CheckCircle2, AlertCircle, Activity, HardDrive, Smartphone } from "lucide-react";
+import { Wifi, Usb, Database, CheckCircle2, AlertCircle, Activity, HardDrive, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SessionStore } from "@/lib/kiosk/persistence";
 
 interface HealthMonitorProps {
   usbMounted?: boolean;
+}
+
+interface USBDeviceStats {
+  name: string;
+  vid: string;
+  pid: string;
 }
 
 /**
@@ -22,7 +28,7 @@ export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
     storagePercent: "0",
     printerReady: false,
     usbConnected: false,
-    usbDevices: [] as string[]
+    usbDevices: [] as USBDeviceStats[]
   });
 
   const checkSystem = useCallback(async () => {
@@ -31,12 +37,13 @@ export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
     let isOnline = false;
     let intentReady = false;
     let hasUsbDevice = false;
-    let deviceNames: string[] = [];
+    let deviceStats: USBDeviceStats[] = [];
 
     if (typeof navigator !== 'undefined') {
       isOnline = navigator.onLine;
 
       // 1. Check for Android Intent System (NokoPrint/Android bridge)
+      // On Android, navigator.share is the gateway to NokoPrint
       if (navigator.share && navigator.canShare) {
         intentReady = true;
       }
@@ -46,7 +53,11 @@ export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
         try {
           const devices = await navigator.usb.getDevices();
           hasUsbDevice = devices.length > 0;
-          deviceNames = devices.map(d => d.productName || `Device ${d.vendorId}:${d.productId}`);
+          deviceStats = devices.map(d => ({
+            name: d.productName || "Unknown Device",
+            vid: `0x${d.vendorId.toString(16).padStart(4, '0').toUpperCase()}`,
+            pid: `0x${d.productId.toString(16).padStart(4, '0').toUpperCase()}`
+          }));
         } catch (e) {
           hasUsbDevice = false;
         }
@@ -57,9 +68,9 @@ export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
       online: isOnline,
       storage: `${stats.usedMB}MB`,
       storagePercent: stats.percent,
-      printerReady: intentReady, // Readiness for NokoPrint via Intent
+      printerReady: intentReady,
       usbConnected: hasUsbDevice,
-      usbDevices: deviceNames
+      usbDevices: deviceStats
     });
   }, []);
 
@@ -83,7 +94,7 @@ export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
           {status.printerReady ? (
             <div className="flex items-center gap-2 text-[10px] font-black uppercase text-green-400">
               <CheckCircle2 className="w-4 h-4" />
-              <span>PRINTER READY</span>
+              <span>INTENT READY</span>
             </div>
           ) : (
             <div className="flex items-center gap-2 text-[10px] font-black uppercase text-red-500">
@@ -96,9 +107,16 @@ export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
         {/* USB Host Status (OTG Devices) */}
         <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
           <Usb className={cn("w-3.5 h-3.5", status.usbConnected ? "text-blue-400" : "text-white/20")} />
-          <span className={status.usbConnected ? "text-blue-400" : "text-white/40"}>
-            {status.usbConnected ? `${status.usbDevices.length} USB DETECTED` : "NO USB OTG"}
-          </span>
+          <div className="flex flex-col">
+            <span className={status.usbConnected ? "text-blue-400" : "text-white/40"}>
+              {status.usbConnected ? `${status.usbDevices.length} USB DETECTED` : "NO USB OTG"}
+            </span>
+            {status.usbConnected && status.usbDevices.length > 0 && (
+              <span className="text-[6px] text-white/30 font-mono">
+                {status.usbDevices[0].vid}:{status.usbDevices[0].pid}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Lexar USB Handle Status */}

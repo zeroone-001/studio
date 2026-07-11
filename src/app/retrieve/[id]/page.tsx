@@ -13,6 +13,7 @@ import { Download, Loader2, AlertCircle, Image as ImageIcon } from "lucide-react
 /**
  * Public Retrieval Page.
  * Login-free, token-based temporary access.
+ * Optimized for mobile scrolling and interaction.
  */
 export default function RetrievePage() {
   const params = useParams();
@@ -81,9 +82,9 @@ export default function RetrievePage() {
     try {
       const { db } = initializeFirebase();
       // MARK FOR DELETION (Kiosk will detect this and purge from Cloud)
-      // Done in background to not block the download
       updateDoc(doc(db, "photos", id), { isDownloaded: true }).catch(() => {});
       
+      // Standard browser download trigger
       const response = await fetch(imageUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -95,15 +96,15 @@ export default function RetrievePage() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (e) {
-      // Fallback for browsers that block script-initiated downloads
+      // Fallback for browsers that block script-initiated downloads (like mobile Safari)
       window.open(imageUrl, '_blank');
     }
   };
 
   return (
     <KioskLayout className="bg-zinc-950 !overflow-y-auto !touch-auto !select-auto">
-      <div className="flex flex-col items-center justify-center min-h-screen w-full px-4 py-8 text-center">
-        <div className="w-full max-w-lg bg-zinc-900 border border-white/10 p-8 rounded-[3rem] shadow-2xl">
+      <div className="flex flex-col items-center justify-start min-h-screen w-full px-4 py-12 text-center">
+        <div className="w-full max-w-lg bg-zinc-900 border border-white/10 p-8 rounded-[3rem] shadow-2xl mb-12">
           {loading ? (
             <div className="flex flex-col items-center py-20 space-y-8">
               <div className="relative">
@@ -145,9 +146,14 @@ export default function RetrievePage() {
                     <Download className="w-6 h-6" /> DOWNLOAD NOW
                   </NeonButton>
                   
-                  <p className="text-white/20 text-[9px] font-bold uppercase italic">
-                    Tip: Long press image to save directly
-                  </p>
+                  <div className="space-y-1">
+                    <p className="text-white/40 text-[10px] font-bold uppercase italic">
+                      Tip: Long press image to save directly
+                    </p>
+                    <p className="text-primary/60 text-[8px] font-black uppercase tracking-tighter">
+                      JNL STUDIO CLOUD SYNCED
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -37,12 +38,12 @@ export function HealthMonitor({ usbMounted = false, galleryMounted = false }: He
     if (typeof navigator !== 'undefined') {
       isOnline = navigator.onLine;
 
-      // Android Share Capability check
+      // Android Share Capability check (NokoPrint Bridge)
       if (navigator.share) {
         intentReady = true;
       }
 
-      // REAL HARDWARE BUS SCAN (WebUSB)
+      // REAL HARDWARE BUS SCAN (WebUSB API)
       if ('usb' in navigator) {
         try {
           const devices = await navigator.usb.getDevices();
@@ -69,7 +70,7 @@ export function HealthMonitor({ usbMounted = false, galleryMounted = false }: He
   }, []);
 
   useEffect(() => {
-    // Immediate response to USB plug/unplug
+    // Reactive hardware event listeners
     if ('usb' in navigator) {
       navigator.usb.addEventListener('connect', checkSystem);
       navigator.usb.addEventListener('disconnect', checkSystem);

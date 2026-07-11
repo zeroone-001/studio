@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -276,7 +277,7 @@ export default function KioskPage() {
 
       KioskLogger.log('info', 'PRINT', `Attempting Intent Launch for: ${fileName}`, 'PENDING');
 
-      // Honor Pad X10 / Android Native Bridge for NokoPrint
+      // Android Native Bridge for NokoPrint via Web Share API
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
@@ -315,11 +316,15 @@ export default function KioskPage() {
       return;
     }
 
-    // STEP 1: LOCAL CACHE (INDEXEDDB)
-    await SessionStore.savePhotoLocally(sessionId, blob);
-    KioskLogger.log('info', 'SESSION', `Local IndexedDB Save Complete: ${sessionId}`, 'SUCCESS');
+    // STEP 1: LOCAL CACHE (INDEXEDDB) - Verified Save
+    const localSave = await SessionStore.savePhotoLocally(sessionId, blob);
+    if (localSave.success) {
+      KioskLogger.log('info', 'SESSION', `Local IndexedDB Save Verified: ${localSave.size} bytes`, 'SUCCESS');
+    } else {
+      KioskLogger.log('error', 'SESSION', 'Local IndexedDB Save Failed', 'FAILED');
+    }
 
-    // STEP 2: USB ARCHIVE (LEXAR)
+    // STEP 2: USB ARCHIVE (LEXAR) - Verified Save
     if (usbHandle) {
       const usbResult = await SessionStore.saveToHandle(usbHandle, 'JNL_STUDIO_ARCHIVE', sessionId, blob);
       if (usbResult.success) {
@@ -331,7 +336,7 @@ export default function KioskPage() {
       }
     }
 
-    // STEP 3: INTERNAL STORAGE GALLERY (HONOR PAD)
+    // STEP 3: INTERNAL STORAGE GALLERY (HONOR PAD) - Verified Save
     if (galleryHandle) {
       const galleryResult = await SessionStore.saveToHandle(galleryHandle, 'JNL_STUDIO_GALLERY', sessionId, blob);
       if (galleryResult.success) {

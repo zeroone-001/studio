@@ -81,7 +81,8 @@ export default function RetrievePage() {
     try {
       const { db } = initializeFirebase();
       // MARK FOR DELETION (Kiosk will detect this and purge from Cloud)
-      await updateDoc(doc(db, "photos", id), { isDownloaded: true });
+      // Done in background to not block the download
+      updateDoc(doc(db, "photos", id), { isDownloaded: true }).catch(() => {});
       
       const response = await fetch(imageUrl);
       const blob = await response.blob();
@@ -94,12 +95,13 @@ export default function RetrievePage() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (e) {
+      // Fallback for browsers that block script-initiated downloads
       window.open(imageUrl, '_blank');
     }
   };
 
   return (
-    <KioskLayout className="bg-zinc-950 overflow-y-auto">
+    <KioskLayout className="bg-zinc-950 !overflow-y-auto !touch-auto !select-auto">
       <div className="flex flex-col items-center justify-center min-h-screen w-full px-4 py-8 text-center">
         <div className="w-full max-w-lg bg-zinc-900 border border-white/10 p-8 rounded-[3rem] shadow-2xl">
           {loading ? (
@@ -137,9 +139,16 @@ export default function RetrievePage() {
                   <h2 className="text-3xl font-black italic uppercase text-primary">HD SOFT COPY</h2>
                   <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest">Available for 10 Minutes Only</p>
                 </div>
-                <NeonButton onClick={handleDownload} className="w-full flex items-center justify-center gap-3 !py-6 text-xl">
-                  <Download className="w-6 h-6" /> DOWNLOAD NOW
-                </NeonButton>
+                
+                <div className="flex flex-col gap-4">
+                  <NeonButton onClick={handleDownload} className="w-full flex items-center justify-center gap-3 !py-6 text-xl">
+                    <Download className="w-6 h-6" /> DOWNLOAD NOW
+                  </NeonButton>
+                  
+                  <p className="text-white/20 text-[9px] font-bold uppercase italic">
+                    Tip: Long press image to save directly
+                  </p>
+                </div>
               </div>
             </div>
           )}

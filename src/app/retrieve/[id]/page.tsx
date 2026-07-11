@@ -6,7 +6,6 @@ import { useParams } from "next/navigation";
 import { initializeFirebase } from "@/firebase";
 import { ref, getDownloadURL } from "firebase/storage";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { KioskLayout } from "@/components/kiosk/kiosk-layout";
 import { NeonButton } from "@/components/kiosk/neon-button";
 import { Download, Loader2, AlertCircle, Image as ImageIcon } from "lucide-react";
 
@@ -14,6 +13,7 @@ import { Download, Loader2, AlertCircle, Image as ImageIcon } from "lucide-react
  * Public Retrieval Page.
  * Login-free, token-based temporary access.
  * Optimized for mobile scrolling and interaction.
+ * Does not use KioskLayout to avoid fixed positioning constraints.
  */
 export default function RetrievePage() {
   const params = useParams();
@@ -102,8 +102,8 @@ export default function RetrievePage() {
   };
 
   return (
-    <KioskLayout className="bg-zinc-950 !overflow-y-auto !touch-auto !select-auto">
-      <div className="flex flex-col items-center justify-start min-h-screen w-full px-4 py-12 text-center">
+    <div className="min-h-screen w-full bg-zinc-950 text-white overflow-y-auto selection:bg-primary/30">
+      <div className="flex flex-col items-center justify-start w-full px-4 py-12 text-center">
         <div className="w-full max-w-lg bg-zinc-900 border border-white/10 p-8 rounded-[3rem] shadow-2xl mb-12">
           {loading ? (
             <div className="flex flex-col items-center py-20 space-y-8">
@@ -160,6 +160,6 @@ export default function RetrievePage() {
           )}
         </div>
       </div>
-    </KioskLayout>
+    </div>
   );
 }

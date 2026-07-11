@@ -5,27 +5,18 @@ import React, { useState, useEffect, useRef } from "react";
 import { 
   LogOut, 
   RefreshCcw, 
-  Activity,
   Trash2,
   CheckCircle2,
-  Cpu,
   AlertCircle,
   Loader2,
-  ExternalLink,
-  ShieldCheck,
-  Zap,
-  Printer,
   ChevronUp,
-  ChevronDown,
   GripHorizontal,
-  Database,
-  QrCode,
-  HardDrive,
-  Cloud,
   Smartphone,
   ShieldAlert,
-  Terminal,
-  FileCode
+  FileCode,
+  Printer,
+  HardDrive,
+  Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
@@ -61,7 +52,6 @@ interface AdminControlsProps {
     qrSourceUrl?: string;
     shareIntentPayload?: string;
     lastSaveError?: string;
-    // IMAGE PIPELINE
     captureSuccess: string;
     canvasExists: string;
     canvasWidth: string;
@@ -70,7 +60,6 @@ interface AdminControlsProps {
     filterApplied: string;
     blobCreated: string;
     blobSize: string;
-    // SOFT COPY TRACE
     uploadStarted: string;
     uploadCompleted: string;
     uploadFailed: string;
@@ -78,7 +67,6 @@ interface AdminControlsProps {
     uploadedFileUrl: string;
     storageProvider: string;
     lastUploadError: string;
-    // FIREBASE EMERGENCY DEBUG
     fbProjectId: string;
     fbStorageBucket: string;
     fbUserUid: string;
@@ -89,11 +77,9 @@ interface AdminControlsProps {
     fbErrorMessage: string;
     fbException: string;
     fbUrlGenerated: string;
-    // HARDWARE TRUTH
     usbDevicesCount: number;
     shareCapable: string;
     usbHandleValid: string;
-    // RAW CONFIG DIAGNOSTICS
     rawApiKey: string;
     rawApiKeyType: string;
     rawApiKeyLength: number;
@@ -202,11 +188,6 @@ export function AdminControls({
     }
   };
 
-  const testPackage = (amount: number) => {
-    onSimulateCash(amount);
-    onJumpTo('package-selection');
-  };
-
   const TraceItem = ({ label, value }: { label: string, value?: string | number }) => (
     <div className="flex justify-between items-center px-1 border-b border-white/5 py-1">
       <span className="text-[7px] font-bold text-white/40 uppercase tracking-widest">{label}</span>
@@ -276,13 +257,13 @@ export function AdminControls({
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-2">
                 <button 
-                  onClick={() => testPackage(50)}
+                  onClick={() => { onSimulateCash(50); onJumpTo('package-selection'); }}
                   className="py-4 bg-primary/20 border border-primary/40 text-primary text-[10px] font-black uppercase italic rounded-xl hover:bg-primary/30 active:scale-95 transition-all"
                 >
                   TEST ₱50 TIER
                 </button>
                 <button 
-                  onClick={() => testPackage(100)}
+                  onClick={() => { onSimulateCash(100); onJumpTo('package-selection'); }}
                   className="py-4 bg-primary/20 border border-primary/40 text-primary text-[10px] font-black uppercase italic rounded-xl hover:bg-primary/30 active:scale-95 transition-all"
                 >
                   TEST ₱100 TIER
@@ -325,26 +306,13 @@ export function AdminControls({
                   </h3>
                   <div className="grid grid-cols-1 gap-1">
                      <div className="flex flex-col py-1 border-b border-white/10">
-                       <span className="text-[6px] text-white/40 uppercase">Config Source</span>
-                       <span className="text-[7px] font-mono text-white/80">{runtimeStatus?.rawConfigSrc}</span>
-                     </div>
-                     <div className="flex flex-col py-1 border-b border-white/10">
-                       <span className="text-[6px] text-white/40 uppercase">apiKey (Literal)</span>
+                       <span className="text-[6px] text-white/40 uppercase">apiKey</span>
                        <span className="text-[7px] font-mono text-amber-400 break-all">{runtimeStatus?.rawApiKey}</span>
                      </div>
-                     <TraceItem label="apiKey Type" value={runtimeStatus?.rawApiKeyType} />
                      <TraceItem label="apiKey Length" value={runtimeStatus?.rawApiKeyLength} />
-                     <div className="flex flex-col py-1 border-b border-white/10">
-                       <span className="text-[6px] text-white/40 uppercase">authDomain</span>
-                       <span className="text-[7px] font-mono text-white/60">{runtimeStatus?.rawAuthDomain}</span>
-                     </div>
                      <div className="flex flex-col py-1 border-b border-white/10">
                        <span className="text-[6px] text-white/40 uppercase">projectId</span>
                        <span className="text-[7px] font-mono text-white/60">{runtimeStatus?.rawProjectId}</span>
-                     </div>
-                     <div className="flex flex-col py-1 border-b border-white/10">
-                       <span className="text-[6px] text-white/40 uppercase">appId</span>
-                       <span className="text-[7px] font-mono text-white/60">{runtimeStatus?.rawAppId}</span>
                      </div>
                   </div>
                </div>
@@ -356,31 +324,15 @@ export function AdminControls({
                   </h3>
                   <div className="grid grid-cols-1 gap-1">
                      <TraceItem label="Auth State" value={runtimeStatus?.fbAuthState} />
-                     <div className="flex flex-col py-1 border-b border-red-500/10">
-                       <span className="text-[6px] text-white/40 uppercase">User UID</span>
-                       <span className="text-[7px] font-mono text-white/60 break-all">{runtimeStatus?.fbUserUid}</span>
-                     </div>
-                     <div className="flex justify-between items-center py-1 border-b border-red-500/10">
-                       <span className="text-[7px] font-bold text-white/40 uppercase">Progress</span>
-                       <span className="text-[8px] font-black text-amber-500">{runtimeStatus?.fbUploadProgress}</span>
-                     </div>
-                     <div className="flex justify-between items-center py-1 border-b border-red-500/10">
-                       <span className="text-[7px] font-bold text-white/40 uppercase">Task State</span>
-                       <span className="text-[8px] font-black text-indigo-400">{runtimeStatus?.fbTaskState}</span>
-                     </div>
+                     <TraceItem label="Task State" value={runtimeStatus?.fbTaskState} />
                      <div className="flex flex-col py-1 border-b border-red-500/10">
                        <span className="text-[6px] text-white/40 uppercase">Error Code</span>
                        <span className="text-[7px] font-black text-red-400">{runtimeStatus?.fbErrorCode}</span>
                      </div>
                      <div className="flex flex-col py-1 border-b border-red-500/10">
-                       <span className="text-[6px] text-white/40 uppercase">Error Message</span>
-                       <span className="text-[7px] font-medium text-red-300 italic">{runtimeStatus?.fbErrorMessage}</span>
+                       <span className="text-[6px] text-white/40 uppercase">Download URL</span>
+                       <span className="text-[6px] font-mono text-white/40 break-all">{runtimeStatus?.uploadedFileUrl}</span>
                      </div>
-                     <div className="flex flex-col py-1 border-b border-red-500/10">
-                       <span className="text-[6px] text-white/40 uppercase">Full Exception</span>
-                       <span className="text-[6px] font-mono text-white/20 break-all bg-black/40 p-1.5 rounded">{runtimeStatus?.fbException}</span>
-                     </div>
-                     <TraceItem label="Download URL Generated" value={runtimeStatus?.fbUrlGenerated} />
                   </div>
                </div>
 
@@ -415,24 +367,6 @@ export function AdminControls({
                      <TraceItem label="Android Share Capable" value={runtimeStatus?.shareCapable} />
                      <TraceItem label="Lexar Permission Valid" value={usbHandle ? 'YES' : 'NO'} />
                   </div>
-               </div>
-
-               <div className="space-y-2">
-                  <label className="text-[7px] font-black uppercase text-white/40 flex items-center gap-2">
-                    <QrCode className="w-3 h-3" /> CLOUD / QR
-                  </label>
-                  <div className="bg-black/40 border border-white/10 p-3 rounded-xl space-y-2">
-                     <div className="flex justify-between items-center">
-                       <span className="text-[8px] font-bold text-white/40 uppercase">Sync Link</span>
-                       <span className={cn("text-[8px] font-black italic", runtimeStatus?.cloudSync === 'PASS' ? "text-green-500" : "text-red-500")}>
-                          {runtimeStatus?.cloudSync || 'PENDING'}
-                       </span>
-                     </div>
-                  </div>
-               </div>
-
-               <div className="bg-black/20 p-2 rounded-lg text-[6px] font-mono text-white/20 break-all">
-                  UA: {runtimeStatus?.userAgent}
                </div>
             </div>
           )}

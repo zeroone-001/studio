@@ -189,7 +189,14 @@ export default function KioskPage() {
         }));
       };
       checkHardware();
-      setOriginUrl(window.location.origin);
+      
+      // PRODUCTION ORIGIN ENFORCEMENT
+      const currentOrigin = window.location.origin;
+      if (currentOrigin.includes('cloudworkstations.dev') || currentOrigin.includes('localhost')) {
+        setOriginUrl("https://jnl-studio-booth.web.app");
+      } else {
+        setOriginUrl(currentOrigin);
+      }
     }
   }, []);
 
@@ -306,6 +313,7 @@ export default function KioskPage() {
       return;
     }
 
+    // STEP 1: LOCAL PERSISTENCE (NON-NEGOTIABLE)
     await SessionStore.savePhotoLocally(sessionId, blob);
     KioskLogger.log('info', 'SESSION', `Local IndexedDB Save Complete: ${sessionId}`, 'SUCCESS');
 
@@ -322,6 +330,7 @@ export default function KioskPage() {
       setRuntimeStatus(prev => ({ ...prev, usbBackup: 'OFFLINE' }));
     }
 
+    // STEP 2: CLOUD SYNC (BACKGROUND)
     const { storage, db, auth } = initializeFirebase();
 
     if (!auth.currentUser) {
@@ -333,9 +342,7 @@ export default function KioskPage() {
       }
     }
 
-    const retrievalUrl = `${originUrl}/retrieve/${sessionId}`;
     setUploadStatus("uploading");
-    setRuntimeStatus(prev => ({ ...prev, qrSourceUrl: retrievalUrl }));
 
     const docRef = doc(db, "photos", sessionId);
     const sessionData = {
@@ -354,6 +361,7 @@ export default function KioskPage() {
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       const uploadTask = uploadBytesResumable(photoRef, blob, { contentType: 'image/jpeg' });
 
+      // PRODUCTION TIMEOUT: 5 Seconds for QR generation
       const cloudTimeout = setTimeout(() => {
         if (uploadStatus !== "complete") {
           setUploadStatus("error");
@@ -448,6 +456,7 @@ export default function KioskPage() {
     const STRIP_W = isStrip ? 800 : 1600;
 
     const drawContent = async (offsetX: number) => {
+      // 1. Draw Photos
       for (let i = 0; i < selectedBlueprint.slots.length; i++) {
         const slot = selectedBlueprint.slots[i];
         const photo = capturedPhotos[i];
@@ -466,6 +475,7 @@ export default function KioskPage() {
       
       setRuntimeStatus(prev => ({ ...prev, filterApplied: 'PASS' }));
 
+      // 2. Draw Stickers
       const sortedStickers = [...placedStickers].sort((a, b) => a.zIndex - b.zIndex);
       for (const s of sortedStickers) {
         const def = STICKER_DEFS.find(d => d.id === s.type);
@@ -495,47 +505,59 @@ export default function KioskPage() {
       
       setRuntimeStatus(prev => ({ ...prev, frameApplied: 'PASS' }));
 
+      // 3. Footer & AUTO-SCALING QUOTE
       const footerY = 2200;
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(offsetX, footerY, STRIP_W, 200);
 
-      const drawWrappedText = (text: string, x: number, y: number, maxWidth: number, baseFontSize: number) => {
-        let fontSize = baseFontSize;
-        ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+      const drawAutoScaledQuote = (text: string, x: number, y: number, maxWidth: number, maxHeight: number) => {
+        let fontSize = isStrip ? 32 : 48;
+        const minFontSize = 14;
         
-        const words = text.split(' ');
-        let lines: string[] = [];
-        let currentLine = words[0];
-
-        for (let i = 1; i < words.length; i++) {
-          const testLine = currentLine + " " + words[i];
-          const metrics = ctx.measureText(testLine);
-          if (metrics.width > maxWidth && i > 0) {
-            lines.push(currentLine);
-            currentLine = words[i];
-          } else {
-            currentLine = testLine;
-          }
-        }
-        lines.push(currentLine);
-
-        if (lines.length > 2) {
-          fontSize = baseFontSize * 0.75;
-          ctx.font = `bold ${fontSize}px Inter, sans-serif`;
-          return drawWrappedText(text, x, y - 5, maxWidth, fontSize);
-        }
-
-        ctx.fillStyle = '#000000';
         ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#000000';
+
+        const wrapText = (txt: string, fSize: number) => {
+          ctx.font = `bold italic ${fSize}px Inter, sans-serif`;
+          const words = txt.split(' ');
+          const lines: string[] = [];
+          let currentLine = words[0];
+
+          for (let i = 1; i < words.length; i++) {
+            const testLine = currentLine + ' ' + words[i];
+            const metrics = ctx.measureText(testLine);
+            if (metrics.width > maxWidth) {
+              lines.push(currentLine);
+              currentLine = words[i];
+            } else {
+              currentLine = testLine;
+            }
+          }
+          lines.push(currentLine);
+          return lines;
+        };
+
+        let lines = wrapText(text, fontSize);
+        while (fontSize > minFontSize && (lines.length * (fontSize + 10)) > maxHeight) {
+          fontSize -= 2;
+          lines = wrapText(text, fontSize);
+        }
+
+        const totalHeight = lines.length * (fontSize + 10);
+        let startY = y - (totalHeight / 2) + (fontSize / 2);
+
         lines.forEach((line, index) => {
-          ctx.fillText(`"${line}${index === lines.length - 1 ? '"' : ''}`, x, y + (index * (fontSize + 5)));
+          ctx.fillText(`"${line}${index === lines.length - 1 ? '"' : ''}`, x, startY + (index * (fontSize + 10)));
         });
       };
 
-      drawWrappedText(selectedQuote.text, offsetX + (STRIP_W / 2), footerY + 80, STRIP_W - 100, 32);
+      drawAutoScaledQuote(selectedQuote.text, offsetX + (STRIP_W / 2), footerY + 80, STRIP_W - 100, 140);
       
       ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
       ctx.font = '900 24px Inter, sans-serif';
+      ctx.fillStyle = '#000000';
       ctx.fillText('JNL STUDIO', offsetX + 60, footerY + 180);
     };
 

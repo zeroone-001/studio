@@ -37,16 +37,18 @@ export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
     if (typeof navigator !== 'undefined') {
       isOnline = navigator.onLine;
 
-      if (navigator.share && navigator.canShare) {
+      // Honor Pad Android Share Capability check
+      if (navigator.share) {
         intentReady = true;
       }
 
+      // REAL HARDWARE BUS SCAN (WebUSB)
       if ('usb' in navigator) {
         try {
           const devices = await navigator.usb.getDevices();
           hasUsbDevice = devices.length > 0;
           deviceStats = devices.map(d => ({
-            name: d.productName || "Unknown Device",
+            name: d.productName || "Epson/USB Device",
             vid: `0x${d.vendorId.toString(16).padStart(4, '0').toUpperCase()}`,
             pid: `0x${d.productId.toString(16).padStart(4, '0').toUpperCase()}`
           }));

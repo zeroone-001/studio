@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -73,6 +72,7 @@ export default function KioskPage() {
   const [originUrl, setOriginUrl] = useState("https://jnl-studio-booth.web.app");
 
   const [usbHandle, setUsbHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const [galleryHandle, setGalleryHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [preparedBlob, setPreparedBlob] = useState<Blob | null>(null);
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
 
@@ -276,6 +276,7 @@ export default function KioskPage() {
 
       KioskLogger.log('info', 'PRINT', `Attempting Intent Launch for: ${fileName}`, 'PENDING');
 
+      // Honor Pad X10 / Android Native Bridge for NokoPrint
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
           files: [file],
@@ -314,24 +315,33 @@ export default function KioskPage() {
       return;
     }
 
-    // STEP 1: LOCAL PERSISTENCE (NON-NEGOTIABLE)
+    // STEP 1: LOCAL CACHE (INDEXEDDB)
     await SessionStore.savePhotoLocally(sessionId, blob);
     KioskLogger.log('info', 'SESSION', `Local IndexedDB Save Complete: ${sessionId}`, 'SUCCESS');
 
+    // STEP 2: USB ARCHIVE (LEXAR)
     if (usbHandle) {
-      const usbResult = await SessionStore.saveToUsb(usbHandle, sessionId, blob);
+      const usbResult = await SessionStore.saveToHandle(usbHandle, 'JNL_STUDIO_ARCHIVE', sessionId, blob);
       if (usbResult.success) {
         KioskLogger.log('info', 'HARDWARE', `Lexar Archive Success: ${usbResult.path}`, 'SUCCESS');
         setRuntimeStatus(prev => ({ ...prev, usbBackup: 'PASS', usbHandleValid: 'TRUE' }));
       } else {
-        KioskLogger.log('error', 'HARDWARE', `Lexar Archive Failed`, 'FAILED');
+        KioskLogger.log('error', 'HARDWARE', `Lexar Archive Failed: ${usbResult.error}`, 'FAILED');
         setRuntimeStatus(prev => ({ ...prev, usbBackup: 'FAIL' }));
       }
-    } else {
-      setRuntimeStatus(prev => ({ ...prev, usbBackup: 'OFFLINE' }));
     }
 
-    // STEP 2: CLOUD SYNC (BACKGROUND)
+    // STEP 3: INTERNAL STORAGE GALLERY (HONOR PAD)
+    if (galleryHandle) {
+      const galleryResult = await SessionStore.saveToHandle(galleryHandle, 'JNL_STUDIO_GALLERY', sessionId, blob);
+      if (galleryResult.success) {
+        KioskLogger.log('info', 'HARDWARE', `Internal Gallery Success: ${galleryResult.path}`, 'SUCCESS');
+      } else {
+        KioskLogger.log('error', 'HARDWARE', `Internal Gallery Failed: ${galleryResult.error}`, 'FAILED');
+      }
+    }
+
+    // STEP 4: CLOUD SYNC (BACKGROUND)
     const { storage, db, auth } = initializeFirebase();
 
     if (!auth.currentUser) {
@@ -426,7 +436,7 @@ export default function KioskPage() {
         fbErrorMessage: error.message
       }));
     }
-  }, [originUrl, usbHandle, promoConsent, uploadStatus]);
+  }, [usbHandle, galleryHandle, promoConsent, uploadStatus]);
 
   const preSpoolPrintFile = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0) return;
@@ -525,7 +535,7 @@ export default function KioskPage() {
           const lines: string[] = [];
           let currentLine = words[0];
 
-          for (let i = 1; i < words[i]; i++) {
+          for (let i = 1; i < words.length; i++) {
             const testLine = currentLine + ' ' + words[i];
             const metrics = ctx.measureText(testLine);
             if (metrics.width > maxWidth) {
@@ -757,11 +767,13 @@ export default function KioskPage() {
               setPaymentReceived(prev => prev + amount);
             }}
             onMountUsb={setUsbHandle}
+            onMountGallery={setGalleryHandle}
             runtimeStatus={runtimeStatus}
             usbHandle={usbHandle}
+            galleryHandle={galleryHandle}
           />
         )}
-        {isOwnerMode && <HealthMonitor usbMounted={!!usbHandle} />}
+        {isOwnerMode && <HealthMonitor usbMounted={!!usbHandle} galleryMounted={!!galleryHandle} />}
         
         {appState === "welcome" && (
           <div className="flex flex-col items-center w-full h-full animate-in fade-in duration-1000">

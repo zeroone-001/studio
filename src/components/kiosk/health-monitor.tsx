@@ -1,13 +1,13 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Wifi, Usb, Database, CheckCircle2, AlertCircle, Activity, HardDrive, Smartphone } from "lucide-react";
+import { Wifi, Usb, Database, CheckCircle2, AlertCircle, Activity, HardDrive, Smartphone, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SessionStore } from "@/lib/kiosk/persistence";
 
 interface HealthMonitorProps {
   usbMounted?: boolean;
+  galleryMounted?: boolean;
 }
 
 interface USBDeviceStats {
@@ -16,7 +16,7 @@ interface USBDeviceStats {
   pid: string;
 }
 
-export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
+export function HealthMonitor({ usbMounted = false, galleryMounted = false }: HealthMonitorProps) {
   const [status, setStatus] = useState({
     online: false,
     storage: "0MB",
@@ -37,7 +37,7 @@ export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
     if (typeof navigator !== 'undefined') {
       isOnline = navigator.onLine;
 
-      // Honor Pad Android Share Capability check
+      // Android Share Capability check
       if (navigator.share) {
         intentReady = true;
       }
@@ -48,7 +48,7 @@ export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
           const devices = await navigator.usb.getDevices();
           hasUsbDevice = devices.length > 0;
           deviceStats = devices.map(d => ({
-            name: d.productName || "Epson/USB Device",
+            name: d.productName || "USB Device",
             vid: `0x${d.vendorId.toString(16).padStart(4, '0').toUpperCase()}`,
             pid: `0x${d.productId.toString(16).padStart(4, '0').toUpperCase()}`
           }));
@@ -69,9 +69,22 @@ export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
   }, []);
 
   useEffect(() => {
+    // Immediate response to USB plug/unplug
+    if ('usb' in navigator) {
+      navigator.usb.addEventListener('connect', checkSystem);
+      navigator.usb.addEventListener('disconnect', checkSystem);
+    }
+    
     const interval = setInterval(checkSystem, 3000);
     checkSystem();
-    return () => clearInterval(interval);
+    
+    return () => {
+      if ('usb' in navigator) {
+        navigator.usb.removeEventListener('connect', checkSystem);
+        navigator.usb.removeEventListener('disconnect', checkSystem);
+      }
+      clearInterval(interval);
+    };
   }, [checkSystem]);
 
   return (
@@ -100,7 +113,7 @@ export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
           <Usb className={cn("w-3.5 h-3.5", status.usbConnected ? "text-blue-400" : "text-white/20")} />
           <div className="flex flex-col">
             <span className={status.usbConnected ? "text-blue-400" : "text-white/40"}>
-              {status.usbConnected ? `${status.usbDevices.length} USB DETECTED` : "NO USB OTG"}
+              {status.usbConnected ? `${status.usbDevices.length} USB OTG` : "NO USB OTG"}
             </span>
             {status.usbConnected && status.usbDevices.length > 0 && (
               <span className="text-[6px] text-white/30 font-mono">
@@ -113,7 +126,14 @@ export function HealthMonitor({ usbMounted = false }: HealthMonitorProps) {
         <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
           <HardDrive className={cn("w-3.5 h-3.5", usbMounted ? "text-green-500" : "text-white/20")} />
           <span className={usbMounted ? "text-green-500" : "text-white/40"}>
-            {usbMounted ? "LEXAR READY" : "ARCHIVE UNMOUNTED"}
+            {usbMounted ? "LEXAR OK" : "ARCHIVE OFF"}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 border-l border-white/10 pl-6 text-[9px] font-black uppercase tracking-widest">
+          <ImageIcon className={cn("w-3.5 h-3.5", galleryMounted ? "text-indigo-400" : "text-white/20")} />
+          <span className={galleryMounted ? "text-indigo-400" : "text-white/40"}>
+            {galleryMounted ? "GALLERY OK" : "LOCAL OFF"}
           </span>
         </div>
 

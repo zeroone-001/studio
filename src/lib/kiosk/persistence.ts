@@ -57,24 +57,32 @@ export const SessionStore = {
     }
   },
 
-  // Permanent Archive to Lexar microSD (microSD is mapped via Directory Picker)
-  // Path: /JNL_STUDIO_ARCHIVE/JNL_PORTRAIT_{id}.jpg
-  saveToUsb: async (handle: FileSystemDirectoryHandle, id: string, blob: Blob) => {
+  // Save to any Directory Handle (USB or Local Folder) with Verification
+  saveToHandle: async (handle: FileSystemDirectoryHandle, folderName: string, id: string, blob: Blob) => {
     try {
+      if (!handle) throw new Error('Null Handle Provided');
       if (blob.size === 0) throw new Error('Empty Blob');
       
-      // Create or get the archive folder
-      const studioFolder = await handle.getDirectoryHandle('JNL_STUDIO_ARCHIVE', { create: true });
+      // Create or get the target folder
+      const targetFolder = await handle.getDirectoryHandle(folderName, { create: true });
       const fileName = `JNL_PORTRAIT_${id}.jpg`;
-      const fileHandle = await studioFolder.getFileHandle(fileName, { create: true });
+      const fileHandle = await targetFolder.getFileHandle(fileName, { create: true });
       const writable = await fileHandle.createWritable();
       await writable.write(blob);
       await writable.close();
       
-      return { success: true, path: `USB:/JNL_STUDIO_ARCHIVE/${fileName}`, size: blob.size };
-    } catch (e) {
-      console.error('Lexar USB Archive Failed', e);
-      return { success: false, path: '', size: 0 };
+      // VERIFICATION: Check if file exists and has content
+      const verifiedFile = await targetFolder.getFileHandle(fileName);
+      const fileData = await verifiedFile.getFile();
+      
+      if (fileData.size > 0) {
+        return { success: true, path: `${folderName}/${fileName}`, size: fileData.size };
+      } else {
+        throw new Error('Verification Failed: File size is zero');
+      }
+    } catch (e: any) {
+      console.error(`Storage Save Failed (${folderName}):`, e);
+      return { success: false, error: e.message || 'Unknown Storage Error' };
     }
   },
 

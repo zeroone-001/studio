@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -16,7 +15,8 @@ import {
   FileCode,
   Printer,
   HardDrive,
-  Zap
+  Zap,
+  Image as ImageIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
@@ -29,7 +29,9 @@ interface AdminControlsProps {
   onExitOwnerMode: () => void;
   onSimulateCash: (amount: number) => void;
   onMountUsb: (handle: FileSystemDirectoryHandle) => void;
+  onMountGallery: (handle: FileSystemDirectoryHandle) => void;
   usbHandle: FileSystemDirectoryHandle | null;
+  galleryHandle: FileSystemDirectoryHandle | null;
   runtimeStatus?: {
     photoGenerated: string;
     photoSaved: string;
@@ -99,7 +101,9 @@ export function AdminControls({
   onExitOwnerMode,
   onSimulateCash,
   onMountUsb,
+  onMountGallery,
   usbHandle,
+  galleryHandle,
   runtimeStatus
 }: AdminControlsProps) {
   const [isMinimized, setIsMinimized] = useState(false);
@@ -186,6 +190,18 @@ export function AdminControls({
     } catch (e) {
       KioskLogger.log('error', 'HARDWARE', 'USB Mount Cancelled', 'FAILED');
     }
+  };
+
+  const mountGallery = async () => {
+    try {
+      // @ts-ignore
+      if (window.showDirectoryPicker) {
+        // @ts-ignore
+        const handle = await window.showDirectoryPicker();
+        onMountGallery(handle);
+        KioskLogger.log('info', 'HARDWARE', 'Internal Gallery Mounted', 'SUCCESS');
+      }
+    } catch (e) {}
   };
 
   const TraceItem = ({ label, value }: { label: string, value?: string | number }) => (
@@ -286,14 +302,22 @@ export function AdminControls({
                       usbHandle ? "border-green-500/30 bg-green-500/5 text-green-400" : "border-amber-500/30 bg-amber-500/5 text-amber-400"
                     )}
                   >
-                    <HardDrive className="w-4 h-4" /> {usbHandle ? "USB READY" : "MOUNT USB"}
+                    <HardDrive className="w-4 h-4" /> {usbHandle ? "USB READY" : "MOUNT LEXAR"}
+                  </button>
+                  <button 
+                    onClick={mountGallery}
+                    className={cn(
+                      "py-4 text-[9px] font-black uppercase flex items-center justify-center gap-2 border rounded-xl transition-all",
+                      galleryHandle ? "border-green-500/30 bg-green-500/5 text-green-400" : "border-indigo-500/30 bg-indigo-500/5 text-indigo-400"
+                    )}
+                  >
+                    <ImageIcon className="w-4 h-4" /> {galleryHandle ? "GALLERY READY" : "MOUNT GALLERY"}
+                  </button>
+                  <button onClick={onReset} className="py-4 bg-red-500/10 border border-red-500/30 text-[9px] font-black uppercase text-red-500 rounded-xl flex items-center justify-center gap-2">
+                    <RefreshCcw className="w-3 h-3" /> RESET ALL
                   </button>
                 </div>
               </div>
-
-              <button onClick={onReset} className="w-full bg-red-500/10 border border-red-500/30 py-3 text-[9px] font-black uppercase text-red-500 rounded-xl flex items-center justify-center gap-2">
-                <RefreshCcw className="w-3 h-3" /> FULL SYSTEM RESET
-              </button>
             </div>
           )}
 
@@ -366,6 +390,7 @@ export function AdminControls({
                      </div>
                      <TraceItem label="Android Share Capable" value={runtimeStatus?.shareCapable} />
                      <TraceItem label="Lexar Permission Valid" value={usbHandle ? 'YES' : 'NO'} />
+                     <TraceItem label="Gallery Permission Valid" value={galleryHandle ? 'YES' : 'NO'} />
                   </div>
                </div>
             </div>

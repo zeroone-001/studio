@@ -145,6 +145,7 @@ export default function KioskPage() {
       const { app, auth } = initializeFirebase();
       const config = app.options as any;
       
+      // EXpose config values for owner verification
       setRuntimeStatus(prev => ({
         ...prev,
         fbProjectId: config.projectId || 'UNKNOWN',
@@ -159,6 +160,7 @@ export default function KioskPage() {
         rawAppId: config.appId || 'NONE'
       }));
 
+      // ENSURE ANONYMOUS AUTH IS ENABLED IN FIREBASE CONSOLE
       signInAnonymously(auth).then(() => {
         KioskLogger.log('info', 'SESSION', 'Anonymous Auth Successful', 'SUCCESS');
       }).catch(e => {

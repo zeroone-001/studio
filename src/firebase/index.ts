@@ -19,6 +19,7 @@ let auth: Auth;
 
 export function initializeFirebase() {
   // CRITICAL DIAGNOSTIC PROOF - DO NOT REMOVE
+  // This allows the owner to verify exactly what config is loaded at runtime.
   console.log('--- FIREBASE RUNTIME CONFIG PROOF ---');
   console.log('Import Source: src/firebase/config.ts');
   console.log('Project ID:', firebaseConfig.projectId);

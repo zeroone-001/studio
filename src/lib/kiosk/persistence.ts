@@ -41,7 +41,7 @@ export const SessionStore = {
 
   // Save photo to IndexedDB for instant local persistence
   savePhotoLocally: async (id: string, blob: Blob): Promise<{ success: boolean; size: number }> => {
-    KioskLogger.log('info', 'SESSION', `IndexedDB Save Start: ${id}`, 'PENDING');
+    KioskLogger.log('info', 'SESSION', `Step A: IndexedDB Save Start: ${id}`, 'PENDING');
     try {
       if (typeof window === 'undefined') return { success: false, size: 0 };
       if (blob.size === 0) throw new Error('Empty Blob');
@@ -53,33 +53,35 @@ export const SessionStore = {
       
       return new Promise((resolve) => {
         tx.oncomplete = () => {
-          KioskLogger.log('info', 'SESSION', `IndexedDB Save Verified: ${blob.size} bytes`, 'SUCCESS');
+          KioskLogger.log('info', 'SESSION', `Step A: IndexedDB Save Verified: ${blob.size} bytes`, 'SUCCESS');
           resolve({ success: true, size: blob.size });
         };
         tx.onerror = () => {
-          KioskLogger.log('error', 'SESSION', 'IndexedDB Transaction Failed', 'FAILED');
+          KioskLogger.log('error', 'SESSION', 'Step A: IndexedDB Transaction Failed', 'FAILED');
           resolve({ success: false, size: 0 });
         };
       });
     } catch (e: any) {
-      KioskLogger.log('error', 'SESSION', 'Local Gallery Save Exception', 'FAILED', e.message);
+      KioskLogger.log('error', 'SESSION', 'Step A: Exception', 'FAILED', e.message);
       return { success: false, size: 0 };
     }
   },
 
   // Save to any Directory Handle (USB or Local Folder) with Verification
   saveToHandle: async (handle: FileSystemDirectoryHandle, folderName: string, id: string, blob: Blob) => {
-    KioskLogger.log('info', 'HARDWARE', `Write Request: ${folderName} for ID ${id}`, 'PENDING');
+    KioskLogger.log('info', 'HARDWARE', `Step B/C: Write Request: ${folderName} ID ${id}`, 'PENDING');
     try {
-      if (!handle) throw new Error('Null Handle Provided - Permission Expired?');
-      if (blob.size === 0) throw new Error('Blob Size is 0');
+      if (!handle) {
+        throw new Error('NULL_HANDLE: Permission may have expired. Admin must re-mount in Owner Utility.');
+      }
+      if (blob.size === 0) throw new Error('ZERO_BYTE_BLOB');
       
       // Create or get the target folder
       const targetFolder = await handle.getDirectoryHandle(folderName, { create: true });
       const fileName = `JNL_PORTRAIT_${id}.jpg`;
       const fileHandle = await targetFolder.getFileHandle(fileName, { create: true });
       
-      KioskLogger.log('info', 'HARDWARE', `File Created: ${fileName}`, 'PENDING');
+      KioskLogger.log('info', 'HARDWARE', `Step B/C: Handle Acquired: ${fileName}`, 'PENDING');
       
       const writable = await fileHandle.createWritable();
       await writable.write(blob);
@@ -90,13 +92,14 @@ export const SessionStore = {
       const fileData = await verifiedFile.getFile();
       
       if (fileData.size > 0) {
-        KioskLogger.log('info', 'HARDWARE', `Write Verified: ${fileData.size} bytes at ${folderName}`, 'SUCCESS');
+        KioskLogger.log('info', 'HARDWARE', `Step B/C: WRITE_VERIFIED: ${fileData.size} bytes at ${folderName}`, 'SUCCESS');
         return { success: true, path: `${folderName}/${fileName}`, size: fileData.size };
       } else {
-        throw new Error('Verification Failed: Written file size is zero');
+        throw new Error('VERIFICATION_FAILED: File created but reported size is zero.');
       }
     } catch (e: any) {
-      KioskLogger.log('error', 'HARDWARE', `Disk Write Failure (${folderName})`, 'FAILED', e.message);
+      KioskLogger.log('error', 'HARDWARE', `Step B/C: DISK_WRITE_CRASH (${folderName})`, 'FAILED', e.message);
+      console.error(`[PIPELINE_TRACE] Disk Error: ${e.name} - ${e.message}`);
       return { success: false, error: e.message || 'Unknown Storage Error' };
     }
   },

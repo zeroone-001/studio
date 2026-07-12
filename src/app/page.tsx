@@ -78,7 +78,7 @@ export default function KioskPage() {
   const [preparedBlob, setPreparedBlob] = useState<Blob | null>(null);
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
 
-  // DETAILED PRINTER & HARDWARE TRACE
+  // DETAILED PIPELINE TRACE
   const [runtimeStatus, setRuntimeStatus] = useState({
     photoGenerated: 'PENDING',
     photoSaved: 'PENDING',
@@ -145,7 +145,6 @@ export default function KioskPage() {
       const { app, auth } = initializeFirebase();
       const config = app.options as any;
       
-      // EXpose config values for owner verification
       setRuntimeStatus(prev => ({
         ...prev,
         fbProjectId: config.projectId || 'UNKNOWN',
@@ -160,7 +159,6 @@ export default function KioskPage() {
         rawAppId: config.appId || 'NONE'
       }));
 
-      // ENSURE ANONYMOUS AUTH IS ENABLED IN FIREBASE CONSOLE
       signInAnonymously(auth).then(() => {
         KioskLogger.log('info', 'SESSION', 'Anonymous Auth Successful', 'SUCCESS');
       }).catch(e => {
@@ -260,12 +258,14 @@ export default function KioskPage() {
   }, [appState]);
 
   const initiatePrint = useCallback(async (blob: Blob) => {
-    KioskLogger.log('info', 'PRINT', 'Initiating Print Dispatch', 'PENDING');
+    KioskLogger.log('info', 'PRINT', '--- PIPELINE START: PRINT DISPATCH ---', 'PENDING');
     try {
       if (!blob || blob.size === 0) {
         KioskLogger.log('error', 'PRINT', 'Abort: Blob is null or zero size', 'FAILED');
         throw new Error("Null or Empty Blob detected");
       }
+
+      console.log(`[PIPELINE_TRACE] Step 2: Blob Received. Size: ${blob.size}, Type: ${blob.type}`);
 
       const timestamp = Date.now();
       const fileName = `JNL_STUDIO_PORTRAIT_${timestamp}.jpg`;
@@ -280,10 +280,10 @@ export default function KioskPage() {
         fileSize: `${(blob.size / 1024).toFixed(1)} KB`
       }));
 
-      KioskLogger.log('info', 'PRINT', `File Object Created: ${fileName} (${file.size} bytes)`, 'SUCCESS');
+      KioskLogger.log('info', 'PRINT', `Step 3: File Object Created: ${fileName} (${file.size} bytes)`, 'SUCCESS');
 
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        KioskLogger.log('info', 'PRINT', 'Dispatching Share Intent to OS...', 'PENDING');
+        KioskLogger.log('info', 'PRINT', 'Step 4: Dispatching Share Intent to OS...', 'PENDING');
         
         await navigator.share({
           files: [file],
@@ -291,7 +291,7 @@ export default function KioskPage() {
           text: 'Print with NokoPrint'
         });
 
-        KioskLogger.log('info', 'PRINT', 'Intent Acknowledged by OS (Sheet Closed)', 'SUCCESS');
+        KioskLogger.log('info', 'PRINT', 'Step 5: Intent Acknowledged by OS (Sheet Closed)', 'SUCCESS');
         setRuntimeStatus(prev => ({ 
           ...prev, 
           intentAcknowledged: 'PASS', 
@@ -300,12 +300,12 @@ export default function KioskPage() {
         }));
       } else {
         const errorMsg = !navigator.share ? 'navigator.share missing' : 'navigator.canShare returned false';
-        KioskLogger.log('error', 'PRINT', 'Hardware/API Incompatibility', 'FAILED', errorMsg);
+        KioskLogger.log('error', 'PRINT', 'Step 4: Hardware/API Incompatibility', 'FAILED', errorMsg);
         throw new Error(errorMsg);
       }
     } catch (e: any) {
       const isAbort = e.name === 'AbortError';
-      KioskLogger.log(isAbort ? 'info' : 'error', 'PRINT', 'Intent Flow Ended', isAbort ? 'PENDING' : 'FAILED', e.message);
+      KioskLogger.log(isAbort ? 'info' : 'error', 'PRINT', 'Pipeline Aborted/Failed', isAbort ? 'PENDING' : 'FAILED', e.message);
       setRuntimeStatus(prev => ({ 
         ...prev, 
         intentAcknowledged: isAbort ? 'ABORTED' : 'FAIL', 
@@ -318,7 +318,7 @@ export default function KioskPage() {
   const handleCloudSync = useCallback(async (blob: Blob) => {
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
-    KioskLogger.log('info', 'SESSION', `Output Pipeline Start: ${sessionId}`, 'PENDING');
+    KioskLogger.log('info', 'SESSION', `--- PIPELINE START: CLOUD & DISK SYNC (${sessionId}) ---`, 'PENDING');
     
     setRuntimeStatus(prev => ({ 
       ...prev, 
@@ -333,35 +333,45 @@ export default function KioskPage() {
       return;
     }
 
+    // Step A: Local Cache (IndexedDB)
     const localSave = await SessionStore.savePhotoLocally(sessionId, blob);
     if (localSave.success) {
       setRuntimeStatus(prev => ({ ...prev, photoSaved: 'PASS' }));
     }
 
+    // Step B: USB Backup (Lexar)
     if (usbHandle) {
-      KioskLogger.log('info', 'HARDWARE', 'Attempting USB Archive Save', 'PENDING');
+      KioskLogger.log('info', 'HARDWARE', `Step B: Attempting USB Write for ${sessionId}`, 'PENDING');
       const usbResult = await SessionStore.saveToHandle(usbHandle, 'JNL_STUDIO_ARCHIVE', sessionId, blob);
       if (usbResult.success) {
         setRuntimeStatus(prev => ({ ...prev, usbBackup: 'PASS', usbHandleValid: 'TRUE' }));
+      } else {
+        setRuntimeStatus(prev => ({ ...prev, usbBackup: 'FAIL', lastSaveError: usbResult.error }));
       }
+    } else {
+      KioskLogger.log('warn', 'HARDWARE', 'Step B skipped: Lexar not mounted', 'PENDING');
     }
 
+    // Step C: Gallery Save
     if (galleryHandle) {
-      KioskLogger.log('info', 'HARDWARE', 'Attempting Gallery Save', 'PENDING');
+      KioskLogger.log('info', 'HARDWARE', `Step C: Attempting Gallery Write for ${sessionId}`, 'PENDING');
       await SessionStore.saveToHandle(galleryHandle, 'JNL_STUDIO_GALLERY', sessionId, blob);
     }
 
+    // Step D: Firebase Upload
     const { storage, db, auth } = initializeFirebase();
 
     if (!auth.currentUser) {
       try {
-        KioskLogger.log('info', 'SESSION', 'Ensuring Auth State', 'PENDING');
+        KioskLogger.log('info', 'SESSION', 'Step D: Ensuring Auth State', 'PENDING');
         await signInAnonymously(auth);
-      } catch (e: any) {}
+      } catch (e: any) {
+        KioskLogger.log('error', 'SESSION', 'Step D: Auth failed', 'FAILED', e.message);
+      }
     }
 
     setUploadStatus("uploading");
-    KioskLogger.log('info', 'CLOUD', 'Starting Firebase Upload Task', 'PENDING');
+    KioskLogger.log('info', 'CLOUD', 'Step D: Starting Firebase Upload Task', 'PENDING');
 
     const docRef = doc(db, "photos", sessionId);
     const sessionData = {
@@ -390,7 +400,7 @@ export default function KioskPage() {
           }));
         },
         async (error: any) => {
-          KioskLogger.log('error', 'CLOUD', `Upload Task Aborted: ${error.code}`, 'FAILED', error.message);
+          KioskLogger.log('error', 'CLOUD', `Step D: Upload Aborted: ${error.code}`, 'FAILED', error.message);
           setUploadStatus("error");
           setRuntimeStatus(prev => ({ ...prev, uploadFailed: 'TRUE', fbErrorCode: error.code }));
         },
@@ -398,7 +408,7 @@ export default function KioskPage() {
           const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
           await updateDoc(docRef, { status: 'complete', downloadUrl: downloadUrl });
           
-          KioskLogger.log('info', 'CLOUD', 'Public URL Generated', 'SUCCESS');
+          KioskLogger.log('info', 'CLOUD', 'Step D: Public URL Generated', 'SUCCESS');
           setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(downloadUrl)}`);
           setUploadStatus("complete");
           
@@ -413,7 +423,7 @@ export default function KioskPage() {
         }
       );
     } catch (error: any) {
-      KioskLogger.log('error', 'CLOUD', 'Sync Pipeline Crash', 'FAILED', error.message);
+      KioskLogger.log('error', 'CLOUD', 'Step D: Sync Pipeline Crash', 'FAILED', error.message);
       setUploadStatus("error");
     }
   }, [usbHandle, galleryHandle, promoConsent]);
@@ -421,7 +431,7 @@ export default function KioskPage() {
   const preSpoolPrintFile = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0 || spoolingRef.current) return;
     
-    KioskLogger.log('info', 'SESSION', 'Spooling High-Res Canvas', 'PENDING');
+    KioskLogger.log('info', 'SESSION', '--- PIPELINE START: CANVAS GENERATION ---', 'PENDING');
     setIsPreparingPrint(true);
     spoolingRef.current = true;
 
@@ -442,9 +452,9 @@ export default function KioskPage() {
       const loadImage = (src: string): Promise<HTMLImageElement> => {
         return new Promise((resolve, reject) => {
           const img = new Image();
-          const timeout = setTimeout(() => reject(new Error('Image load timeout')), 10000);
+          const timeout = setTimeout(() => reject(new Error(`Image load timeout: ${src.substring(0, 50)}...`)), 15000);
           img.onload = () => { clearTimeout(timeout); resolve(img); };
-          img.onerror = () => { clearTimeout(timeout); reject(new Error('Image load error')); };
+          img.onerror = (e) => { clearTimeout(timeout); reject(new Error('Image load error')); };
           img.src = src;
         });
       };
@@ -463,17 +473,14 @@ export default function KioskPage() {
             if (selectedFilter.filter) { ctx.filter = selectedFilter.filter; }
             ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
             ctx.filter = 'none';
-          } catch (e) {
-            KioskLogger.log('warn', 'SESSION', `Skipping slot ${i}: image load failed`, 'FAILED');
+          } catch (e: any) {
+            KioskLogger.log('warn', 'SESSION', `Slot ${i} skipped: ${e.message}`, 'FAILED');
           }
           await new Promise(r => requestAnimationFrame(r));
         }
         
         const sortedStickers = [...placedStickers].sort((a, b) => a.zIndex - b.zIndex);
         for (const s of sortedStickers) {
-          const def = STICKER_DEFS.find(d => d.id === s.type);
-          if (!def) continue;
-
           const svgElement = document.querySelector(`[data-sticker-id="${s.id}"] svg`);
           if (!svgElement) continue;
 
@@ -494,8 +501,8 @@ export default function KioskPage() {
             ctx.drawImage(stickerImg, -targetW / 2, -targetW / 2, targetW, targetW);
             ctx.restore();
             URL.revokeObjectURL(url);
-          } catch (e) {
-            KioskLogger.log('warn', 'SESSION', `Sticker ${s.id} failed to draw`, 'FAILED');
+          } catch (e: any) {
+            KioskLogger.log('warn', 'SESSION', `Sticker ${s.id} failed: ${e.message}`, 'FAILED');
           }
           await new Promise(r => requestAnimationFrame(r));
         }
@@ -506,8 +513,6 @@ export default function KioskPage() {
 
         const drawAutoScaledQuote = (text: string, x: number, y: number, maxWidth: number, maxHeight: number) => {
           let fontSize = isStrip ? 32 : 48;
-          const minFontSize = 14;
-          
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillStyle = '#000000';
@@ -533,23 +538,19 @@ export default function KioskPage() {
           };
 
           let lines = wrapText(text, fontSize);
-          let safety = 0;
-          while (safety < 50 && fontSize > minFontSize && (lines.length * (fontSize + 10)) > maxHeight) {
+          while (fontSize > 12 && (lines.length * (fontSize + 10)) > maxHeight) {
             fontSize -= 2;
             lines = wrapText(text, fontSize);
-            safety++;
           }
 
           const totalHeight = lines.length * (fontSize + 10);
           let startY = y - (totalHeight / 2) + (fontSize / 2);
-
           lines.forEach((line, index) => {
             ctx.fillText(`"${line}${index === lines.length - 1 ? '"' : ''}`, x, startY + (index * (fontSize + 10)));
           });
         };
 
         drawAutoScaledQuote(selectedQuote.text, offsetX + (STRIP_W / 2), footerY + 80, STRIP_W - 100, 140);
-        
         ctx.textAlign = 'left';
         ctx.textBaseline = 'alphabetic';
         ctx.font = '900 24px Inter, sans-serif';
@@ -567,8 +568,16 @@ export default function KioskPage() {
 
       exportCanvas.toBlob((blob) => {
         if (blob && blob.size > 0) {
-          KioskLogger.log('info', 'SESSION', `Print Blob Spooled: ${blob.size} bytes`, 'SUCCESS');
+          KioskLogger.log('info', 'SESSION', `Step 1: Canvas Blob Spooled: ${blob.size} bytes`, 'SUCCESS');
           setPreparedBlob(blob);
+          setRuntimeStatus(prev => ({
+            ...prev,
+            blobCreated: 'PASS',
+            blobSize: `${(blob.size / 1024).toFixed(1)} KB`
+          }));
+        } else {
+          KioskLogger.log('error', 'SESSION', 'Step 1: Canvas to Blob FAILED', 'FAILED');
+          setRuntimeStatus(prev => ({ ...prev, blobCreated: 'FAIL', lastErrorMessage: 'Zero byte blob produced' }));
         }
         setIsPreparingPrint(false);
         spoolingRef.current = false;

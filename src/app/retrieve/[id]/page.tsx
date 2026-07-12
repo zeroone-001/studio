@@ -25,7 +25,7 @@ export default function RetrievePage() {
 
   const fetchPhoto = useCallback(async () => {
     if (!id) return;
-    console.log(`[RETRIEVAL_DIAG] Fetching Portrait ID: ${id} (Attempt ${retryCount.current + 1})`);
+    console.log(`[RETRIEVAL_DIAG] --- PIPELINE TRACE: FETCH START (${id}) ---`);
     
     try {
       const { storage, db } = initializeFirebase();
@@ -34,10 +34,10 @@ export default function RetrievePage() {
       
       if (docSnap.exists()) {
         const data = docSnap.data();
-        console.log(`[RETRIEVAL_DIAG] Firestore Doc Found. Status: ${data.status}`);
+        console.log(`[RETRIEVAL_DIAG] Firestore Status: ${data.status}`);
         
         if (data.status === 'complete' && data.downloadUrl) {
-          console.log(`[RETRIEVAL_DIAG] Success: URL retrieved from metadata: ${data.downloadUrl}`);
+          console.log(`[RETRIEVAL_DIAG] URL Found: ${data.downloadUrl}`);
           setImageUrl(data.downloadUrl);
           setLoading(false);
           setStatus('complete');
@@ -47,24 +47,24 @@ export default function RetrievePage() {
         const photoRef = ref(storage, `photos/${id}.jpg`);
         try {
           const url = await getDownloadURL(photoRef);
-          console.log(`[RETRIEVAL_DIAG] Fallback Success: URL fetched direct from storage`);
+          console.log(`[RETRIEVAL_DIAG] DIRECT_STORAGE_HIT: URL fetched`);
           setImageUrl(url);
           setLoading(false);
           setStatus('complete');
           return;
         } catch (e: any) {
-          console.log(`[RETRIEVAL_DIAG] direct storage check failed: ${e.code}`);
+          console.log(`[RETRIEVAL_DIAG] Storage check pending: ${e.code}`);
           setStatus('syncing');
         }
       } else {
-        console.log(`[RETRIEVAL_DIAG] Firestore Document NOT FOUND in database yet`);
+        console.log(`[RETRIEVAL_DIAG] Document NOT_FOUND yet.`);
       }
 
       if (retryCount.current < MAX_RETRIES) {
         retryCount.current += 1;
         setTimeout(fetchPhoto, 500); 
       } else {
-        console.error(`[RETRIEVAL_DIAG] Timeout reached after 60 seconds`);
+        console.error(`[RETRIEVAL_DIAG] TIMEOUT reached`);
         setError("Your photo sync is taking longer than expected. Please try again.");
         setLoading(false);
       }
@@ -86,46 +86,45 @@ export default function RetrievePage() {
 
   const handleDownload = async () => {
     if (!imageUrl || !id) {
-      console.error("[RETRIEVAL_DIAG] Abort Download: URL or ID missing", { imageUrl, id });
+      console.error("[RETRIEVAL_DIAG] Abort Download: URL missing");
       return;
     }
 
-    console.log("[RETRIEVAL_DIAG] handleDownload triggered by user gesture");
+    console.log("[RETRIEVAL_DIAG] --- DOWNLOAD INITIATED BY GESTURE ---");
     
     try {
       const { db } = initializeFirebase();
       updateDoc(doc(db, "photos", id), { isDownloaded: true }).catch(() => {});
       
-      console.log(`[RETRIEVAL_DIAG] Initiating fetch for: ${imageUrl}`);
-      const response = await fetch(imageUrl);
+      console.log(`[RETRIEVAL_DIAG] Fetching Blob from: ${imageUrl}`);
+      const response = await fetch(imageUrl, { mode: 'cors' });
       
-      if (!response.ok) throw new Error(`Fetch failed with status: ${response.status}`);
+      if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
       
       const blob = await response.blob();
-      console.log(`[RETRIEVAL_DIAG] Blob generated. Size: ${blob.size}, Type: ${blob.type}`);
+      console.log(`[RETRIEVAL_DIAG] BLOB_CREATED: ${blob.size} bytes, ${blob.type}`);
       
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `JNL_Studio_Portrait_${id}.jpg`;
       document.body.appendChild(a);
-      
-      console.log("[RETRIEVAL_DIAG] Triggering synthetic click on temporary anchor");
       a.click();
       
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      console.log("[RETRIEVAL_DIAG] Download workflow completed successfully");
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
+      
+      console.log("[RETRIEVAL_DIAG] DOWNLOAD_LINK_TRIGGERED");
     } catch (e: any) {
-      console.error("[RETRIEVAL_DIAG] Download Workflow FAILED", e.message);
-      // Fallback for browsers that block script-initiated downloads
+      console.error("[RETRIEVAL_DIAG] DOWNLOAD_ERROR", e.message);
       console.log("[RETRIEVAL_DIAG] Attempting window.open fallback");
       window.open(imageUrl, '_blank');
     }
   };
 
   const handleRetry = () => {
-    console.log("[RETRIEVAL_DIAG] Manual retry requested");
     retryCount.current = 0;
     setError(null);
     setLoading(true);

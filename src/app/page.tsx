@@ -263,7 +263,10 @@ export default function KioskPage() {
   const initiatePrint = useCallback(async (blob: Blob) => {
     KioskLogger.log('info', 'PRINT', 'Initiating Print Dispatch', 'PENDING');
     try {
-      if (!blob || blob.size === 0) throw new Error("Null or Empty Blob detected");
+      if (!blob || blob.size === 0) {
+        KioskLogger.log('error', 'PRINT', 'Abort: Blob is null or zero size', 'FAILED');
+        throw new Error("Null or Empty Blob detected");
+      }
 
       const timestamp = Date.now();
       const fileName = `JNL_STUDIO_PORTRAIT_${timestamp}.jpg`;
@@ -278,16 +281,19 @@ export default function KioskPage() {
         fileSize: `${(blob.size / 1024).toFixed(1)} KB`
       }));
 
-      KioskLogger.log('info', 'PRINT', `File Object Formed: ${fileName} (${blob.size} bytes)`, 'SUCCESS');
+      KioskLogger.log('info', 'PRINT', `File Object Created: ${fileName} (${file.size} bytes)`, 'SUCCESS');
 
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        KioskLogger.log('info', 'PRINT', 'Dispatching Share Intent to OS', 'PENDING');
+        KioskLogger.log('info', 'PRINT', 'Dispatching Share Intent to OS...', 'PENDING');
+        
+        // EVIDENCE: This call triggers the Android Share Sheet where NokoPrint appears
         await navigator.share({
           files: [file],
           title: 'JNL Studio Portrait',
           text: 'Print with NokoPrint'
         });
-        KioskLogger.log('info', 'PRINT', 'Intent Acknowledged by OS', 'SUCCESS');
+
+        KioskLogger.log('info', 'PRINT', 'Intent Acknowledged by OS (Sheet Closed)', 'SUCCESS');
         setRuntimeStatus(prev => ({ 
           ...prev, 
           intentAcknowledged: 'PASS', 
@@ -295,13 +301,16 @@ export default function KioskPage() {
           nokoprintOpened: 'PASS' 
         }));
       } else {
-        throw new Error('OS Share/Print API not responding or not capable of file sharing');
+        const errorMsg = !navigator.share ? 'navigator.share missing' : 'navigator.canShare returned false';
+        KioskLogger.log('error', 'PRINT', 'Hardware/API Incompatibility', 'FAILED', errorMsg);
+        throw new Error(errorMsg);
       }
     } catch (e: any) {
-      KioskLogger.log('error', 'PRINT', 'Intent Dispatch Failed', 'FAILED', e.message);
+      const isAbort = e.name === 'AbortError';
+      KioskLogger.log(isAbort ? 'info' : 'error', 'PRINT', 'Intent Flow Ended', isAbort ? 'PENDING' : 'FAILED', e.message);
       setRuntimeStatus(prev => ({ 
         ...prev, 
-        intentAcknowledged: 'FAIL', 
+        intentAcknowledged: isAbort ? 'ABORTED' : 'FAIL', 
         navigatorShareRejected: 'FAIL', 
         lastErrorMessage: e.message 
       }));
@@ -459,7 +468,6 @@ export default function KioskPage() {
           } catch (e) {
             KioskLogger.log('warn', 'SESSION', `Skipping slot ${i}: image load failed`, 'FAILED');
           }
-          // Yield to main thread
           await new Promise(r => requestAnimationFrame(r));
         }
         
@@ -527,7 +535,6 @@ export default function KioskPage() {
           };
 
           let lines = wrapText(text, fontSize);
-          // Optimization: Safety check for infinite loop
           let safety = 0;
           while (safety < 50 && fontSize > minFontSize && (lines.length * (fontSize + 10)) > maxHeight) {
             fontSize -= 2;
@@ -910,6 +917,7 @@ export default function KioskPage() {
               disabled={isPreparingPrint || !preparedBlob}
               onClick={() => {
                 if (preparedBlob) {
+                  // EVIDENCE: initiatePrint is called immediately on the click gesture thread
                   initiatePrint(preparedBlob);
                   handleCloudSync(preparedBlob);
                 }

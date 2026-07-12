@@ -74,8 +74,9 @@ export const SessionStore = {
     
     try {
       if (!handle) {
-        console.error(`[DISK_DIAG] ABORT: Folder handle is null or undefined.`);
-        throw new Error('NULL_HANDLE: Permission may have expired. Admin must re-mount in Owner Utility.');
+        const err = 'NULL_HANDLE: Permission may have expired. Admin must re-mount in Owner Utility.';
+        console.error(`[DISK_DIAG] ABORT: ${err}`);
+        throw new Error(err);
       }
       
       if (blob.size === 0) {
@@ -118,9 +119,10 @@ export const SessionStore = {
         throw new Error('VERIFICATION_FAILED: File created but reported size is zero.');
       }
     } catch (e: any) {
-      console.error(`[DISK_DIAG] CRASH: ${e.name} - ${e.message}`);
+      const errorMsg = `[DISK_DIAG] CRASH: ${e.name} - ${e.message}`;
+      console.error(errorMsg);
       KioskLogger.log('error', 'HARDWARE', `DISK_WRITE_CRASH (${folderName})`, 'FAILED', e.message);
-      return { success: false, error: e.message || 'Unknown Storage Error' };
+      return { success: false, error: `${e.name}: ${e.message}` };
     }
   },
 

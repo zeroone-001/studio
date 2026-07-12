@@ -51,6 +51,7 @@ export default function KioskPage() {
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const spoolingRef = useRef(false);
 
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [selectedFilter, setSelectedFilter] = useState(FILTERS[0]);
@@ -267,7 +268,6 @@ export default function KioskPage() {
       const timestamp = Date.now();
       const fileName = `JNL_STUDIO_PORTRAIT_${timestamp}.jpg`;
       
-      // FORMULATE HIGH-QUALITY JPEG FILE OBJECT FOR ANDROID INTENT
       const file = new File([blob], fileName, { type: 'image/jpeg' });
       
       setRuntimeStatus(prev => ({ 
@@ -280,7 +280,6 @@ export default function KioskPage() {
 
       KioskLogger.log('info', 'PRINT', `File Object Formed: ${fileName} (${blob.size} bytes)`, 'SUCCESS');
 
-      // DIRECT ANDROID INTENT TRIGGER (MUST BE ON USER GESTURE THREAD)
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         KioskLogger.log('info', 'PRINT', 'Dispatching Share Intent to OS', 'PENDING');
         await navigator.share({
@@ -327,13 +326,11 @@ export default function KioskPage() {
       return;
     }
 
-    // 1. Local IndexedDB Persistence (Instant)
     const localSave = await SessionStore.savePhotoLocally(sessionId, blob);
     if (localSave.success) {
       setRuntimeStatus(prev => ({ ...prev, photoSaved: 'PASS' }));
     }
 
-    // 2. USB Archive (If mounted)
     if (usbHandle) {
       KioskLogger.log('info', 'HARDWARE', 'Attempting USB Archive Save', 'PENDING');
       const usbResult = await SessionStore.saveToHandle(usbHandle, 'JNL_STUDIO_ARCHIVE', sessionId, blob);
@@ -342,13 +339,11 @@ export default function KioskPage() {
       }
     }
 
-    // 3. Local Gallery (If mounted)
     if (galleryHandle) {
       KioskLogger.log('info', 'HARDWARE', 'Attempting Gallery Save', 'PENDING');
       await SessionStore.saveToHandle(galleryHandle, 'JNL_STUDIO_GALLERY', sessionId, blob);
     }
 
-    // 4. Firebase Cloud Sync
     const { storage, db, auth } = initializeFirebase();
 
     if (!auth.currentUser) {
@@ -414,144 +409,170 @@ export default function KioskPage() {
       KioskLogger.log('error', 'CLOUD', 'Sync Pipeline Crash', 'FAILED', error.message);
       setUploadStatus("error");
     }
-  }, [usbHandle, galleryHandle, promoConsent, uploadStatus]);
+  }, [usbHandle, galleryHandle, promoConsent]);
 
   const preSpoolPrintFile = useCallback(async () => {
-    if (!selectedBlueprint || capturedPhotos.length === 0) return;
+    if (!selectedBlueprint || capturedPhotos.length === 0 || spoolingRef.current) return;
     
     KioskLogger.log('info', 'SESSION', 'Spooling High-Res Canvas', 'PENDING');
     setIsPreparingPrint(true);
-    const exportCanvas = document.createElement('canvas');
-    exportCanvas.width = 1600;
-    exportCanvas.height = 2400;
-    const ctx = exportCanvas.getContext('2d');
-    
-    if (!ctx) {
-      KioskLogger.log('error', 'SESSION', 'Canvas Context Creation Failed', 'FAILED');
-      setIsPreparingPrint(false);
-      return;
-    }
+    spoolingRef.current = true;
 
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, 1600, 2400);
-
-    const isStrip = selectedBlueprint.package === 50;
-    const STRIP_W = isStrip ? 800 : 1600;
-
-    const drawContent = async (offsetX: number) => {
-      for (let i = 0; i < selectedBlueprint.slots.length; i++) {
-        const slot = selectedBlueprint.slots[i];
-        const photo = capturedPhotos[i];
-        if (!photo) continue;
-        const img = new Image();
-        img.src = photo;
-        await new Promise(resolve => img.onload = resolve);
-        
-        const sX = isStrip ? slot.x / 2 : slot.x;
-        const sW = isStrip ? slot.w / 2 : slot.w;
-
-        if (selectedFilter.filter) { ctx.filter = selectedFilter.filter; }
-        ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
-        ctx.filter = 'none';
-      }
+    try {
+      const exportCanvas = document.createElement('canvas');
+      exportCanvas.width = 1600;
+      exportCanvas.height = 2400;
+      const ctx = exportCanvas.getContext('2d', { alpha: false });
       
-      const sortedStickers = [...placedStickers].sort((a, b) => a.zIndex - b.zIndex);
-      for (const s of sortedStickers) {
-        const def = STICKER_DEFS.find(d => d.id === s.type);
-        if (!def) continue;
-        const stickerImg = new Image();
-        const svgElement = document.querySelector(`[data-sticker-id="${s.id}"] svg`);
-        if (!svgElement) continue;
+      if (!ctx) throw new Error('Canvas Context Creation Failed');
 
-        const svgString = new XMLSerializer().serializeToString(svgElement);
-        const svgBlob = new Blob([svgString], {type: 'image/svg+xml;charset=utf-8'});
-        const url = URL.createObjectURL(svgBlob);
-        stickerImg.src = url;
-        await new Promise(resolve => stickerImg.onload = resolve);
-
-        const targetW = (s.size / 100) * STRIP_W;
-        const targetX = (s.x / 100) * STRIP_W + offsetX;
-        const targetY = (s.y / 100) * 2400;
-
-        ctx.save();
-        ctx.translate(targetX, targetY);
-        ctx.rotate((s.rotation * Math.PI) / 180);
-        ctx.scale(s.flipX ? -1 : 1, s.flipY ? -1 : 1);
-        ctx.drawImage(stickerImg, -targetW / 2, -targetW / 2, targetW, targetW);
-        ctx.restore();
-        URL.revokeObjectURL(url);
-      }
-
-      const footerY = 2200;
       ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(offsetX, footerY, STRIP_W, 200);
+      ctx.fillRect(0, 0, 1600, 2400);
 
-      const drawAutoScaledQuote = (text: string, x: number, y: number, maxWidth: number, maxHeight: number) => {
-        let fontSize = isStrip ? 32 : 48;
-        const minFontSize = 14;
-        
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#000000';
+      const isStrip = selectedBlueprint.package === 50;
+      const STRIP_W = isStrip ? 800 : 1600;
 
-        const wrapText = (txt: string, fSize: number) => {
-          ctx.font = `bold italic ${fSize}px Inter, sans-serif`;
-          const words = txt.split(' ');
-          const lines: string[] = [];
-          let currentLine = words[0];
-
-          for (let i = 1; i < words[0].length === 0 ? 0 : 1; i++) {} // Safety for split
-          for (let i = 1; i < words.length; i++) {
-            const testLine = currentLine + ' ' + words[i];
-            const metrics = ctx.measureText(testLine);
-            if (metrics.width > maxWidth) {
-              lines.push(currentLine);
-              currentLine = words[i];
-            } else {
-              currentLine = testLine;
-            }
-          }
-          lines.push(currentLine);
-          return lines;
-        };
-
-        let lines = wrapText(text, fontSize);
-        while (fontSize > minFontSize && (lines.length * (fontSize + 10)) > maxHeight) {
-          fontSize -= 2;
-          lines = wrapText(text, fontSize);
-        }
-
-        const totalHeight = lines.length * (fontSize + 10);
-        let startY = y - (totalHeight / 2) + (fontSize / 2);
-
-        lines.forEach((line, index) => {
-          ctx.fillText(`"${line}${index === lines.length - 1 ? '"' : ''}`, x, startY + (index * (fontSize + 10)));
+      const loadImage = (src: string): Promise<HTMLImageElement> => {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          const timeout = setTimeout(() => reject(new Error('Image load timeout')), 10000);
+          img.onload = () => { clearTimeout(timeout); resolve(img); };
+          img.onerror = () => { clearTimeout(timeout); reject(new Error('Image load error')); };
+          img.src = src;
         });
       };
 
-      drawAutoScaledQuote(selectedQuote.text, offsetX + (STRIP_W / 2), footerY + 80, STRIP_W - 100, 140);
-      
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'alphabetic';
-      ctx.font = '900 24px Inter, sans-serif';
-      ctx.fillStyle = '#000000';
-      ctx.fillText('JNL STUDIO', offsetX + 60, footerY + 180);
-    };
+      const drawContent = async (offsetX: number) => {
+        for (let i = 0; i < selectedBlueprint.slots.length; i++) {
+          const slot = selectedBlueprint.slots[i];
+          const photo = capturedPhotos[i];
+          if (!photo) continue;
+          
+          try {
+            const img = await loadImage(photo);
+            const sX = isStrip ? slot.x / 2 : slot.x;
+            const sW = isStrip ? slot.w / 2 : slot.w;
 
-    if (isStrip) {
-      await drawContent(0);
-      await drawContent(800);
-    } else {
-      await drawContent(0);
-    }
+            if (selectedFilter.filter) { ctx.filter = selectedFilter.filter; }
+            ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
+            ctx.filter = 'none';
+          } catch (e) {
+            KioskLogger.log('warn', 'SESSION', `Skipping slot ${i}: image load failed`, 'FAILED');
+          }
+          // Yield to main thread
+          await new Promise(r => requestAnimationFrame(r));
+        }
+        
+        const sortedStickers = [...placedStickers].sort((a, b) => a.zIndex - b.zIndex);
+        for (const s of sortedStickers) {
+          const def = STICKER_DEFS.find(d => d.id === s.type);
+          if (!def) continue;
 
-    exportCanvas.toBlob((blob) => {
-      if (blob && blob.size > 0) {
-        KioskLogger.log('info', 'SESSION', `Print Blob Spooled: ${blob.size} bytes`, 'SUCCESS');
-        setPreparedBlob(blob);
+          const svgElement = document.querySelector(`[data-sticker-id="${s.id}"] svg`);
+          if (!svgElement) continue;
+
+          try {
+            const svgString = new XMLSerializer().serializeToString(svgElement);
+            const svgBlob = new Blob([svgString], {type: 'image/svg+xml;charset=utf-8'});
+            const url = URL.createObjectURL(svgBlob);
+            const stickerImg = await loadImage(url);
+
+            const targetW = (s.size / 100) * STRIP_W;
+            const targetX = (s.x / 100) * STRIP_W + offsetX;
+            const targetY = (s.y / 100) * 2400;
+
+            ctx.save();
+            ctx.translate(targetX, targetY);
+            ctx.rotate((s.rotation * Math.PI) / 180);
+            ctx.scale(s.flipX ? -1 : 1, s.flipY ? -1 : 1);
+            ctx.drawImage(stickerImg, -targetW / 2, -targetW / 2, targetW, targetW);
+            ctx.restore();
+            URL.revokeObjectURL(url);
+          } catch (e) {
+            KioskLogger.log('warn', 'SESSION', `Sticker ${s.id} failed to draw`, 'FAILED');
+          }
+          await new Promise(r => requestAnimationFrame(r));
+        }
+
+        const footerY = 2200;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(offsetX, footerY, STRIP_W, 200);
+
+        const drawAutoScaledQuote = (text: string, x: number, y: number, maxWidth: number, maxHeight: number) => {
+          let fontSize = isStrip ? 32 : 48;
+          const minFontSize = 14;
+          
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = '#000000';
+
+          const wrapText = (txt: string, fSize: number) => {
+            ctx.font = `bold italic ${fSize}px Inter, sans-serif`;
+            const words = txt.split(' ');
+            const lines: string[] = [];
+            let currentLine = words[0] || '';
+
+            for (let i = 1; i < words.length; i++) {
+              const testLine = currentLine + ' ' + words[i];
+              const metrics = ctx.measureText(testLine);
+              if (metrics.width > maxWidth) {
+                lines.push(currentLine);
+                currentLine = words[i];
+              } else {
+                currentLine = testLine;
+              }
+            }
+            lines.push(currentLine);
+            return lines;
+          };
+
+          let lines = wrapText(text, fontSize);
+          // Optimization: Safety check for infinite loop
+          let safety = 0;
+          while (safety < 50 && fontSize > minFontSize && (lines.length * (fontSize + 10)) > maxHeight) {
+            fontSize -= 2;
+            lines = wrapText(text, fontSize);
+            safety++;
+          }
+
+          const totalHeight = lines.length * (fontSize + 10);
+          let startY = y - (totalHeight / 2) + (fontSize / 2);
+
+          lines.forEach((line, index) => {
+            ctx.fillText(`"${line}${index === lines.length - 1 ? '"' : ''}`, x, startY + (index * (fontSize + 10)));
+          });
+        };
+
+        drawAutoScaledQuote(selectedQuote.text, offsetX + (STRIP_W / 2), footerY + 80, STRIP_W - 100, 140);
+        
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+        ctx.font = '900 24px Inter, sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.fillText('JNL STUDIO', offsetX + 60, footerY + 180);
+      };
+
+      if (isStrip) {
+        await drawContent(0);
+        await new Promise(r => setTimeout(r, 0));
+        await drawContent(800);
+      } else {
+        await drawContent(0);
       }
+
+      exportCanvas.toBlob((blob) => {
+        if (blob && blob.size > 0) {
+          KioskLogger.log('info', 'SESSION', `Print Blob Spooled: ${blob.size} bytes`, 'SUCCESS');
+          setPreparedBlob(blob);
+        }
+        setIsPreparingPrint(false);
+        spoolingRef.current = false;
+      }, 'image/jpeg', 0.95);
+    } catch (e: any) {
+      KioskLogger.log('error', 'SESSION', 'Canvas Engine Crash', 'FAILED', e.message);
       setIsPreparingPrint(false);
-    }, 'image/jpeg', 0.95);
+      spoolingRef.current = false;
+    }
   }, [selectedBlueprint, capturedPhotos, selectedQuote, selectedFilter, placedStickers]);
 
   const addSticker = (type: string) => {
@@ -587,6 +608,7 @@ export default function KioskPage() {
     setPreparedBlob(null);
     setUploadStatus("idle");
     setSoftCopyQrUrl("");
+    spoolingRef.current = false;
   }, []);
 
   const startShotSequence = async () => {
@@ -655,10 +677,10 @@ export default function KioskPage() {
       };
       start();
     }
-    if (appState === "final-preview") {
+    if (appState === "final-preview" && !preparedBlob && !isPreparingPrint) {
       preSpoolPrintFile();
     }
-  }, [appState, preSpoolPrintFile, cameraStream]);
+  }, [appState, preSpoolPrintFile, cameraStream, preparedBlob, isPreparingPrint]);
 
   return (
     <KioskLayout>

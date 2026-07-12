@@ -76,7 +76,6 @@ export default function KioskPage() {
   const [preparedBlob, setPreparedBlob] = useState<Blob | null>(null);
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
 
-  // DETAILED PIPELINE TRACE
   const [runtimeStatus, setRuntimeStatus] = useState({
     photoGenerated: 'PENDING',
     photoSaved: 'PENDING',
@@ -162,7 +161,7 @@ export default function KioskPage() {
       }).catch(e => {
         let diagnosticMsg = e.message;
         if (e.code === 'auth/admin-restricted-operation') {
-          diagnosticMsg = "CRITICAL: Anonymous Auth is DISABLED in Firebase Console. Please enable it under Auth > Sign-in method.";
+          diagnosticMsg = "CRITICAL: Anonymous Auth is DISABLED in Firebase Console. Enable it in Authentication > Sign-in method.";
         }
         KioskLogger.log('error', 'SESSION', 'Auth Initialization Failed', 'FAILED', diagnosticMsg);
         setRuntimeStatus(prev => ({ ...prev, fbException: diagnosticMsg, fbAuthState: 'ERROR', fbErrorCode: e.code, fbErrorMessage: e.message }));
@@ -280,21 +279,12 @@ export default function KioskPage() {
       }));
 
       const hasShare = !!navigator.share;
-      const isSecure = window.isSecureContext;
-
-      console.log(`[PRINT_DIAG] OS Compatibility Check: Secure=${isSecure}, Share=${hasShare}`);
 
       if (hasShare) {
-        if (navigator.canShare) {
-          const canShareResult = navigator.canShare({ files: [file] });
-          console.log(`[PRINT_DIAG] navigator.canShare result: ${canShareResult}`);
-        }
-
         KioskLogger.log('info', 'PRINT', 'Dispatching Share Intent to OS...', 'PENDING');
         setRuntimeStatus(prev => ({ ...prev, navigatorShareStarted: 'PASS' }));
 
         try {
-          // CAPTURE MOMENT BEFORE ASYNC CALL
           const gestureDelay = Date.now() - startTime;
           console.log(`[PRINT_DIAG] Dispatching intent at T+${gestureDelay}ms`);
 
@@ -385,7 +375,12 @@ export default function KioskPage() {
         KioskLogger.log('info', 'SESSION', 'Step D: Ensuring Auth State', 'PENDING');
         await signInAnonymously(auth);
       } catch (e: any) {
-        KioskLogger.log('error', 'SESSION', 'Step D: Auth failed', 'FAILED', e.message);
+        KioskLogger.log('error', 'SESSION', 'Step D: Auth failed (Cloud Disabled)', 'FAILED', e.message);
+        if (e.code === 'auth/admin-restricted-operation') {
+          setUploadStatus("error"); // Transition to Offline Mode immediately
+          setRuntimeStatus(prev => ({ ...prev, uploadFailed: 'TRUE', fbErrorCode: e.code }));
+          return; // Stop cloud sequence
+        }
       }
     }
 
@@ -1020,7 +1015,7 @@ export default function KioskPage() {
                     </div>
                     <div className="text-center space-y-4">
                       <h3 className="text-2xl font-black italic uppercase text-white/60">OFFLINE MODE</h3>
-                      <p className="text-[10px] font-bold uppercase text-white/30 leading-relaxed max-w-[250px]">Internet connection lost. High-res download is disabled, but your physical print is unaffected.</p>
+                      <p className="text-[10px] font-bold uppercase text-white/30 leading-relaxed max-w-[250px]">Internet connection lost or Cloud Disabled. Your physical print is unaffected.</p>
                     </div>
                     {(printProgress >= 100 || runtimeStatus.intentAcknowledged !== 'PENDING') && (
                         <button 

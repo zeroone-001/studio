@@ -258,67 +258,100 @@ export default function KioskPage() {
   }, [appState]);
 
   const initiatePrint = useCallback(async (blob: Blob) => {
-    KioskLogger.log('info', 'PRINT', '--- PIPELINE START: PRINT DISPATCH ---', 'PENDING');
+    KioskLogger.log('info', 'PRINT', '--- PRINT DISPATCH TRACE START ---', 'PENDING');
     try {
+      // 1. Payload Audit
       if (!blob || blob.size === 0) {
         KioskLogger.log('error', 'PRINT', 'Abort: Blob is null or zero size', 'FAILED');
         throw new Error("Null or Empty Blob detected");
       }
+      
+      console.log(`[PRINT_DIAG] Blob verified: ${blob.size} bytes, type: ${blob.type}`);
 
-      console.log(`[PIPELINE_TRACE] Step 2: Blob Received. Size: ${blob.size}, Type: ${blob.type}`);
-
+      // 2. File Object Generation
       const timestamp = Date.now();
       const fileName = `JNL_STUDIO_PORTRAIT_${timestamp}.jpg`;
-      
       const file = new File([blob], fileName, { type: 'image/jpeg' });
       
+      console.log(`[PRINT_DIAG] File object created: ${file.name} (${file.size} bytes), MIME: ${file.type}`);
+
       setRuntimeStatus(prev => ({ 
         ...prev, 
         intentTriggered: 'PASS', 
-        navigatorShareStarted: 'PASS',
         fileCreated: 'PASS',
         fileSize: `${(blob.size / 1024).toFixed(1)} KB`
       }));
 
-      KioskLogger.log('info', 'PRINT', `Step 3: File Object Created: ${fileName} (${file.size} bytes)`, 'SUCCESS');
+      // 3. Capability Audit
+      const hasShare = !!navigator.share;
+      const hasCanShare = !!navigator.canShare;
+      const isSecure = window.isSecureContext;
 
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        KioskLogger.log('info', 'PRINT', 'Step 4: Dispatching Share Intent to OS...', 'PENDING');
-        
-        await navigator.share({
-          files: [file],
-          title: 'JNL Studio Portrait',
-          text: 'Print with NokoPrint'
-        });
+      console.log(`[PRINT_DIAG] OS Compatibility Check:`);
+      console.log(` - Secure Context (HTTPS): ${isSecure ? 'YES' : 'NO'}`);
+      console.log(` - navigator.share: ${hasShare ? 'YES' : 'NO'}`);
+      console.log(` - navigator.canShare: ${hasCanShare ? 'YES' : 'NO'}`);
 
-        KioskLogger.log('info', 'PRINT', 'Step 5: Intent Acknowledged by OS (Sheet Closed)', 'SUCCESS');
-        setRuntimeStatus(prev => ({ 
-          ...prev, 
-          intentAcknowledged: 'PASS', 
-          navigatorShareResolved: 'PASS', 
-          nokoprintOpened: 'PASS' 
-        }));
+      KioskLogger.log('info', 'PRINT', `OS Caps: Secure=${isSecure}, Share=${hasShare}, CanShare=${hasCanShare}`, 'PENDING');
+
+      if (hasShare) {
+        let canShareResult = false;
+        if (hasCanShare) {
+          try {
+            canShareResult = navigator.canShare({ files: [file] });
+            console.log(`[PRINT_DIAG] navigator.canShare result for payload: ${canShareResult ? 'PASS' : 'FAIL'}`);
+            KioskLogger.log('info', 'PRINT', `canShare Result: ${canShareResult ? 'PASS' : 'FAIL'}`, 'PENDING');
+          } catch (e: any) {
+            console.error(`[PRINT_DIAG] canShare Exception: ${e.name} - ${e.message}`);
+            KioskLogger.log('error', 'PRINT', 'canShare Error', 'FAILED', e.message);
+          }
+        }
+
+        // 4. Intent Dispatch
+        KioskLogger.log('info', 'PRINT', 'Dispatching Share Intent to OS...', 'PENDING');
+        setRuntimeStatus(prev => ({ ...prev, navigatorShareStarted: 'PASS' }));
+
+        try {
+          await navigator.share({
+            files: [file],
+            title: 'JNL Studio Portrait',
+            text: 'Print with NokoPrint'
+          });
+
+          console.log(`[PRINT_DIAG] Intent Acknowledged - Result: SUCCESS`);
+          KioskLogger.log('info', 'PRINT', 'Intent Acknowledged (Sheet Closed)', 'SUCCESS');
+          setRuntimeStatus(prev => ({ 
+            ...prev, 
+            intentAcknowledged: 'PASS', 
+            navigatorShareResolved: 'PASS', 
+            nokoprintOpened: 'PASS' 
+          }));
+        } catch (e: any) {
+          const isAbort = e.name === 'AbortError';
+          console.error(`[PRINT_DIAG] Share Intent ${isAbort ? 'Aborted' : 'Failed'}: ${e.name} - ${e.message}`);
+          KioskLogger.log(isAbort ? 'info' : 'error', 'PRINT', `Intent ${isAbort ? 'Aborted' : 'Failed'}`, isAbort ? 'PENDING' : 'FAILED', e.message);
+          setRuntimeStatus(prev => ({ 
+            ...prev, 
+            intentAcknowledged: isAbort ? 'ABORTED' : 'FAIL', 
+            navigatorShareRejected: 'FAIL', 
+            lastErrorMessage: e.message 
+          }));
+        }
       } else {
-        const errorMsg = !navigator.share ? 'navigator.share missing' : 'navigator.canShare returned false';
-        KioskLogger.log('error', 'PRINT', 'Step 4: Hardware/API Incompatibility', 'FAILED', errorMsg);
+        const errorMsg = 'navigator.share API missing in this browser context';
+        KioskLogger.log('error', 'PRINT', 'Hardware/API Incompatibility', 'FAILED', errorMsg);
         throw new Error(errorMsg);
       }
     } catch (e: any) {
-      const isAbort = e.name === 'AbortError';
-      KioskLogger.log(isAbort ? 'info' : 'error', 'PRINT', 'Pipeline Aborted/Failed', isAbort ? 'PENDING' : 'FAILED', e.message);
-      setRuntimeStatus(prev => ({ 
-        ...prev, 
-        intentAcknowledged: isAbort ? 'ABORTED' : 'FAIL', 
-        navigatorShareRejected: 'FAIL', 
-        lastErrorMessage: e.message 
-      }));
+      console.error(`[PRINT_DIAG] Pipeline Crash: ${e.message}`);
+      setRuntimeStatus(prev => ({ ...prev, lastErrorMessage: e.message }));
     }
   }, []);
 
   const handleCloudSync = useCallback(async (blob: Blob) => {
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
-    KioskLogger.log('info', 'SESSION', `--- PIPELINE START: CLOUD & DISK SYNC (${sessionId}) ---`, 'PENDING');
+    KioskLogger.log('info', 'SESSION', `--- CLOUD & DISK SYNC TRACE (${sessionId}) ---`, 'PENDING');
     
     setRuntimeStatus(prev => ({ 
       ...prev, 
@@ -341,7 +374,7 @@ export default function KioskPage() {
 
     // Step B: USB Backup (Lexar)
     if (usbHandle) {
-      KioskLogger.log('info', 'HARDWARE', `Step B: Attempting USB Write for ${sessionId}`, 'PENDING');
+      KioskLogger.log('info', 'HARDWARE', `Step B: USB Write Attempt for ${sessionId}`, 'PENDING');
       const usbResult = await SessionStore.saveToHandle(usbHandle, 'JNL_STUDIO_ARCHIVE', sessionId, blob);
       if (usbResult.success) {
         setRuntimeStatus(prev => ({ ...prev, usbBackup: 'PASS', usbHandleValid: 'TRUE' }));
@@ -349,12 +382,12 @@ export default function KioskPage() {
         setRuntimeStatus(prev => ({ ...prev, usbBackup: 'FAIL', lastSaveError: usbResult.error }));
       }
     } else {
-      KioskLogger.log('warn', 'HARDWARE', 'Step B skipped: Lexar not mounted', 'PENDING');
+      KioskLogger.log('warn', 'HARDWARE', 'Step B skipped: USB Handle null', 'PENDING');
     }
 
     // Step C: Gallery Save
     if (galleryHandle) {
-      KioskLogger.log('info', 'HARDWARE', `Step C: Attempting Gallery Write for ${sessionId}`, 'PENDING');
+      KioskLogger.log('info', 'HARDWARE', `Step C: Gallery Write Attempt for ${sessionId}`, 'PENDING');
       await SessionStore.saveToHandle(galleryHandle, 'JNL_STUDIO_GALLERY', sessionId, blob);
     }
 
@@ -431,7 +464,7 @@ export default function KioskPage() {
   const preSpoolPrintFile = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0 || spoolingRef.current) return;
     
-    KioskLogger.log('info', 'SESSION', '--- PIPELINE START: CANVAS GENERATION ---', 'PENDING');
+    KioskLogger.log('info', 'SESSION', '--- CANVAS ENGINE START ---', 'PENDING');
     setIsPreparingPrint(true);
     spoolingRef.current = true;
 
@@ -452,9 +485,9 @@ export default function KioskPage() {
       const loadImage = (src: string): Promise<HTMLImageElement> => {
         return new Promise((resolve, reject) => {
           const img = new Image();
-          const timeout = setTimeout(() => reject(new Error(`Image load timeout: ${src.substring(0, 50)}...`)), 15000);
+          const timeout = setTimeout(() => reject(new Error(`Image load timeout`)), 15000);
           img.onload = () => { clearTimeout(timeout); resolve(img); };
-          img.onerror = (e) => { clearTimeout(timeout); reject(new Error('Image load error')); };
+          img.onerror = () => { clearTimeout(timeout); reject(new Error('Image load error')); };
           img.src = src;
         });
       };
@@ -474,7 +507,7 @@ export default function KioskPage() {
             ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
             ctx.filter = 'none';
           } catch (e: any) {
-            KioskLogger.log('warn', 'SESSION', `Slot ${i} skipped: ${e.message}`, 'FAILED');
+            console.warn(`[CANVAS] Slot ${i} skipped: ${e.message}`);
           }
           await new Promise(r => requestAnimationFrame(r));
         }
@@ -502,7 +535,7 @@ export default function KioskPage() {
             ctx.restore();
             URL.revokeObjectURL(url);
           } catch (e: any) {
-            KioskLogger.log('warn', 'SESSION', `Sticker ${s.id} failed: ${e.message}`, 'FAILED');
+            console.warn(`[CANVAS] Sticker ${s.id} failed: ${e.message}`);
           }
           await new Promise(r => requestAnimationFrame(r));
         }
@@ -568,7 +601,7 @@ export default function KioskPage() {
 
       exportCanvas.toBlob((blob) => {
         if (blob && blob.size > 0) {
-          KioskLogger.log('info', 'SESSION', `Step 1: Canvas Blob Spooled: ${blob.size} bytes`, 'SUCCESS');
+          KioskLogger.log('info', 'SESSION', `Canvas Render Success: ${blob.size} bytes`, 'SUCCESS');
           setPreparedBlob(blob);
           setRuntimeStatus(prev => ({
             ...prev,
@@ -576,7 +609,7 @@ export default function KioskPage() {
             blobSize: `${(blob.size / 1024).toFixed(1)} KB`
           }));
         } else {
-          KioskLogger.log('error', 'SESSION', 'Step 1: Canvas to Blob FAILED', 'FAILED');
+          KioskLogger.log('error', 'SESSION', 'Canvas to Blob FAILED', 'FAILED');
           setRuntimeStatus(prev => ({ ...prev, blobCreated: 'FAIL', lastErrorMessage: 'Zero byte blob produced' }));
         }
         setIsPreparingPrint(false);

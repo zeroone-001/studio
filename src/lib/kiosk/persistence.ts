@@ -69,37 +69,57 @@ export const SessionStore = {
 
   // Save to any Directory Handle (USB or Local Folder) with Verification
   saveToHandle: async (handle: FileSystemDirectoryHandle, folderName: string, id: string, blob: Blob) => {
-    KioskLogger.log('info', 'HARDWARE', `Step B/C: Write Request: ${folderName} ID ${id}`, 'PENDING');
+    KioskLogger.log('info', 'HARDWARE', `DISK_WRITE_TRACE: ${folderName} for ${id}`, 'PENDING');
+    console.log(`[DISK_DIAG] Starting write process to folder: ${folderName}`);
+    
     try {
       if (!handle) {
+        console.error(`[DISK_DIAG] ABORT: Folder handle is null or undefined.`);
         throw new Error('NULL_HANDLE: Permission may have expired. Admin must re-mount in Owner Utility.');
       }
-      if (blob.size === 0) throw new Error('ZERO_BYTE_BLOB');
       
-      // Create or get the target folder
+      if (blob.size === 0) {
+        console.error(`[DISK_DIAG] ABORT: Blob payload is zero bytes.`);
+        throw new Error('ZERO_BYTE_BLOB');
+      }
+      
+      // Step 1: Resolve Directory
+      console.log(`[DISK_DIAG] 1. Accessing directory: ${folderName}`);
       const targetFolder = await handle.getDirectoryHandle(folderName, { create: true });
+      
+      // Step 2: Acquire File Handle
       const fileName = `JNL_PORTRAIT_${id}.jpg`;
+      console.log(`[DISK_DIAG] 2. Acquiring file handle: ${fileName}`);
       const fileHandle = await targetFolder.getFileHandle(fileName, { create: true });
       
-      KioskLogger.log('info', 'HARDWARE', `Step B/C: Handle Acquired: ${fileName}`, 'PENDING');
-      
+      // Step 3: Create Writable Stream
+      console.log(`[DISK_DIAG] 3. Creating writable stream...`);
       const writable = await fileHandle.createWritable();
+      
+      // Step 4: Commit Data
+      console.log(`[DISK_DIAG] 4. Writing ${blob.size} bytes...`);
       await writable.write(blob);
+      
+      // Step 5: Close Stream
+      console.log(`[DISK_DIAG] 5. Closing stream (flushing to disk)...`);
       await writable.close();
       
-      // VERIFICATION: Check if file exists and has content
+      // Step 6: Verification
+      console.log(`[DISK_DIAG] 6. Verifying write on disk...`);
       const verifiedFile = await targetFolder.getFileHandle(fileName);
       const fileData = await verifiedFile.getFile();
       
+      console.log(`[DISK_DIAG] VERIFIED: File exists with size ${fileData.size} bytes.`);
+      
       if (fileData.size > 0) {
-        KioskLogger.log('info', 'HARDWARE', `Step B/C: WRITE_VERIFIED: ${fileData.size} bytes at ${folderName}`, 'SUCCESS');
+        KioskLogger.log('info', 'HARDWARE', `WRITE_VERIFIED: ${fileData.size} bytes at ${folderName}`, 'SUCCESS');
         return { success: true, path: `${folderName}/${fileName}`, size: fileData.size };
       } else {
         throw new Error('VERIFICATION_FAILED: File created but reported size is zero.');
       }
     } catch (e: any) {
-      KioskLogger.log('error', 'HARDWARE', `Step B/C: DISK_WRITE_CRASH (${folderName})`, 'FAILED', e.message);
-      console.error(`[PIPELINE_TRACE] Disk Error: ${e.name} - ${e.message}`);
+      console.error(`[DISK_DIAG] CRASH: ${e.name} - ${e.message}`);
+      KioskLogger.log('error', 'HARDWARE', `DISK_WRITE_CRASH (${folderName})`, 'FAILED', e.message);
       return { success: false, error: e.message || 'Unknown Storage Error' };
     }
   },

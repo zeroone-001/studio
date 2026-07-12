@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -159,12 +158,15 @@ export default function KioskPage() {
       signInAnonymously(auth).then(() => {
         KioskLogger.log('info', 'SESSION', 'Anonymous Auth Successful', 'SUCCESS');
       }).catch(e => {
-        let diagnosticMsg = e.message;
-        if (e.code === 'auth/admin-restricted-operation') {
-          diagnosticMsg = "CRITICAL: Anonymous Auth is DISABLED in Firebase Console. Enable it in Authentication > Sign-in method.";
-        }
-        KioskLogger.log('error', 'SESSION', 'Auth Initialization Failed', 'FAILED', diagnosticMsg);
-        setRuntimeStatus(prev => ({ ...prev, fbException: diagnosticMsg, fbAuthState: 'ERROR', fbErrorCode: e.code, fbErrorMessage: e.message }));
+        console.error("[FIREBASE_AUTH_RAW_ERROR]", e);
+        KioskLogger.log('error', 'SESSION', 'Auth Failed', 'FAILED', `Code: ${e.code}, Msg: ${e.message}`);
+        setRuntimeStatus(prev => ({ 
+          ...prev, 
+          fbException: JSON.stringify(e, null, 2), 
+          fbAuthState: 'ERROR', 
+          fbErrorCode: e.code, 
+          fbErrorMessage: e.message 
+        }));
       });
 
       onAuthStateChanged(auth, (user) => {
@@ -255,7 +257,7 @@ export default function KioskPage() {
   }, [appState]);
 
   // MANDATORY SYNCHRONOUS ENTRY TO PRESERVE USER GESTURE
-  const initiatePrint = useCallback((blob: Blob) => {
+  const initiatePrint = (blob: Blob) => {
     console.log('[PRINT_DIAG] --- SYNC INTENT START ---');
     
     if (!blob || blob.size === 0) {
@@ -296,7 +298,7 @@ export default function KioskPage() {
     } else {
       console.error('[PRINT_DIAG] navigator.share API is missing in this browser context');
     }
-  }, []);
+  };
 
   const handleCloudSync = useCallback(async (blob: Blob) => {
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
@@ -336,10 +338,8 @@ export default function KioskPage() {
       try {
         await signInAnonymously(auth);
       } catch (e: any) {
-        if (e.code === 'auth/admin-restricted-operation') {
-          setUploadStatus("error"); 
-          return; 
-        }
+        setUploadStatus("error"); 
+        return; 
       }
     }
 
@@ -479,7 +479,7 @@ export default function KioskPage() {
             const lines: string[] = [];
             let currentLine = words[0] || '';
 
-            for (let i = 1; i < words.length; i++) {
+            for (let i = 1; i < words[i]; i++) {
               const testLine = currentLine + ' ' + words[i];
               const metrics = ctx.measureText(testLine);
               if (metrics.width > maxWidth) {

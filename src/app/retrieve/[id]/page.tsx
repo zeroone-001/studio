@@ -11,7 +11,7 @@ import { Download, Loader2, AlertCircle, Image as ImageIcon, RefreshCcw } from "
 
 /**
  * Public Retrieval Page.
- * DIAGNOSTIC MODE: Logs download button activation and blob generation status.
+ * Corrected to log data retrieval state and ensure Download link fires correctly.
  */
 export default function RetrievePage() {
   const params = useParams();
@@ -21,11 +21,11 @@ export default function RetrievePage() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<'verifying' | 'syncing' | 'complete'>('verifying');
   const retryCount = useRef(0);
-  const MAX_RETRIES = 120; // 60 seconds at 500ms intervals
+  const MAX_RETRIES = 120; 
 
   const fetchPhoto = useCallback(async () => {
     if (!id) return;
-    console.log(`[RETRIEVAL_DIAG] --- PIPELINE TRACE: FETCH START (${id}) ---`);
+    console.log(`[RETRIEVAL_DIAG] --- FETCH START (${id}) ---`);
     
     try {
       const { storage, db } = initializeFirebase();
@@ -34,49 +34,30 @@ export default function RetrievePage() {
       
       if (docSnap.exists()) {
         const data = docSnap.data();
-        console.log(`[RETRIEVAL_DIAG] Firestore Status: ${data.status}`);
+        console.log(`[RETRIEVAL_DIAG] Firestore Found. Status: ${data.status}`);
         
         if (data.status === 'complete' && data.downloadUrl) {
-          console.log(`[RETRIEVAL_DIAG] URL Found: ${data.downloadUrl}`);
           setImageUrl(data.downloadUrl);
           setLoading(false);
           setStatus('complete');
           return;
         }
-
-        const photoRef = ref(storage, `photos/${id}.jpg`);
-        try {
-          const url = await getDownloadURL(photoRef);
-          console.log(`[RETRIEVAL_DIAG] DIRECT_STORAGE_HIT: URL fetched`);
-          setImageUrl(url);
-          setLoading(false);
-          setStatus('complete');
-          return;
-        } catch (e: any) {
-          console.log(`[RETRIEVAL_DIAG] Storage check pending: ${e.code}`);
-          setStatus('syncing');
-        }
+        setStatus('syncing');
       } else {
-        console.log(`[RETRIEVAL_DIAG] Document NOT_FOUND yet.`);
+        console.log(`[RETRIEVAL_DIAG] Document not yet created in Firestore.`);
       }
 
       if (retryCount.current < MAX_RETRIES) {
         retryCount.current += 1;
-        setTimeout(fetchPhoto, 500); 
+        setTimeout(fetchPhoto, 1000); 
       } else {
-        console.error(`[RETRIEVAL_DIAG] TIMEOUT reached`);
         setError("Your photo sync is taking longer than expected. Please try again.");
         setLoading(false);
       }
     } catch (err: any) {
       console.error(`[RETRIEVAL_DIAG] Connection Error: ${err.message}`);
-      if (retryCount.current < MAX_RETRIES) {
-        retryCount.current += 1;
-        setTimeout(fetchPhoto, 1000);
-      } else {
-        setError("Unable to connect to JNL Cloud. Please check your signal.");
-        setLoading(false);
-      }
+      setError("Unable to connect to JNL Cloud.");
+      setLoading(false);
     }
   }, [id]);
 
@@ -85,24 +66,19 @@ export default function RetrievePage() {
   }, [fetchPhoto]);
 
   const handleDownload = async () => {
-    if (!imageUrl || !id) {
-      console.error("[RETRIEVAL_DIAG] Abort Download: URL missing");
-      return;
-    }
+    if (!imageUrl || !id) return;
 
-    console.log("[RETRIEVAL_DIAG] --- DOWNLOAD INITIATED BY GESTURE ---");
+    console.log("[RETRIEVAL_DIAG] --- DOWNLOAD CLICKED ---");
     
     try {
       const { db } = initializeFirebase();
       updateDoc(doc(db, "photos", id), { isDownloaded: true }).catch(() => {});
       
-      console.log(`[RETRIEVAL_DIAG] Fetching Blob from: ${imageUrl}`);
       const response = await fetch(imageUrl, { mode: 'cors' });
-      
-      if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
+      if (!response.ok) throw new Error('CORS or Network Block');
       
       const blob = await response.blob();
-      console.log(`[RETRIEVAL_DIAG] BLOB_CREATED: ${blob.size} bytes, ${blob.type}`);
+      console.log(`[RETRIEVAL_DIAG] Blob verified: ${blob.size} bytes`);
       
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -115,11 +91,8 @@ export default function RetrievePage() {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       }, 100);
-      
-      console.log("[RETRIEVAL_DIAG] DOWNLOAD_LINK_TRIGGERED");
     } catch (e: any) {
-      console.error("[RETRIEVAL_DIAG] DOWNLOAD_ERROR", e.message);
-      console.log("[RETRIEVAL_DIAG] Attempting window.open fallback");
+      console.warn("[RETRIEVAL_DIAG] Save-As link failed, using fallback tab open");
       window.open(imageUrl, '_blank');
     }
   };
@@ -136,7 +109,6 @@ export default function RetrievePage() {
       <div className="flex flex-col items-center justify-start w-full px-4 py-12 text-center">
         <div className="w-full max-w-lg bg-zinc-900 border border-white/10 p-8 rounded-[3rem] shadow-2xl mb-12">
           
-          {/* IMAGE PREVIEW AREA */}
           <div className="relative aspect-[2/3] w-full rounded-[2rem] overflow-hidden border-4 border-white shadow-xl bg-white mb-8">
             {imageUrl ? (
               <img src={imageUrl} alt="Portrait" className="w-full h-full object-contain animate-in fade-in duration-500" />
@@ -146,15 +118,11 @@ export default function RetrievePage() {
                   <Loader2 className="w-12 h-12 text-primary animate-spin" />
                   <ImageIcon className="w-6 h-6 text-zinc-300 absolute inset-0 m-auto" />
                 </div>
-                <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase italic tracking-widest animate-pulse">Syncing HD Version...</p>
-                  <p className="text-[8px] font-bold uppercase opacity-50">Inihahanda ang iyong larawan</p>
-                </div>
+                <p className="text-[10px] font-black uppercase italic tracking-widest animate-pulse">Syncing HD Version...</p>
               </div>
             )}
           </div>
 
-          {/* ACTIONS & STATUS AREA */}
           <div className="space-y-8">
             <div className="space-y-1">
               <h2 className="text-3xl font-black italic uppercase text-primary leading-none">HD SOFT COPY</h2>
@@ -167,9 +135,7 @@ export default function RetrievePage() {
                   <NeonButton onClick={handleDownload} className="w-full flex items-center justify-center gap-3 !py-6 text-xl animate-in zoom-in-95">
                     <Download className="w-6 h-6" /> DOWNLOAD NOW
                   </NeonButton>
-                  <p className="text-white/40 text-[10px] font-bold uppercase italic">
-                    Tip: Long press image to save directly
-                  </p>
+                  <p className="text-white/40 text-[10px] font-bold uppercase italic">Tip: Long press image to save directly</p>
                 </>
               ) : error ? (
                 <div className="space-y-4">
@@ -195,9 +161,7 @@ export default function RetrievePage() {
             </div>
 
             <div className="pt-2">
-              <p className="text-primary/60 text-[8px] font-black uppercase tracking-tighter">
-                JNL STUDIO CLOUD SYNCED
-              </p>
+              <p className="text-primary/60 text-[8px] font-black uppercase tracking-tighter">JNL STUDIO CLOUD SYNCED</p>
             </div>
           </div>
         </div>

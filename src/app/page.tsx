@@ -162,8 +162,12 @@ export default function KioskPage() {
       signInAnonymously(auth).then(() => {
         KioskLogger.log('info', 'SESSION', 'Anonymous Auth Successful', 'SUCCESS');
       }).catch(e => {
-        KioskLogger.log('error', 'SESSION', 'Auth Initialization Failed', 'FAILED', e.message);
-        setRuntimeStatus(prev => ({ ...prev, fbException: 'AUTH_FAILED: ' + e.message, fbAuthState: 'ERROR', fbErrorCode: e.code, fbErrorMessage: e.message }));
+        let diagnosticMsg = e.message;
+        if (e.code === 'auth/admin-restricted-operation') {
+          diagnosticMsg = "CRITICAL: Anonymous Auth is DISABLED in Firebase Console. Please enable it under Auth > Sign-in method.";
+        }
+        KioskLogger.log('error', 'SESSION', 'Auth Initialization Failed', 'FAILED', diagnosticMsg);
+        setRuntimeStatus(prev => ({ ...prev, fbException: diagnosticMsg, fbAuthState: 'ERROR', fbErrorCode: e.code, fbErrorMessage: e.message }));
       });
 
       onAuthStateChanged(auth, (user) => {
@@ -192,13 +196,6 @@ export default function KioskPage() {
         }));
       };
       checkHardware();
-      
-      const currentOrigin = window.location.origin;
-      if (currentOrigin.includes('cloudworkstations.dev') || currentOrigin.includes('localhost')) {
-        setOriginUrl("https://jnl-studio-booth.web.app");
-      } else {
-        setOriginUrl(currentOrigin);
-      }
     }
   }, []);
 
@@ -286,7 +283,6 @@ export default function KioskPage() {
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         KioskLogger.log('info', 'PRINT', 'Dispatching Share Intent to OS...', 'PENDING');
         
-        // EVIDENCE: This call triggers the Android Share Sheet where NokoPrint appears
         await navigator.share({
           files: [file],
           title: 'JNL Studio Portrait',
@@ -917,7 +913,6 @@ export default function KioskPage() {
               disabled={isPreparingPrint || !preparedBlob}
               onClick={() => {
                 if (preparedBlob) {
-                  // EVIDENCE: initiatePrint is called immediately on the click gesture thread
                   initiatePrint(preparedBlob);
                   handleCloudSync(preparedBlob);
                 }

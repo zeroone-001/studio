@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -164,60 +165,20 @@ export function AdminControls({
     };
   }, []);
 
-  const pairPrinter = async () => {
-    if ('usb' in navigator) {
-      try {
-        // @ts-ignore
-        await navigator.usb.requestDevice({ filters: [] });
-        KioskLogger.log('info', 'HARDWARE', 'New USB Device Paired', 'SUCCESS');
-      } catch (e) {
-        KioskLogger.log('error', 'HARDWARE', 'USB Pairing Cancelled', 'FAILED');
-      }
-    }
-  };
-
-  const mountUsb = async () => {
-    try {
-      // @ts-ignore
-      if (window.showDirectoryPicker) {
-        // @ts-ignore
-        const handle = await window.showDirectoryPicker();
-        onMountUsb(handle);
-        KioskLogger.log('info', 'HARDWARE', 'Lexar USB Mounted', 'SUCCESS');
-      } else {
-        KioskLogger.log('error', 'HARDWARE', 'FileSystem API Not Supported', 'FAILED');
-      }
-    } catch (e) {
-      KioskLogger.log('error', 'HARDWARE', 'USB Mount Cancelled', 'FAILED');
-    }
-  };
-
-  const mountGallery = async () => {
-    try {
-      // @ts-ignore
-      if (window.showDirectoryPicker) {
-        // @ts-ignore
-        const handle = await window.showDirectoryPicker();
-        onMountGallery(handle);
-        KioskLogger.log('info', 'HARDWARE', 'Internal Gallery Mounted', 'SUCCESS');
-      }
-    } catch (e) {}
-  };
-
   const TraceItem = ({ label, value }: { label: string, value?: string | number }) => (
     <div className="flex justify-between items-center px-1 border-b border-white/5 py-1">
       <span className="text-[7px] font-bold text-white/40 uppercase tracking-widest">{label}</span>
       <div className="flex items-center gap-1">
         {value === 'PASS' || value === 'TRUE' || value === 'YES' || value === 'LOGGED_IN' ? (
           <CheckCircle2 className="w-2.5 h-2.5 text-green-500" />
-        ) : value === 'FAIL' || value === 'FALSE' || value === 'NO' || value === 'SIGNED_OUT' ? (
+        ) : value === 'FAIL' || value === 'FALSE' || value === 'NO' || value === 'SIGNED_OUT' || value === 'ERROR' ? (
           <AlertCircle className="w-2.5 h-2.5 text-red-500" />
         ) : (
           <Loader2 className="w-2.5 h-2.5 text-white/10 animate-spin" />
         )}
         <span className={cn(
           "text-[8px] font-black italic", 
-          (value === 'PASS' || value === 'TRUE' || value === 'YES' || value === 'LOGGED_IN') ? "text-green-500" : (value === 'FAIL' || value === 'FALSE' || value === 'NO' || value === 'SIGNED_OUT') ? "text-red-500" : "text-white/20"
+          (value === 'PASS' || value === 'TRUE' || value === 'YES' || value === 'LOGGED_IN') ? "text-green-500" : (value === 'FAIL' || value === 'FALSE' || value === 'NO' || value === 'SIGNED_OUT' || value === 'ERROR') ? "text-red-500" : "text-white/20"
         )}>
           {value || 'PENDING'}
         </span>
@@ -285,45 +246,48 @@ export function AdminControls({
                   TEST ₱100 TIER
                 </button>
               </div>
-
-              <div className="space-y-2">
-                <label className="text-[7px] font-black uppercase text-white/40 tracking-widest">Hardware Ops</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button 
-                    onClick={pairPrinter}
-                    className="py-4 text-[9px] font-black uppercase flex items-center justify-center gap-2 border border-blue-500/30 bg-blue-500/5 text-blue-400 rounded-xl hover:bg-blue-500/10"
-                  >
-                    <Printer className="w-4 h-4" /> PAIR PRINTER
-                  </button>
-                  <button 
-                    onClick={mountUsb}
-                    className={cn(
-                      "py-4 text-[9px] font-black uppercase flex items-center justify-center gap-2 border rounded-xl transition-all",
-                      usbHandle ? "border-green-500/30 bg-green-500/5 text-green-400" : "border-amber-500/30 bg-amber-500/5 text-amber-400"
-                    )}
-                  >
-                    <HardDrive className="w-4 h-4" /> {usbHandle ? "USB READY" : "MOUNT LEXAR"}
-                  </button>
-                  <button 
-                    onClick={mountGallery}
-                    className={cn(
-                      "py-4 text-[9px] font-black uppercase flex items-center justify-center gap-2 border rounded-xl transition-all",
-                      galleryHandle ? "border-green-500/30 bg-green-500/5 text-green-400" : "border-indigo-500/30 bg-indigo-500/5 text-indigo-400"
-                    )}
-                  >
-                    <ImageIcon className="w-4 h-4" /> {galleryHandle ? "GALLERY READY" : "MOUNT GALLERY"}
-                  </button>
-                  <button onClick={onReset} className="py-4 bg-red-500/10 border border-red-500/30 text-[9px] font-black uppercase text-red-500 rounded-xl flex items-center justify-center gap-2">
-                    <RefreshCcw className="w-3 h-3" /> RESET ALL
-                  </button>
-                </div>
-              </div>
+              <button onClick={onReset} className="w-full py-4 bg-red-500/10 border border-red-500/30 text-[9px] font-black uppercase text-red-500 rounded-xl flex items-center justify-center gap-2">
+                <RefreshCcw className="w-3 h-3" /> RESET SESSION
+              </button>
             </div>
           )}
 
           {view === 'logs' && (
             <div className="space-y-4">
-               {/* FIREBASE RUNTIME CONFIG PROOF */}
+               <div className="bg-red-500/10 border-2 border-red-500/40 p-3 rounded-xl space-y-2">
+                  <h3 className="text-[8px] font-black uppercase text-red-500 italic mb-2 flex items-center gap-2">
+                    <ShieldAlert className="w-3 h-3" /> FIREBASE STATUS TRACE
+                  </h3>
+                  <div className="grid grid-cols-1 gap-1">
+                     <TraceItem label="Auth State" value={runtimeStatus?.fbAuthState} />
+                     <TraceItem label="Error Code" value={runtimeStatus?.fbErrorCode} />
+                     <div className="flex flex-col py-1 border-b border-red-500/10">
+                       <span className="text-[6px] text-white/40 uppercase">System Exception</span>
+                       <span className="text-[7px] font-black text-red-400 break-words">{runtimeStatus?.fbException}</span>
+                     </div>
+                  </div>
+               </div>
+
+               <div className="flex justify-between items-center px-1">
+                  <span className="text-[8px] font-black text-white/40 uppercase">Recent System Logs</span>
+                  <button onClick={() => KioskLogger.clear()} className="text-red-500"><Trash2 className="w-3 h-3" /></button>
+               </div>
+               <div className="space-y-1">
+                  {logs.slice(0, 10).map((log, i) => (
+                    <div key={i} className="text-[7px] bg-white/5 p-2 rounded-lg border border-white/5 flex flex-col gap-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-white/80 font-bold">{log.module}: {log.message}</span>
+                        <span className={cn("font-black", log.status === 'SUCCESS' ? "text-green-500" : "text-red-500")}>{log.status}</span>
+                      </div>
+                      {log.error && <span className="text-red-400 italic text-[6px]">{log.error}</span>}
+                    </div>
+                  ))}
+               </div>
+            </div>
+          )}
+
+          {view === 'diag' && (
+            <div className="space-y-4">
                <div className="bg-indigo-500/10 border-2 border-indigo-500/40 p-3 rounded-xl space-y-2">
                   <h3 className="text-[8px] font-black uppercase text-indigo-400 italic mb-2 flex items-center gap-2">
                     <FileCode className="w-3 h-3" /> RUNTIME CONFIG PROOF
@@ -338,59 +302,18 @@ export function AdminControls({
                        <span className="text-[6px] text-white/40 uppercase">projectId</span>
                        <span className="text-[7px] font-mono text-white/60">{runtimeStatus?.rawProjectId}</span>
                      </div>
-                  </div>
-               </div>
-
-               {/* EMERGENCY FIREBASE STORAGE DEBUG */}
-               <div className="bg-red-500/10 border-2 border-red-500/40 p-3 rounded-xl space-y-2">
-                  <h3 className="text-[8px] font-black uppercase text-red-500 italic mb-2 flex items-center gap-2">
-                    <ShieldAlert className="w-3 h-3" /> FIREBASE STATUS TRACE
-                  </h3>
-                  <div className="grid grid-cols-1 gap-1">
-                     <TraceItem label="Auth State" value={runtimeStatus?.fbAuthState} />
-                     <TraceItem label="Task State" value={runtimeStatus?.fbTaskState} />
-                     <div className="flex flex-col py-1 border-b border-red-500/10">
-                       <span className="text-[6px] text-white/40 uppercase">Error Code</span>
-                       <span className="text-[7px] font-black text-red-400">{runtimeStatus?.fbErrorCode}</span>
+                     <div className="flex flex-col py-1 border-b border-white/10">
+                       <span className="text-[6px] text-white/40 uppercase">appId</span>
+                       <span className="text-[7px] font-mono text-white/60">{runtimeStatus?.rawAppId}</span>
                      </div>
-                     <div className="flex flex-col py-1 border-b border-red-500/10">
-                       <span className="text-[6px] text-white/40 uppercase">Download URL</span>
-                       <span className="text-[6px] font-mono text-white/40 break-all">{runtimeStatus?.uploadedFileUrl}</span>
+                     <div className="flex flex-col py-1 border-b border-white/10">
+                       <span className="text-[6px] text-white/40 uppercase">authDomain</span>
+                       <span className="text-[7px] font-mono text-white/60">{runtimeStatus?.rawAuthDomain}</span>
                      </div>
-                  </div>
-               </div>
-
-               <div className="flex justify-between items-center px-1">
-                  <span className="text-[8px] font-black text-white/40 uppercase">System Logs</span>
-                  <button onClick={() => KioskLogger.clear()} className="text-red-500"><Trash2 className="w-3 h-3" /></button>
-               </div>
-               <div className="space-y-1">
-                  {logs.slice(0, 5).map((log, i) => (
-                    <div key={i} className="text-[7px] bg-white/5 p-2 rounded-lg border border-white/5 flex justify-between">
-                      <span className="text-white/80 font-bold">{log.message}</span>
-                      <span className={cn("font-black", log.status === 'SUCCESS' ? "text-green-500" : "text-red-500")}>{log.status}</span>
-                    </div>
-                  ))}
-               </div>
-            </div>
-          )}
-
-          {view === 'diag' && (
-            <div className="space-y-4">
-               <div className="space-y-2">
-                  <label className="text-[7px] font-black uppercase text-white/40 flex items-center gap-2">
-                    <Smartphone className="w-3 h-3" /> HARDWARE TRUTH
-                  </label>
-                  <div className="bg-black/40 border border-white/10 p-3 rounded-xl space-y-2">
-                     <div className="flex justify-between items-center px-1 border-b border-white/5 py-1">
-                       <span className="text-[7px] font-bold text-white/40 uppercase">USB Devices Found</span>
-                       <span className={cn("text-[8px] font-black", (runtimeStatus?.usbDevicesCount || 0) > 0 ? "text-green-500" : "text-red-500")}>
-                         {runtimeStatus?.usbDevicesCount || 0} DEVICES
-                       </span>
+                     <div className="flex flex-col py-1 border-b border-white/10">
+                       <span className="text-[6px] text-white/40 uppercase">storageBucket</span>
+                       <span className="text-[7px] font-mono text-white/60">{runtimeStatus?.rawStorageBucket}</span>
                      </div>
-                     <TraceItem label="Android Share Capable" value={runtimeStatus?.shareCapable} />
-                     <TraceItem label="Lexar Permission Valid" value={usbHandle ? 'YES' : 'NO'} />
-                     <TraceItem label="Gallery Permission Valid" value={galleryHandle ? 'YES' : 'NO'} />
                   </div>
                </div>
             </div>

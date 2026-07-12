@@ -18,12 +18,15 @@ let storage: FirebaseStorage;
 let auth: Auth;
 
 export function initializeFirebase() {
-  // CRITICAL DIAGNOSTIC PROOF
+  // CRITICAL DIAGNOSTIC PROOF - DO NOT REMOVE
   console.log('--- FIREBASE RUNTIME CONFIG PROOF ---');
   console.log('Import Source: src/firebase/config.ts');
-  console.log('Config Object:', JSON.stringify(firebaseConfig, null, 2));
-  console.log('apiKey Type:', typeof firebaseConfig.apiKey);
-  console.log('apiKey Length:', firebaseConfig.apiKey?.length);
+  console.log('Project ID:', firebaseConfig.projectId);
+  console.log('API Key:', firebaseConfig.apiKey);
+  console.log('App ID:', firebaseConfig.appId);
+  console.log('Auth Domain:', firebaseConfig.authDomain);
+  console.log('Storage Bucket:', firebaseConfig.storageBucket);
+  console.log('Messaging Sender ID:', firebaseConfig.messagingSenderId);
   console.log('--------------------------------------');
 
   if (!getApps().length) {
@@ -32,7 +35,7 @@ export function initializeFirebase() {
     // Enable error-only logging for stable kiosk performance
     setLogLevel('error');
 
-    // Enable IndexedDB Persistence for offline resiliency (Crucial for Honor Pad Kiosk)
+    // Enable IndexedDB Persistence for offline resiliency
     db = initializeFirestore(app, {
       localCache: persistentLocalCache({ 
         tabManager: persistentMultipleTabManager() 

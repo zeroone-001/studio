@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -162,7 +163,7 @@ export default function KioskPage() {
         KioskLogger.log('error', 'SESSION', 'Auth Failed', 'FAILED', `Code: ${e.code}, Msg: ${e.message}`);
         setRuntimeStatus(prev => ({ 
           ...prev, 
-          fbException: JSON.stringify(e, null, 2), 
+          fbException: JSON.stringify({ code: e.code, message: e.message, name: e.name }, null, 2), 
           fbAuthState: 'ERROR', 
           fbErrorCode: e.code, 
           fbErrorMessage: e.message 
@@ -256,39 +257,45 @@ export default function KioskPage() {
     }
   }, [appState]);
 
-  // MANDATORY SYNCHRONOUS ENTRY TO PRESERVE USER GESTURE
+  /**
+   * MANDATORY SYNCHRONOUS DISPATCH
+   * To trigger an Android Share Intent via navigator.share, the call MUST be 
+   * part of the immediate synchronous call stack of the user gesture (click).
+   */
   const initiatePrint = (blob: Blob) => {
-    console.log('[PRINT_DIAG] --- SYNC INTENT START ---');
+    const start = Date.now();
+    console.log('[PRINT_DIAG] --- SYNC INTENT DISPATCH ---');
+    console.log(`[PRINT_DIAG] User Activation Active: ${navigator.userActivation?.isActive}`);
     
     if (!blob || blob.size === 0) {
-      console.error('[PRINT_DIAG] ABORT: Empty Blob');
+      KioskLogger.log('error', 'PRINT', 'ABORT: Blob is null or empty', 'FAILED');
       return;
     }
 
     const fileName = `JNL_STUDIO_PORTRAIT_${Date.now()}.jpg`;
     const file = new File([blob], fileName, { type: 'image/jpeg' });
     
-    // Capability Check (SYNCHRONOUS)
     const canShareResult = navigator.canShare && navigator.canShare({ files: [file] });
     console.log(`[PRINT_DIAG] navigator.canShare check: ${canShareResult}`);
-    console.log(`[PRINT_DIAG] Payload: ${file.name} (${file.size} bytes), type: ${file.type}`);
+    console.log(`[PRINT_DIAG] Payload: ${file.name} (${(file.size/1024).toFixed(1)} KB)`);
 
     if (navigator.share) {
-      // TRIGGER INTENT (SYNCHRONOUS CALL)
+      // THE SYNC CALL
       navigator.share({
         files: [file],
         title: 'JNL Studio Portrait',
         text: 'Print with NokoPrint'
       })
       .then(() => {
-        console.log('[PRINT_DIAG] Intent Resolved Successfully');
-        KioskLogger.log('info', 'PRINT', 'Intent Resolved', 'SUCCESS');
+        const duration = Date.now() - start;
+        console.log(`[PRINT_DIAG] Intent Resolved in ${duration}ms`);
+        KioskLogger.log('info', 'PRINT', 'Intent Resolved Successfully', 'SUCCESS');
         setRuntimeStatus(prev => ({ ...prev, intentAcknowledged: 'PASS', nokoprintOpened: 'PASS' }));
       })
       .catch((e: any) => {
         const isAbort = e.name === 'AbortError';
-        console.error(`[PRINT_DIAG] Intent Result: ${e.name} - ${e.message}`);
-        KioskLogger.log(isAbort ? 'info' : 'error', 'PRINT', `Intent ${isAbort ? 'Aborted' : 'Failed'}`, isAbort ? 'PENDING' : 'FAILED', e.message);
+        console.error(`[PRINT_DIAG] Intent Error: ${e.name} - ${e.message}`);
+        KioskLogger.log(isAbort ? 'info' : 'error', 'PRINT', `Intent Result: ${e.name}`, isAbort ? 'PENDING' : 'FAILED', e.message);
         setRuntimeStatus(prev => ({ 
           ...prev, 
           intentAcknowledged: isAbort ? 'ABORTED' : 'FAIL', 
@@ -296,66 +303,45 @@ export default function KioskPage() {
         }));
       });
     } else {
-      console.error('[PRINT_DIAG] navigator.share API is missing in this browser context');
+      KioskLogger.log('error', 'PRINT', 'API MISSING: navigator.share not found', 'FAILED');
     }
   };
 
   const handleCloudSync = useCallback(async (blob: Blob) => {
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
-    KioskLogger.log('info', 'SESSION', `--- CLOUD & DISK SYNC TRACE (${sessionId}) ---`, 'PENDING');
+    KioskLogger.log('info', 'SESSION', `--- ASYNC OUTPUT PIPELINE (${sessionId}) ---`, 'PENDING');
     
-    setRuntimeStatus(prev => ({ 
-      ...prev, 
-      uploadStarted: 'TRUE', 
-      uploadTarget: `photos/${sessionId}.jpg`,
-      photoGenerated: 'PASS'
-    }));
+    if (!blob || blob.size === 0) return;
 
-    if (!blob || blob.size === 0) {
-      KioskLogger.log('error', 'SESSION', 'Abort: Blob is null or zero size', 'FAILED');
-      return;
-    }
-
-    // Step A: Local Cache (IndexedDB)
+    // Step A: IndexedDB Persistence (Fallback)
     await SessionStore.savePhotoLocally(sessionId, blob);
 
     // Step B: Hardware Backup (Lexar/Gallery)
     if (usbHandle) {
-      SessionStore.saveToHandle(usbHandle, 'JNL_STUDIO_ARCHIVE', sessionId, blob);
-    } else {
-      console.warn('[DISK_DIAG] No USB Handle detected at sync time. Disk backup skipped.');
+      await SessionStore.saveToHandle(usbHandle, 'JNL_STUDIO_ARCHIVE', sessionId, blob);
     }
-
     if (galleryHandle) {
-      SessionStore.saveToHandle(galleryHandle, 'JNL_STUDIO_GALLERY', sessionId, blob);
+      await SessionStore.saveToHandle(galleryHandle, 'JNL_STUDIO_GALLERY', sessionId, blob);
     }
 
-    // Step D: Firebase Upload
+    // Step D: Firebase & QR
     const { storage, db, auth } = initializeFirebase();
-
-    if (!auth.currentUser) {
-      try {
-        await signInAnonymously(auth);
-      } catch (e: any) {
-        setUploadStatus("error"); 
-        return; 
-      }
-    }
-
     setUploadStatus("uploading");
-    const docRef = doc(db, "photos", sessionId);
-    const sessionData = {
-      id: sessionId,
-      storagePath: `photos/${sessionId}.jpg`,
-      timestamp: serverTimestamp(),
-      isDownloaded: false,
-      promoConsent: promoConsent,
-      status: 'uploading'
-    };
 
     try {
-      await setDoc(docRef, sessionData);
+      if (!auth.currentUser) await signInAnonymously(auth);
+
+      const docRef = doc(db, "photos", sessionId);
+      await setDoc(docRef, {
+        id: sessionId,
+        storagePath: `photos/${sessionId}.jpg`,
+        timestamp: serverTimestamp(),
+        isDownloaded: false,
+        promoConsent: promoConsent,
+        status: 'uploading'
+      });
+
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       const uploadTask = uploadBytesResumable(photoRef, blob, { contentType: 'image/jpeg' });
 
@@ -366,28 +352,27 @@ export default function KioskPage() {
         },
         async (error: any) => {
           setUploadStatus("error");
-          setRuntimeStatus(prev => ({ ...prev, uploadFailed: 'TRUE', fbErrorCode: error.code }));
+          KioskLogger.log('error', 'CLOUD', 'Upload Task Failed', 'FAILED', error.message);
         },
         async () => {
           const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
           await updateDoc(docRef, { status: 'complete', downloadUrl: downloadUrl });
           
-          // CORRECT ROUTING: Point QR to Retrieval Page, not raw image
           const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
           setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
           setUploadStatus("complete");
-          KioskLogger.log('info', 'CLOUD', 'Step D: Soft Copy Ready at Retrieval Page', 'SUCCESS');
+          KioskLogger.log('info', 'CLOUD', 'QR Link Generated', 'SUCCESS');
         }
       );
     } catch (error: any) {
       setUploadStatus("error");
+      KioskLogger.log('error', 'SESSION', 'Cloud Sync Crash', 'FAILED', error.message);
     }
   }, [usbHandle, galleryHandle, promoConsent]);
 
   const preSpoolPrintFile = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0 || spoolingRef.current) return;
     
-    KioskLogger.log('info', 'SESSION', '--- CANVAS ENGINE START ---', 'PENDING');
     setIsPreparingPrint(true);
     spoolingRef.current = true;
 
@@ -397,7 +382,7 @@ export default function KioskPage() {
       exportCanvas.height = 2400;
       const ctx = exportCanvas.getContext('2d', { alpha: false });
       
-      if (!ctx) throw new Error('Canvas Context Creation Failed');
+      if (!ctx) throw new Error('Context Failed');
 
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(0, 0, 1600, 2400);
@@ -408,9 +393,9 @@ export default function KioskPage() {
       const loadImage = (src: string): Promise<HTMLImageElement> => {
         return new Promise((resolve, reject) => {
           const img = new Image();
-          const timeout = setTimeout(() => reject(new Error(`Image load timeout`)), 15000);
+          const timeout = setTimeout(() => reject(new Error('Timeout')), 10000);
           img.onload = () => { clearTimeout(timeout); resolve(img); };
-          img.onerror = () => { clearTimeout(timeout); reject(new Error('Image load error')); };
+          img.onerror = () => { clearTimeout(timeout); reject(new Error('Load Error')); };
           img.src = src;
         });
       };
@@ -421,124 +406,71 @@ export default function KioskPage() {
           const photo = capturedPhotos[i];
           if (!photo) continue;
           
-          try {
-            const img = await loadImage(photo);
-            const sX = isStrip ? slot.x / 2 : slot.x;
-            const sW = isStrip ? slot.w / 2 : slot.w;
+          const img = await loadImage(photo);
+          const sX = isStrip ? slot.x / 2 : slot.x;
+          const sW = isStrip ? slot.w / 2 : slot.w;
 
-            if (selectedFilter.filter) { ctx.filter = selectedFilter.filter; }
-            ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
-            ctx.filter = 'none';
-          } catch (e: any) {
-            console.warn(`[CANVAS] Slot ${i} skipped: ${e.message}`);
-          }
+          if (selectedFilter.filter) ctx.filter = selectedFilter.filter;
+          ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
+          ctx.filter = 'none';
           await new Promise(r => requestAnimationFrame(r));
         }
         
-        const sortedStickers = [...placedStickers].sort((a, b) => a.zIndex - b.zIndex);
-        for (const s of sortedStickers) {
+        for (const s of [...placedStickers].sort((a, b) => a.zIndex - b.zIndex)) {
           const svgElement = document.querySelector(`[data-sticker-id="${s.id}"] svg`);
           if (!svgElement) continue;
 
-          try {
-            const svgString = new XMLSerializer().serializeToString(svgElement);
-            const svgBlob = new Blob([svgString], {type: 'image/svg+xml;charset=utf-8'});
-            const url = URL.createObjectURL(svgBlob);
-            const stickerImg = await loadImage(url);
+          const svgString = new XMLSerializer().serializeToString(svgElement);
+          const svgBlob = new Blob([svgString], {type: 'image/svg+xml;charset=utf-8'});
+          const url = URL.createObjectURL(svgBlob);
+          const stickerImg = await loadImage(url);
 
-            const targetW = (s.size / 100) * STRIP_W;
-            const targetX = (s.x / 100) * STRIP_W + offsetX;
-            const targetY = (s.y / 100) * 2400;
+          const targetW = (s.size / 100) * STRIP_W;
+          const targetX = (s.x / 100) * STRIP_W + offsetX;
+          const targetY = (s.y / 100) * 2400;
 
-            ctx.save();
-            ctx.translate(targetX, targetY);
-            ctx.rotate((s.rotation * Math.PI) / 180);
-            ctx.scale(s.flipX ? -1 : 1, s.flipY ? -1 : 1);
-            ctx.drawImage(stickerImg, -targetW / 2, -targetW / 2, targetW, targetW);
-            ctx.restore();
-            URL.revokeObjectURL(url);
-          } catch (e: any) {
-            console.warn(`[CANVAS] Sticker ${s.id} failed: ${e.message}`);
-          }
-          await new Promise(r => requestAnimationFrame(r));
+          ctx.save();
+          ctx.translate(targetX, targetY);
+          ctx.rotate((s.rotation * Math.PI) / 180);
+          ctx.scale(s.flipX ? -1 : 1, s.flipY ? -1 : 1);
+          ctx.drawImage(stickerImg, -targetW / 2, -targetW / 2, targetW, targetW);
+          ctx.restore();
+          URL.revokeObjectURL(url);
+          await new Promise(r => setTimeout(r, 0));
         }
 
         const footerY = 2200;
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(offsetX, footerY, STRIP_W, 200);
 
-        const drawAutoScaledQuote = (text: string, x: number, y: number, maxWidth: number, maxHeight: number) => {
-          let fontSize = isStrip ? 32 : 48;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillStyle = '#000000';
-
-          const wrapText = (txt: string, fSize: number) => {
-            ctx.font = `bold italic ${fSize}px Inter, sans-serif`;
-            const words = txt.split(' ');
-            const lines: string[] = [];
-            let currentLine = words[0] || '';
-
-            for (let i = 1; i < words[i]; i++) {
-              const testLine = currentLine + ' ' + words[i];
-              const metrics = ctx.measureText(testLine);
-              if (metrics.width > maxWidth) {
-                lines.push(currentLine);
-                currentLine = words[i];
-              } else {
-                currentLine = testLine;
-              }
-            }
-            lines.push(currentLine);
-            return lines;
-          };
-
-          let lines = wrapText(text, fontSize);
-          while (fontSize > 12 && (lines.length * (fontSize + 10)) > maxHeight) {
-            fontSize -= 2;
-            lines = wrapText(text, fontSize);
-          }
-
-          const totalHeight = lines.length * (fontSize + 10);
-          let startY = y - (totalHeight / 2) + (fontSize / 2);
-          lines.forEach((line, index) => {
-            ctx.fillText(`"${line}${index === lines.length - 1 ? '"' : ''}`, x, startY + (index * (fontSize + 10)));
-          });
-        };
-
-        drawAutoScaledQuote(selectedQuote.text, offsetX + (STRIP_W / 2), footerY + 80, STRIP_W - 100, 140);
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'alphabetic';
-        ctx.font = '900 24px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
         ctx.fillStyle = '#000000';
+        ctx.font = `bold italic ${isStrip ? 28 : 40}px Inter, sans-serif`;
+        ctx.fillText(`"${selectedQuote.text}"`, offsetX + (STRIP_W / 2), footerY + 80);
+
+        ctx.textAlign = 'left';
+        ctx.font = '900 24px Inter, sans-serif';
         ctx.fillText('JNL STUDIO', offsetX + 60, footerY + 180);
       };
 
       if (isStrip) {
         await drawContent(0);
-        await new Promise(r => setTimeout(r, 0));
         await drawContent(800);
       } else {
         await drawContent(0);
       }
 
       exportCanvas.toBlob((blob) => {
-        if (blob && blob.size > 0) {
-          KioskLogger.log('info', 'SESSION', `Canvas Render Success: ${blob.size} bytes`, 'SUCCESS');
+        if (blob) {
           setPreparedBlob(blob);
-          setRuntimeStatus(prev => ({
-            ...prev,
-            blobCreated: 'PASS',
-            blobSize: `${(blob.size / 1024).toFixed(1)} KB`
-          }));
-        } else {
-          KioskLogger.log('error', 'SESSION', 'Canvas to Blob FAILED', 'FAILED');
+          KioskLogger.log('info', 'SESSION', `Canvas Render Success: ${(blob.size/1024).toFixed(1)} KB`, 'SUCCESS');
         }
         setIsPreparingPrint(false);
         spoolingRef.current = false;
       }, 'image/jpeg', 0.95);
     } catch (e: any) {
-      KioskLogger.log('error', 'SESSION', 'Canvas Engine Crash', 'FAILED', e.message);
+      KioskLogger.log('error', 'SESSION', 'Canvas Failure', 'FAILED', e.message);
       setIsPreparingPrint(false);
       spoolingRef.current = false;
     }
@@ -879,9 +811,9 @@ export default function KioskPage() {
               disabled={isPreparingPrint || !preparedBlob}
               onClick={() => {
                 if (preparedBlob) {
-                  // PRIORITY 1: TRIGGER INTENT IMMEDIATELY (SYNCHRONOUS)
+                  // PRIORITY 1: DISPATCH INTENT SYNC (NO microtasks allowed before this)
                   initiatePrint(preparedBlob);
-                  // PRIORITY 2: DISPATCH CLOUD TASKS (ASYNC BACKGROUND)
+                  // PRIORITY 2: DISPATCH ASYNC TASKS
                   handleCloudSync(preparedBlob);
                 }
                 setAppState("printing");

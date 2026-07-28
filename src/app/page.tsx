@@ -158,7 +158,6 @@ export default function KioskPage() {
       }));
 
       signInAnonymously(auth).catch(e => {
-        console.error("[FIREBASE_AUTH_RAW_ERROR]", e);
         KioskLogger.log('error', 'SESSION', 'Auth Failed', 'FAILED', `Code: ${e.code}, Msg: ${e.message}`);
         setRuntimeStatus(prev => ({ 
           ...prev, 
@@ -176,27 +175,39 @@ export default function KioskPage() {
           fbAuthState: user ? 'LOGGED_IN' : 'SIGNED_OUT'
         }));
       });
-
-      const checkHardware = async () => {
-        let usbCount = 0;
-        if ('usb' in navigator) {
-          try {
-            const devices = await navigator.usb.getDevices();
-            usbCount = devices.length;
-          } catch (e) {}
-        }
-        setRuntimeStatus(prev => ({
-          ...prev,
-          secureContext: window.isSecureContext ? 'YES' : 'NO',
-          topLevelContext: window.self === window.top ? 'YES' : 'NO',
-          userAgent: navigator.userAgent,
-          usbDevicesCount: usbCount,
-          shareCapable: !!navigator.share ? 'YES' : 'NO'
-        }));
-      };
-      checkHardware();
     }
   }, []);
+
+  // Camera Management useEffect - Stabilized to prevent blackouts
+  useEffect(() => {
+    if (appState === "setup" || appState === "capturing") {
+      const startCamera = async () => {
+        if (cameraStream && cameraStream.active) {
+          if (videoRef.current && videoRef.current.srcObject !== cameraStream) {
+             videoRef.current.srcObject = cameraStream;
+          }
+          return;
+        }
+
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { 
+              width: { ideal: 1920 }, 
+              height: { ideal: 1080 },
+              facingMode: "user"
+            }, 
+            audio: false 
+          });
+          setCameraStream(stream);
+          if (videoRef.current) videoRef.current.srcObject = stream;
+          KioskLogger.log('info', 'HARDWARE', 'Camera Stream Active', 'SUCCESS');
+        } catch (e: any) {
+          KioskLogger.log('error', 'HARDWARE', 'Camera Request Failed', 'FAILED', e.message);
+        }
+      };
+      startCamera();
+    }
+  }, [appState, cameraStream]);
 
   useEffect(() => {
     const { db, storage } = initializeFirebase();
@@ -254,7 +265,7 @@ export default function KioskPage() {
     }
   }, [appState]);
 
-  const initiatePrint = async (blob: Blob) => {
+  const initiatePrint = (blob: Blob) => {
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
     
@@ -262,41 +273,41 @@ export default function KioskPage() {
     
     try {
       const url = URL.createObjectURL(blob);
-      KioskLogger.log('info', 'PRINT', `JPEG Created: ${(blob.size/1024).toFixed(1)} KB`, 'SUCCESS');
-
-      // 1. SAVE TO HANDLES (Gallery/USB)
+      
+      // 1. SILENT SAVES (GALLERY/USB)
       if (galleryHandle) {
-        await SessionStore.saveToHandle(galleryHandle, 'JNL_GALLERY', sessionId, blob);
-        KioskLogger.log('info', 'HARDWARE', 'Saved to Gallery Handle', 'SUCCESS');
+        SessionStore.saveToHandle(galleryHandle, 'JNL_GALLERY', sessionId, blob);
       }
       
       if (usbHandle) {
-        await SessionStore.saveToHandle(usbHandle, 'JNL_LEXAR_ARCHIVE', sessionId, blob);
-        KioskLogger.log('info', 'HARDWARE', 'Saved to USB Handle', 'SUCCESS');
+        SessionStore.saveToHandle(usbHandle, 'JNL_LEXAR_ARCHIVE', sessionId, blob);
       }
 
-      // 2. TRIGGER SYSTEM DOWNLOAD (Direct Gallery Path)
+      // 2. TRIGGER SYSTEM DOWNLOAD (ENSURES GALLERY APPEARANCE)
       const link = document.createElement('a');
       link.href = url;
-      link.download = `JNL_STUDIO_PORTRAIT_${sessionId}.jpg`;
+      link.download = `JNL_STUDIO_${sessionId}.jpg`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      KioskLogger.log('info', 'PRINT', 'Triggered System Download (Gallery)', 'SUCCESS');
 
-      // 3. TRIGGER ANDROID PRINT FRAMEWORK (NokoPrint Bridge)
+      // 3. TRIGGER ANDROID PRINT (NOKOPRINT INTERCEPT)
       if (printFrameRef.current) {
         const frame = printFrameRef.current;
         const frameDoc = frame.contentDocument || frame.contentWindow?.document;
         if (frameDoc) {
           frameDoc.body.innerHTML = `
-            <style>@page { size: 4in 6in; margin: 0; } body { margin: 0; padding: 0; }</style>
-            <img src="${url}" style="width: 100%; height: 100%; object-fit: contain;">
+            <style>
+              @page { size: 4in 6in; margin: 0; } 
+              body { margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; background: white; }
+              img { max-width: 100%; max-height: 100%; object-fit: contain; }
+            </style>
+            <img src="${url}">
           `;
           setTimeout(() => {
             frame.contentWindow?.focus();
             frame.contentWindow?.print();
-            KioskLogger.log('info', 'PRINT', 'Sent to NokoPrint Bridge', 'SUCCESS');
+            KioskLogger.log('info', 'PRINT', 'Sent to Android Print Spooler', 'SUCCESS');
           }, 500);
         }
       }
@@ -307,7 +318,7 @@ export default function KioskPage() {
   };
 
   const handleCloudSync = useCallback(async (blob: Blob, sessionId: string) => {
-    KioskLogger.log('info', 'CLOUD', `Step D: Cloud Sync Start (${sessionId})`, 'PENDING');
+    KioskLogger.log('info', 'CLOUD', `Sync Start (${sessionId})`, 'PENDING');
     
     const { storage, db, auth } = initializeFirebase();
     setUploadStatus("uploading");
@@ -358,6 +369,7 @@ export default function KioskPage() {
     
     setIsPreparingPrint(true);
     spoolingRef.current = true;
+    KioskLogger.log('info', 'SESSION', 'Render Cycle Started', 'PENDING');
 
     try {
       const exportCanvas = document.createElement('canvas');
@@ -365,7 +377,7 @@ export default function KioskPage() {
       exportCanvas.height = 2400;
       const ctx = exportCanvas.getContext('2d', { alpha: false });
       
-      if (!ctx) throw new Error('Context Failed');
+      if (!ctx) throw new Error('Context Creation Failed');
 
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(0, 0, 1600, 2400);
@@ -376,14 +388,15 @@ export default function KioskPage() {
       const loadImage = (src: string): Promise<HTMLImageElement> => {
         return new Promise((resolve, reject) => {
           const img = new Image();
-          const timeout = setTimeout(() => reject(new Error('Image Timeout')), 15000);
+          const timeout = setTimeout(() => reject(new Error(`Asset Timeout: ${src.substring(0, 30)}...`)), 10000);
           img.onload = () => { clearTimeout(timeout); resolve(img); };
-          img.onerror = () => { clearTimeout(timeout); reject(new Error('Load Error')); };
+          img.onerror = () => { clearTimeout(timeout); reject(new Error(`Asset Load Error: ${src.substring(0, 30)}...`)); };
           img.src = src;
         });
       };
 
       const drawContent = async (offsetX: number) => {
+        // Draw Photos
         for (let i = 0; i < selectedBlueprint.slots.length; i++) {
           const slot = selectedBlueprint.slots[i];
           const photo = capturedPhotos[i];
@@ -396,32 +409,42 @@ export default function KioskPage() {
           if (selectedFilter.filter) ctx.filter = selectedFilter.filter;
           ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
           ctx.filter = 'none';
+          
+          // Yield to UI thread
           await new Promise(r => requestAnimationFrame(r));
         }
         
+        // Draw Stickers
         for (const s of [...placedStickers].sort((a, b) => a.zIndex - b.zIndex)) {
-          const svgElement = document.querySelector(`[data-sticker-id="${s.id}"] svg`);
+          const svgContainer = document.querySelector(`[data-sticker-id="${s.id}"]`);
+          if (!svgContainer) continue;
+          
+          const svgElement = svgContainer.querySelector('svg');
           if (!svgElement) continue;
 
           const svgString = new XMLSerializer().serializeToString(svgElement);
           const svgBlob = new Blob([svgString], {type: 'image/svg+xml;charset=utf-8'});
           const url = URL.createObjectURL(svgBlob);
-          const stickerImg = await loadImage(url);
+          
+          try {
+            const stickerImg = await loadImage(url);
+            const targetW = (s.size / 100) * STRIP_W;
+            const targetX = (s.x / 100) * STRIP_W + offsetX;
+            const targetY = (s.y / 100) * 2400;
 
-          const targetW = (s.size / 100) * STRIP_W;
-          const targetX = (s.x / 100) * STRIP_W + offsetX;
-          const targetY = (s.y / 100) * 2400;
-
-          ctx.save();
-          ctx.translate(targetX, targetY);
-          ctx.rotate((s.rotation * Math.PI) / 180);
-          ctx.scale(s.flipX ? -1 : 1, s.flipY ? -1 : 1);
-          ctx.drawImage(stickerImg, -targetW / 2, -targetW / 2, targetW, targetW);
-          ctx.restore();
-          URL.revokeObjectURL(url);
+            ctx.save();
+            ctx.translate(targetX, targetY);
+            ctx.rotate((s.rotation * Math.PI) / 180);
+            ctx.scale(s.flipX ? -1 : 1, s.flipY ? -1 : 1);
+            ctx.drawImage(stickerImg, -targetW / 2, -targetW / 2, targetW, targetW);
+            ctx.restore();
+          } finally {
+            URL.revokeObjectURL(url);
+          }
           await new Promise(r => setTimeout(r, 0));
         }
 
+        // Branding & Footer
         const footerY = 2200;
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(offsetX, footerY, STRIP_W, 200);
@@ -447,7 +470,7 @@ export default function KioskPage() {
       exportCanvas.toBlob((blob) => {
         if (blob) {
           setPreparedBlob(blob);
-          KioskLogger.log('info', 'SESSION', `Image Rendered: ${(blob.size/1024).toFixed(1)} KB`, 'SUCCESS');
+          KioskLogger.log('info', 'SESSION', `Render Success: ${(blob.size/1024).toFixed(1)} KB`, 'SUCCESS');
         }
         setIsPreparingPrint(false);
         spoolingRef.current = false;
@@ -542,24 +565,10 @@ export default function KioskPage() {
   };
 
   useEffect(() => {
-    if (appState === "setup" || appState === "capturing") {
-      const start = async () => {
-        if (cameraStream && cameraStream.active) return;
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { width: { ideal: 1920 }, height: { ideal: 1080 } }, 
-            audio: false 
-          });
-          setCameraStream(stream);
-          if (videoRef.current) videoRef.current.srcObject = stream;
-        } catch (e) {}
-      };
-      start();
-    }
     if (appState === "final-preview" && !preparedBlob && !isPreparingPrint) {
       preSpoolPrintFile();
     }
-  }, [appState, preSpoolPrintFile, cameraStream, preparedBlob, isPreparingPrint]);
+  }, [appState, preSpoolPrintFile, preparedBlob, isPreparingPrint]);
 
   return (
     <KioskLayout>
@@ -781,7 +790,7 @@ export default function KioskPage() {
                 {isPreparingPrint && (
                   <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center space-y-3 z-[80]">
                     <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                    <span className="text-[9px] font-black uppercase italic text-primary">Pre-spooling...</span>
+                    <span className="text-[9px] font-black uppercase italic text-primary">Pre-spooling Layout...</span>
                   </div>
                 )}
               </div>

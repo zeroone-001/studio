@@ -52,6 +52,7 @@ export default function KioskPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const spoolingRef = useRef(false);
+  const printFrameRef = useRef<HTMLIFrameElement>(null);
 
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [selectedFilter, setSelectedFilter] = useState(FILTERS[0]);
@@ -156,9 +157,7 @@ export default function KioskPage() {
         rawAppId: config.appId || 'NONE'
       }));
 
-      signInAnonymously(auth).then(() => {
-        KioskLogger.log('info', 'SESSION', 'Anonymous Auth Successful', 'SUCCESS');
-      }).catch(e => {
+      signInAnonymously(auth).catch(e => {
         console.error("[FIREBASE_AUTH_RAW_ERROR]", e);
         KioskLogger.log('error', 'SESSION', 'Auth Failed', 'FAILED', `Code: ${e.code}, Msg: ${e.message}`);
         setRuntimeStatus(prev => ({ 
@@ -215,8 +214,6 @@ export default function KioskPage() {
           const isStale = timestamp > 0 && (now - timestamp > 10 * 60 * 1000); 
 
           if (data.isDownloaded || isStale) {
-            KioskLogger.log('info', 'CLOUD', `Purging ${isStale ? 'Stale' : 'Accessed'} Photo: ${docId}`, 'SUCCESS');
-            
             try {
               const photoRef = ref(storage, data.storagePath);
               await deleteObject(photoRef);
@@ -257,75 +254,61 @@ export default function KioskPage() {
     }
   }, [appState]);
 
-  /**
-   * MANDATORY SYNCHRONOUS DISPATCH
-   * To trigger an Android Share Intent via navigator.share, the call MUST be 
-   * part of the immediate synchronous call stack of the user gesture (click).
-   */
-  const initiatePrint = (blob: Blob) => {
-    const start = Date.now();
-    console.log('[PRINT_DIAG] --- SYNC INTENT DISPATCH ---');
-    console.log(`[PRINT_DIAG] User Activation Active: ${navigator.userActivation?.isActive}`);
+  const initiatePrint = async (blob: Blob) => {
+    const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
+    setCurrentSessionId(sessionId);
     
-    if (!blob || blob.size === 0) {
-      KioskLogger.log('error', 'PRINT', 'ABORT: Blob is null or empty', 'FAILED');
-      return;
-    }
-
-    const fileName = `JNL_STUDIO_PORTRAIT_${Date.now()}.jpg`;
-    const file = new File([blob], fileName, { type: 'image/jpeg' });
+    KioskLogger.log('info', 'PRINT', '--- START ANDROID OUTPUT PIPELINE ---', 'PENDING');
     
-    const canShareResult = navigator.canShare && navigator.canShare({ files: [file] });
-    console.log(`[PRINT_DIAG] navigator.canShare check: ${canShareResult}`);
-    console.log(`[PRINT_DIAG] Payload: ${file.name} (${(file.size/1024).toFixed(1)} KB)`);
+    try {
+      const url = URL.createObjectURL(blob);
+      KioskLogger.log('info', 'PRINT', `JPEG Created: ${(blob.size/1024).toFixed(1)} KB`, 'SUCCESS');
 
-    if (navigator.share) {
-      // THE SYNC CALL
-      navigator.share({
-        files: [file],
-        title: 'JNL Studio Portrait',
-        text: 'Print with NokoPrint'
-      })
-      .then(() => {
-        const duration = Date.now() - start;
-        console.log(`[PRINT_DIAG] Intent Resolved in ${duration}ms`);
-        KioskLogger.log('info', 'PRINT', 'Intent Resolved Successfully', 'SUCCESS');
-        setRuntimeStatus(prev => ({ ...prev, intentAcknowledged: 'PASS', nokoprintOpened: 'PASS' }));
-      })
-      .catch((e: any) => {
-        const isAbort = e.name === 'AbortError';
-        console.error(`[PRINT_DIAG] Intent Error: ${e.name} - ${e.message}`);
-        KioskLogger.log(isAbort ? 'info' : 'error', 'PRINT', `Intent Result: ${e.name}`, isAbort ? 'PENDING' : 'FAILED', e.message);
-        setRuntimeStatus(prev => ({ 
-          ...prev, 
-          intentAcknowledged: isAbort ? 'ABORTED' : 'FAIL', 
-          lastErrorMessage: `${e.name}: ${e.message}` 
-        }));
-      });
-    } else {
-      KioskLogger.log('error', 'PRINT', 'API MISSING: navigator.share not found', 'FAILED');
+      // 1. SAVE TO HANDLES (Gallery/USB)
+      if (galleryHandle) {
+        await SessionStore.saveToHandle(galleryHandle, 'JNL_GALLERY', sessionId, blob);
+        KioskLogger.log('info', 'HARDWARE', 'Saved to Gallery Handle', 'SUCCESS');
+      }
+      
+      if (usbHandle) {
+        await SessionStore.saveToHandle(usbHandle, 'JNL_LEXAR_ARCHIVE', sessionId, blob);
+        KioskLogger.log('info', 'HARDWARE', 'Saved to USB Handle', 'SUCCESS');
+      }
+
+      // 2. TRIGGER SYSTEM DOWNLOAD (Direct Gallery Path)
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `JNL_STUDIO_PORTRAIT_${sessionId}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      KioskLogger.log('info', 'PRINT', 'Triggered System Download (Gallery)', 'SUCCESS');
+
+      // 3. TRIGGER ANDROID PRINT FRAMEWORK (NokoPrint Bridge)
+      if (printFrameRef.current) {
+        const frame = printFrameRef.current;
+        const frameDoc = frame.contentDocument || frame.contentWindow?.document;
+        if (frameDoc) {
+          frameDoc.body.innerHTML = `
+            <style>@page { size: 4in 6in; margin: 0; } body { margin: 0; padding: 0; }</style>
+            <img src="${url}" style="width: 100%; height: 100%; object-fit: contain;">
+          `;
+          setTimeout(() => {
+            frame.contentWindow?.focus();
+            frame.contentWindow?.print();
+            KioskLogger.log('info', 'PRINT', 'Sent to NokoPrint Bridge', 'SUCCESS');
+          }, 500);
+        }
+      }
+
+    } catch (e: any) {
+      KioskLogger.log('error', 'PRINT', 'Output Pipeline Failed', 'FAILED', e.message);
     }
   };
 
-  const handleCloudSync = useCallback(async (blob: Blob) => {
-    const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
-    setCurrentSessionId(sessionId);
-    KioskLogger.log('info', 'SESSION', `--- ASYNC OUTPUT PIPELINE (${sessionId}) ---`, 'PENDING');
+  const handleCloudSync = useCallback(async (blob: Blob, sessionId: string) => {
+    KioskLogger.log('info', 'CLOUD', `Step D: Cloud Sync Start (${sessionId})`, 'PENDING');
     
-    if (!blob || blob.size === 0) return;
-
-    // Step A: IndexedDB Persistence (Fallback)
-    await SessionStore.savePhotoLocally(sessionId, blob);
-
-    // Step B: Hardware Backup (Lexar/Gallery)
-    if (usbHandle) {
-      await SessionStore.saveToHandle(usbHandle, 'JNL_STUDIO_ARCHIVE', sessionId, blob);
-    }
-    if (galleryHandle) {
-      await SessionStore.saveToHandle(galleryHandle, 'JNL_STUDIO_GALLERY', sessionId, blob);
-    }
-
-    // Step D: Firebase & QR
     const { storage, db, auth } = initializeFirebase();
     setUploadStatus("uploading");
 
@@ -361,14 +344,14 @@ export default function KioskPage() {
           const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
           setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
           setUploadStatus("complete");
-          KioskLogger.log('info', 'CLOUD', 'QR Link Generated', 'SUCCESS');
+          KioskLogger.log('info', 'CLOUD', 'QR Generated', 'SUCCESS');
         }
       );
     } catch (error: any) {
       setUploadStatus("error");
       KioskLogger.log('error', 'SESSION', 'Cloud Sync Crash', 'FAILED', error.message);
     }
-  }, [usbHandle, galleryHandle, promoConsent]);
+  }, [promoConsent]);
 
   const preSpoolPrintFile = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0 || spoolingRef.current) return;
@@ -393,7 +376,7 @@ export default function KioskPage() {
       const loadImage = (src: string): Promise<HTMLImageElement> => {
         return new Promise((resolve, reject) => {
           const img = new Image();
-          const timeout = setTimeout(() => reject(new Error('Timeout')), 10000);
+          const timeout = setTimeout(() => reject(new Error('Image Timeout')), 15000);
           img.onload = () => { clearTimeout(timeout); resolve(img); };
           img.onerror = () => { clearTimeout(timeout); reject(new Error('Load Error')); };
           img.src = src;
@@ -464,13 +447,13 @@ export default function KioskPage() {
       exportCanvas.toBlob((blob) => {
         if (blob) {
           setPreparedBlob(blob);
-          KioskLogger.log('info', 'SESSION', `Canvas Render Success: ${(blob.size/1024).toFixed(1)} KB`, 'SUCCESS');
+          KioskLogger.log('info', 'SESSION', `Image Rendered: ${(blob.size/1024).toFixed(1)} KB`, 'SUCCESS');
         }
         setIsPreparingPrint(false);
         spoolingRef.current = false;
       }, 'image/jpeg', 0.95);
     } catch (e: any) {
-      KioskLogger.log('error', 'SESSION', 'Canvas Failure', 'FAILED', e.message);
+      KioskLogger.log('error', 'SESSION', 'Render Failed', 'FAILED', e.message);
       setIsPreparingPrint(false);
       spoolingRef.current = false;
     }
@@ -561,12 +544,7 @@ export default function KioskPage() {
   useEffect(() => {
     if (appState === "setup" || appState === "capturing") {
       const start = async () => {
-        if (cameraStream && cameraStream.active) {
-          if (videoRef.current && videoRef.current.srcObject !== cameraStream) {
-            videoRef.current.srcObject = cameraStream;
-          }
-          return;
-        }
+        if (cameraStream && cameraStream.active) return;
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ 
             video: { width: { ideal: 1920 }, height: { ideal: 1080 } }, 
@@ -585,6 +563,7 @@ export default function KioskPage() {
 
   return (
     <KioskLayout>
+      <iframe ref={printFrameRef} className="hidden" title="print-frame" />
       <canvas ref={canvasRef} className="hidden" />
       <div className="flex-1 w-full h-full flex flex-col items-center overflow-hidden kiosk-container safe-area-spacing landscape-container">
         
@@ -811,10 +790,9 @@ export default function KioskPage() {
               disabled={isPreparingPrint || !preparedBlob}
               onClick={() => {
                 if (preparedBlob) {
-                  // PRIORITY 1: DISPATCH INTENT SYNC (NO microtasks allowed before this)
                   initiatePrint(preparedBlob);
-                  // PRIORITY 2: DISPATCH ASYNC TASKS
-                  handleCloudSync(preparedBlob);
+                  const sid = `jnl_${Math.random().toString(36).substring(2, 12)}`;
+                  handleCloudSync(preparedBlob, sid);
                 }
                 setAppState("printing");
               }} 
@@ -872,7 +850,7 @@ export default function KioskPage() {
                      </div>
                      <p className="text-xs font-bold uppercase text-white/40 text-center leading-relaxed">Scan now to save your<br/>high-resolution portrait</p>
                      
-                     {(printProgress >= 100 || runtimeStatus.intentAcknowledged !== 'PENDING') && (
+                     {printProgress >= 100 && (
                         <button 
                           onClick={() => setAppState("thankyou")} 
                           className="w-full bg-primary py-8 text-2xl font-black uppercase italic rounded-3xl shadow-[0_10px_30px_rgba(255,51,153,0.3)] active:scale-95 transition-all text-white"
@@ -890,7 +868,7 @@ export default function KioskPage() {
                       <h3 className="text-2xl font-black italic uppercase text-white/60">OFFLINE MODE</h3>
                       <p className="text-[10px] font-bold uppercase text-white/30 leading-relaxed max-w-[250px]">Internet connection lost or Cloud Disabled. Your physical print is unaffected.</p>
                     </div>
-                    {(printProgress >= 100 || runtimeStatus.intentAcknowledged !== 'PENDING') && (
+                    {printProgress >= 100 && (
                         <button 
                           onClick={() => setAppState("thankyou")} 
                           className="w-full bg-zinc-800 py-8 text-2xl font-black uppercase italic rounded-3xl shadow-xl active:scale-95 transition-all text-white/40"
@@ -955,7 +933,7 @@ export default function KioskPage() {
         )}
 
         {appState === "thankyou" && (
-          <div className="fixed inset-0 bg-black flex flex-col items-center justify-center animate-in fade-in duration-1000 p-12 space-y-12">
+          <div className="fixed inset-0 bg-black flex flex-col items-center justify-center animate-in fade-in duration-1000 p-12 space-y-12 z-[500]">
              <div className="text-center space-y-4">
                 <h2 className="font-headline font-black text-7xl italic uppercase text-primary">Thank You!</h2>
                 <p className="text-white/40 font-bold uppercase tracking-[0.4em] text-sm">Visit us again at JNL Studio</p>

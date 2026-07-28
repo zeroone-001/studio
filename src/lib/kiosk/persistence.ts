@@ -79,7 +79,7 @@ export const SessionStore = {
     
     try {
       if (!handle) {
-        KioskLogger.log('error', 'HARDWARE', `ABORT: No Handle for ${folderName}`, 'FAILED');
+        KioskLogger.log('error', 'HARDWARE', `ABORT: No Handle for ${folderName}`, 'FAILED', 'Reason: Storage handle is null. Admin must re-mount after page refresh.');
         throw new Error('NULL_HANDLE');
       }
       

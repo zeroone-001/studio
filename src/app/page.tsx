@@ -178,9 +178,11 @@ export default function KioskPage() {
     }
   }, []);
 
+  // STABLE CAMERA PREVIEW LOGIC
   useEffect(() => {
     if (appState === "setup" || appState === "capturing") {
       const startCamera = async () => {
+        // Reuse current stream if active to prevent flickering
         if (cameraStream && cameraStream.active) {
           if (videoRef.current && videoRef.current.srcObject !== cameraStream) {
              videoRef.current.srcObject = cameraStream;
@@ -264,33 +266,28 @@ export default function KioskPage() {
     }
   }, [appState]);
 
-  const initiatePrint = async (blob: Blob) => {
-    const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
-    setCurrentSessionId(sessionId);
-    
+  const initiatePrint = async (blob: Blob, sessionId: string) => {
     KioskLogger.log('info', 'PRINT', '--- START SILENT KIOSK PIPELINE ---', 'PENDING');
     
     try {
       const url = URL.createObjectURL(blob);
       
-      // 1. MANDATORY SILENT BACKGROUND SAVES (No Browser Prompts)
+      // 1. MANDATORY SILENT BACKGROUND SAVES
       if (galleryHandle) {
         KioskLogger.log('info', 'SESSION', 'Starting Background Gallery Save', 'PENDING');
         await SessionStore.saveToHandle(galleryHandle, 'JNL_GALLERY', sessionId, blob);
       } else {
-        KioskLogger.log('warn', 'HARDWARE', 'SILENT_SAVE_SKIPPED: Gallery Handle Null', 'FAILED');
+        KioskLogger.log('warn', 'HARDWARE', 'SILENT_SAVE_SKIPPED: Gallery Handle Null (Operator attention needed)', 'FAILED');
       }
       
       if (usbHandle) {
         KioskLogger.log('info', 'SESSION', 'Starting Background USB Archive', 'PENDING');
         await SessionStore.saveToHandle(usbHandle, 'JNL_LEXAR_ARCHIVE', sessionId, blob);
       } else {
-        KioskLogger.log('warn', 'HARDWARE', 'SILENT_SAVE_SKIPPED: USB Handle Null', 'FAILED');
+        KioskLogger.log('warn', 'HARDWARE', 'SILENT_SAVE_SKIPPED: USB Handle Null (Operator attention needed)', 'FAILED');
       }
 
       // 2. TRIGGER DIRECT ANDROID PRINT (NOKOPRINT INTERCEPT)
-      // We inject into a hidden iframe and trigger window.print()
-      // This is the standard Kiosk Print method that doesn't use Share API
       if (printFrameRef.current) {
         const frame = printFrameRef.current;
         const frameDoc = frame.contentDocument || frame.contentWindow?.document;
@@ -304,7 +301,6 @@ export default function KioskPage() {
             <img src="${url}">
           `;
           
-          // Small delay to ensure image is painted in the iframe before printing
           setTimeout(() => {
             frame.contentWindow?.focus();
             frame.contentWindow?.print();
@@ -410,6 +406,7 @@ export default function KioskPage() {
           ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
           ctx.filter = 'none';
           
+          // Yield to UI thread
           await new Promise(r => requestAnimationFrame(r));
         }
         
@@ -512,6 +509,7 @@ export default function KioskPage() {
     setPreparedBlob(null);
     setUploadStatus("idle");
     setSoftCopyQrUrl("");
+    setCurrentSessionId("");
     spoolingRef.current = false;
   }, []);
 
@@ -559,6 +557,15 @@ export default function KioskPage() {
       return canvasRef.current.toDataURL('image/jpeg', 0.92);
     }
     return null;
+  };
+
+  const handleStartTouch = () => {
+    if (!galleryHandle || !usbHandle) {
+      KioskLogger.log('critical', 'HARDWARE', 'START_BLOCKED: Storage Not Initialized', 'FAILED', 'Admin must mount drives in Owner Utility after page refresh.');
+      alert("SYSTEM ERROR: Storage initialization required. Please contact admin.");
+      return;
+    }
+    setAppState("payment");
   };
 
   useEffect(() => {
@@ -609,7 +616,7 @@ export default function KioskPage() {
               <div className="text-sm font-black uppercase text-white/60 mb-6 tracking-[0.3em] animate-pulse">
                 INSERT ₱50 OR ₱100 BILL
               </div>
-              <NeonButton onClick={() => setAppState("payment")} className="w-[35%] text-2xl py-10">TOUCH TO START</NeonButton>
+              <NeonButton onClick={handleStartTouch} className="w-[35%] text-2xl py-10">TOUCH TO START</NeonButton>
             </div>
           </div>
         )}
@@ -796,9 +803,10 @@ export default function KioskPage() {
               disabled={isPreparingPrint || !preparedBlob}
               onClick={() => {
                 if (preparedBlob) {
-                  initiatePrint(preparedBlob);
-                  const sid = `jnl_${Math.random().toString(36).substring(2, 12)}`;
-                  handleCloudSync(preparedBlob, sid);
+                  const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
+                  setCurrentSessionId(sessionId);
+                  initiatePrint(preparedBlob, sessionId);
+                  handleCloudSync(preparedBlob, sessionId);
                 }
                 setAppState("printing");
               }} 
@@ -859,7 +867,7 @@ export default function KioskPage() {
                      {printProgress >= 100 && (
                         <button 
                           onClick={() => setAppState("thankyou")} 
-                          className="w-full bg-primary py-8 text-2xl font-black uppercase italic rounded-3xl shadow-[0_10px_30px_rgba(255,51,153,0.3)] active:scale-95 transition-all text-white"
+                          className="w-full bg-primary py-8 text-2xl font-black uppercase italic rounded-3xl shadow-[0_10px_30px_rgba(255,51,153,0.3)] active:scale-95 transition-all text-white border-2 border-white/20"
                         >
                           DONE
                         </button>

@@ -135,7 +135,7 @@ export default function KioskPage() {
     rawStorageBucket: 'NONE',
     rawMessagingId: 'NONE',
     rawAppId: 'NONE',
-    rawConfigSrc: '@/firebase/config.ts'
+    rawConfigSrc: '@/firebase/index.ts'
   });
 
   useEffect(() => {
@@ -178,7 +178,6 @@ export default function KioskPage() {
     }
   }, []);
 
-  // Camera Management useEffect - Stabilized to prevent blackouts
   useEffect(() => {
     if (appState === "setup" || appState === "capturing") {
       const startCamera = async () => {
@@ -265,33 +264,33 @@ export default function KioskPage() {
     }
   }, [appState]);
 
-  const initiatePrint = (blob: Blob) => {
+  const initiatePrint = async (blob: Blob) => {
     const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
     setCurrentSessionId(sessionId);
     
-    KioskLogger.log('info', 'PRINT', '--- START ANDROID OUTPUT PIPELINE ---', 'PENDING');
+    KioskLogger.log('info', 'PRINT', '--- START SILENT KIOSK PIPELINE ---', 'PENDING');
     
     try {
       const url = URL.createObjectURL(blob);
       
-      // 1. SILENT SAVES (GALLERY/USB)
+      // 1. MANDATORY SILENT BACKGROUND SAVES (No Browser Prompts)
       if (galleryHandle) {
-        SessionStore.saveToHandle(galleryHandle, 'JNL_GALLERY', sessionId, blob);
+        KioskLogger.log('info', 'SESSION', 'Starting Background Gallery Save', 'PENDING');
+        await SessionStore.saveToHandle(galleryHandle, 'JNL_GALLERY', sessionId, blob);
+      } else {
+        KioskLogger.log('warn', 'HARDWARE', 'SILENT_SAVE_SKIPPED: Gallery Handle Null', 'FAILED');
       }
       
       if (usbHandle) {
-        SessionStore.saveToHandle(usbHandle, 'JNL_LEXAR_ARCHIVE', sessionId, blob);
+        KioskLogger.log('info', 'SESSION', 'Starting Background USB Archive', 'PENDING');
+        await SessionStore.saveToHandle(usbHandle, 'JNL_LEXAR_ARCHIVE', sessionId, blob);
+      } else {
+        KioskLogger.log('warn', 'HARDWARE', 'SILENT_SAVE_SKIPPED: USB Handle Null', 'FAILED');
       }
 
-      // 2. TRIGGER SYSTEM DOWNLOAD (ENSURES GALLERY APPEARANCE)
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `JNL_STUDIO_${sessionId}.jpg`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      // 3. TRIGGER ANDROID PRINT (NOKOPRINT INTERCEPT)
+      // 2. TRIGGER DIRECT ANDROID PRINT (NOKOPRINT INTERCEPT)
+      // We inject into a hidden iframe and trigger window.print()
+      // This is the standard Kiosk Print method that doesn't use Share API
       if (printFrameRef.current) {
         const frame = printFrameRef.current;
         const frameDoc = frame.contentDocument || frame.contentWindow?.document;
@@ -300,20 +299,22 @@ export default function KioskPage() {
             <style>
               @page { size: 4in 6in; margin: 0; } 
               body { margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; background: white; }
-              img { max-width: 100%; max-height: 100%; object-fit: contain; }
+              img { width: 100%; height: 100%; object-fit: contain; }
             </style>
             <img src="${url}">
           `;
+          
+          // Small delay to ensure image is painted in the iframe before printing
           setTimeout(() => {
             frame.contentWindow?.focus();
             frame.contentWindow?.print();
-            KioskLogger.log('info', 'PRINT', 'Sent to Android Print Spooler', 'SUCCESS');
+            KioskLogger.log('info', 'PRINT', 'System Print Spooler Triggered', 'SUCCESS');
           }, 500);
         }
       }
 
     } catch (e: any) {
-      KioskLogger.log('error', 'PRINT', 'Output Pipeline Failed', 'FAILED', e.message);
+      KioskLogger.log('error', 'PRINT', 'Silent Pipeline Crash', 'FAILED', e.message);
     }
   };
 
@@ -355,7 +356,7 @@ export default function KioskPage() {
           const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
           setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
           setUploadStatus("complete");
-          KioskLogger.log('info', 'CLOUD', 'QR Generated', 'SUCCESS');
+          KioskLogger.log('info', 'CLOUD', 'QR Link Generated', 'SUCCESS');
         }
       );
     } catch (error: any) {
@@ -369,7 +370,7 @@ export default function KioskPage() {
     
     setIsPreparingPrint(true);
     spoolingRef.current = true;
-    KioskLogger.log('info', 'SESSION', 'Render Cycle Started', 'PENDING');
+    KioskLogger.log('info', 'SESSION', 'High-Res Layout Render Started', 'PENDING');
 
     try {
       const exportCanvas = document.createElement('canvas');
@@ -377,7 +378,7 @@ export default function KioskPage() {
       exportCanvas.height = 2400;
       const ctx = exportCanvas.getContext('2d', { alpha: false });
       
-      if (!ctx) throw new Error('Context Creation Failed');
+      if (!ctx) throw new Error('Canvas Context Creation Failed');
 
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(0, 0, 1600, 2400);
@@ -388,7 +389,7 @@ export default function KioskPage() {
       const loadImage = (src: string): Promise<HTMLImageElement> => {
         return new Promise((resolve, reject) => {
           const img = new Image();
-          const timeout = setTimeout(() => reject(new Error(`Asset Timeout: ${src.substring(0, 30)}...`)), 10000);
+          const timeout = setTimeout(() => reject(new Error(`Asset Timeout: ${src.substring(0, 30)}...`)), 15000);
           img.onload = () => { clearTimeout(timeout); resolve(img); };
           img.onerror = () => { clearTimeout(timeout); reject(new Error(`Asset Load Error: ${src.substring(0, 30)}...`)); };
           img.src = src;
@@ -396,7 +397,6 @@ export default function KioskPage() {
       };
 
       const drawContent = async (offsetX: number) => {
-        // Draw Photos
         for (let i = 0; i < selectedBlueprint.slots.length; i++) {
           const slot = selectedBlueprint.slots[i];
           const photo = capturedPhotos[i];
@@ -410,11 +410,9 @@ export default function KioskPage() {
           ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
           ctx.filter = 'none';
           
-          // Yield to UI thread
           await new Promise(r => requestAnimationFrame(r));
         }
         
-        // Draw Stickers
         for (const s of [...placedStickers].sort((a, b) => a.zIndex - b.zIndex)) {
           const svgContainer = document.querySelector(`[data-sticker-id="${s.id}"]`);
           if (!svgContainer) continue;
@@ -444,7 +442,6 @@ export default function KioskPage() {
           await new Promise(r => setTimeout(r, 0));
         }
 
-        // Branding & Footer
         const footerY = 2200;
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(offsetX, footerY, STRIP_W, 200);
@@ -470,7 +467,7 @@ export default function KioskPage() {
       exportCanvas.toBlob((blob) => {
         if (blob) {
           setPreparedBlob(blob);
-          KioskLogger.log('info', 'SESSION', `Render Success: ${(blob.size/1024).toFixed(1)} KB`, 'SUCCESS');
+          KioskLogger.log('info', 'SESSION', `High-Res Generated: ${(blob.size/1024).toFixed(1)} KB`, 'SUCCESS');
         }
         setIsPreparingPrint(false);
         spoolingRef.current = false;
@@ -790,7 +787,7 @@ export default function KioskPage() {
                 {isPreparingPrint && (
                   <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center space-y-3 z-[80]">
                     <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                    <span className="text-[9px] font-black uppercase italic text-primary">Pre-spooling Layout...</span>
+                    <span className="text-[9px] font-black uppercase italic text-primary">Finalizing High-Res Render...</span>
                   </div>
                 )}
               </div>

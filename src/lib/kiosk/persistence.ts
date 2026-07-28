@@ -2,6 +2,7 @@
 /**
  * @fileOverview Session persistence and Hybrid Sync Queue for JNL Studio Kiosk.
  * Optimized for Honor Pad X10 local storage and microSD archive lifecycle management.
+ * SILENT BACKGROUND SAVING: Uses File System Access API without user prompts.
  */
 
 import { KioskLogger } from "./logger";
@@ -67,7 +68,11 @@ export const SessionStore = {
     }
   },
 
-  // Save to any Directory Handle (USB or Local Folder) with Verification
+  /**
+   * Save to any Directory Handle (USB or Local Folder) with VERIFIED BACKGROUND FLUSH
+   * This method uses the File System Access API which, once granted at the start of a session,
+   * allows for 100% silent background writes with no user interaction.
+   */
   saveToHandle: async (handle: FileSystemDirectoryHandle, folderName: string, id: string, blob: Blob) => {
     const handleName = handle?.name || 'UNKNOWN_DRIVE';
     KioskLogger.log('info', 'HARDWARE', `DISK_WRITE_START: ${folderName} on ${handleName}`, 'PENDING');
@@ -83,23 +88,23 @@ export const SessionStore = {
         throw new Error('ZERO_BYTE_BLOB');
       }
       
-      // Step 1: Resolve Directory
+      // Step 1: Resolve/Create Directory Silently
       const targetFolder = await handle.getDirectoryHandle(folderName, { create: true });
       
       // Step 2: Acquire File Handle
       const fileName = `JNL_PORTRAIT_${id}.jpg`;
       const fileHandle = await targetFolder.getFileHandle(fileName, { create: true });
       
-      // Step 3: Create Writable Stream
+      // Step 3: Create Writable Stream (Exclusive for background write)
       const writable = await fileHandle.createWritable();
       
-      // Step 4: Commit Data
+      // Step 4: Commit Binary Data to Stream
       await writable.write(blob);
       
-      // Step 5: Close Stream (MANDATORY FLUSH)
+      // Step 5: Close Stream (CRITICAL: This is where the actual OS flush occurs)
       await writable.close();
       
-      // Step 6: Post-Write Verification
+      // Step 6: Post-Write Verification (Verification that data physically exists)
       const verifiedFile = await targetFolder.getFileHandle(fileName);
       const fileData = await verifiedFile.getFile();
       
@@ -107,11 +112,11 @@ export const SessionStore = {
         KioskLogger.log('info', 'HARDWARE', `WRITE_VERIFIED: ${fileData.size} bytes at ${folderName}/${fileName}`, 'SUCCESS');
         return { success: true, path: `${folderName}/${fileName}`, size: fileData.size };
       } else {
-        throw new Error('VERIFICATION_FAILED: Reported size is zero after write.');
+        throw new Error('VERIFICATION_FAILED: Reported size is zero after stream close.');
       }
     } catch (e: any) {
       KioskLogger.log('error', 'HARDWARE', `DISK_WRITE_CRASH (${folderName})`, 'FAILED', `${e.name}: ${e.message}`);
-      console.error(`[DISK_DIAG] ${folderName} Write Failed:`, e);
+      console.error(`[DISK_DIAG] Silent write failed to ${folderName}:`, e);
       return { success: false, error: e.message };
     }
   },

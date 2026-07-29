@@ -178,11 +178,9 @@ export default function KioskPage() {
     }
   }, []);
 
-  // STABLE CAMERA PREVIEW LOGIC
   useEffect(() => {
     if (appState === "setup" || appState === "capturing") {
       const startCamera = async () => {
-        // Reuse current stream if active to prevent flickering
         if (cameraStream && cameraStream.active) {
           if (videoRef.current && videoRef.current.srcObject !== cameraStream) {
              videoRef.current.srcObject = cameraStream;
@@ -272,22 +270,20 @@ export default function KioskPage() {
     try {
       const url = URL.createObjectURL(blob);
       
-      // 1. MANDATORY SILENT BACKGROUND SAVES
       if (galleryHandle) {
         KioskLogger.log('info', 'SESSION', 'Starting Background Gallery Save', 'PENDING');
         await SessionStore.saveToHandle(galleryHandle, 'JNL_GALLERY', sessionId, blob);
       } else {
-        KioskLogger.log('warn', 'HARDWARE', 'SILENT_SAVE_SKIPPED: Gallery Handle Null (Operator attention needed)', 'FAILED');
+        KioskLogger.log('warn', 'HARDWARE', 'SILENT_SAVE_SKIPPED: Gallery Handle Null', 'FAILED');
       }
       
       if (usbHandle) {
         KioskLogger.log('info', 'SESSION', 'Starting Background USB Archive', 'PENDING');
         await SessionStore.saveToHandle(usbHandle, 'JNL_LEXAR_ARCHIVE', sessionId, blob);
       } else {
-        KioskLogger.log('warn', 'HARDWARE', 'SILENT_SAVE_SKIPPED: USB Handle Null (Operator attention needed)', 'FAILED');
+        KioskLogger.log('warn', 'HARDWARE', 'SILENT_SAVE_SKIPPED: USB Handle Null', 'FAILED');
       }
 
-      // 2. TRIGGER DIRECT ANDROID PRINT (NOKOPRINT INTERCEPT)
       if (printFrameRef.current) {
         const frame = printFrameRef.current;
         const frameDoc = frame.contentDocument || frame.contentWindow?.document;
@@ -406,7 +402,6 @@ export default function KioskPage() {
           ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
           ctx.filter = 'none';
           
-          // Yield to UI thread
           await new Promise(r => requestAnimationFrame(r));
         }
         
@@ -949,8 +944,8 @@ export default function KioskPage() {
         {appState === "thankyou" && (
           <div className="fixed inset-0 bg-black flex flex-col items-center justify-center animate-in fade-in duration-1000 p-12 space-y-12 z-[500]">
              <div className="text-center space-y-4">
-                <h2 className="font-headline font-black text-7xl italic uppercase text-primary">Thank You!</h2>
-                <p className="text-white/40 font-bold uppercase tracking-[0.4em] text-sm">Visit us again at JNL Studio</p>
+                <h2 className="font-headline font-black text-8xl italic uppercase text-primary">THANK YOU</h2>
+                <p className="text-white/60 font-bold uppercase tracking-[0.4em] text-2xl">PLEASE COME AGAIN</p>
              </div>
 
              <div className="bg-white/5 border-2 border-white/10 p-12 rounded-[5rem] flex flex-col items-center space-y-8 shadow-2xl backdrop-blur-sm">

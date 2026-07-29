@@ -255,6 +255,8 @@ export default function KioskPage() {
         setPrintProgress(prev => {
           if (prev >= 100) {
             clearInterval(interval);
+            // Automatic transition to Thank You page after progress complete
+            setTimeout(() => setAppState("thankyou"), 2000);
             return 100;
           }
           return prev + 2;
@@ -265,11 +267,13 @@ export default function KioskPage() {
   }, [appState]);
 
   const initiatePrint = async (blob: Blob, sessionId: string) => {
-    KioskLogger.log('info', 'PRINT', '--- START SILENT KIOSK PIPELINE ---', 'PENDING');
+    KioskLogger.log('info', 'PRINT', '--- START PRODUCTION PIPELINE ---', 'PENDING');
     
     try {
-      const url = URL.createObjectURL(blob);
-      
+      // 1. Save to Local Storage (IndexedDB)
+      await SessionStore.savePhotoLocally(sessionId, blob);
+
+      // 2. Save to Mounted Handles (Gallery/USB)
       if (galleryHandle) {
         KioskLogger.log('info', 'SESSION', 'Starting Background Gallery Save', 'PENDING');
         await SessionStore.saveToHandle(galleryHandle, 'JNL_GALLERY', sessionId, blob);
@@ -284,10 +288,12 @@ export default function KioskPage() {
         KioskLogger.log('warn', 'HARDWARE', 'SILENT_SAVE_SKIPPED: USB Handle Null', 'FAILED');
       }
 
+      // 3. Dispatch to Android Print Spooler (NokoPrint Bridge)
       if (printFrameRef.current) {
         const frame = printFrameRef.current;
         const frameDoc = frame.contentDocument || frame.contentWindow?.document;
         if (frameDoc) {
+          const url = URL.createObjectURL(blob);
           frameDoc.body.innerHTML = `
             <style>
               @page { size: 4in 6in; margin: 0; } 
@@ -306,7 +312,7 @@ export default function KioskPage() {
       }
 
     } catch (e: any) {
-      KioskLogger.log('error', 'PRINT', 'Silent Pipeline Crash', 'FAILED', e.message);
+      KioskLogger.log('error', 'PRINT', 'Production Pipeline Crash', 'FAILED', e.message);
     }
   };
 
@@ -555,11 +561,8 @@ export default function KioskPage() {
   };
 
   const handleStartTouch = () => {
-    if (!galleryHandle || !usbHandle) {
-      KioskLogger.log('critical', 'HARDWARE', 'START_BLOCKED: Storage Not Initialized', 'FAILED', 'Admin must mount drives in Owner Utility after page refresh.');
-      alert("SYSTEM ERROR: Storage initialization required. Please contact admin.");
-      return;
-    }
+    // Failsafe local storage init
+    SessionStore.initDB().catch(() => {});
     setAppState("payment");
   };
 

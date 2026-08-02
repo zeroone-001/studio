@@ -13,7 +13,7 @@
     "static": "next build",
     "cap:sync": "npx cap sync",
     "cap:open": "npx cap open android",
-    "build:android": "npm run static && npx cap sync && npx cap build android --no-open"
+    "build:android": "npm run static && npx cap sync && cd android && ./gradlew assembleDebug"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",

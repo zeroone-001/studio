@@ -1,0 +1,8 @@
+{
+	"appId": "com.jnlstudio.booth",
+	"appName": "JNL Studio Booth",
+	"webDir": "out",
+	"server": {
+		"androidScheme": "https"
+	}
+}

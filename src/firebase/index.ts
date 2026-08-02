@@ -1,3 +1,4 @@
+
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { 
   initializeFirestore, 
@@ -6,7 +7,8 @@ import {
   Firestore,
   getFirestore,
   setLogLevel,
-  memoryLocalCache
+  memoryLocalCache,
+  terminate
 } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getAuth, Auth } from 'firebase/auth';
@@ -18,36 +20,37 @@ let storage: FirebaseStorage;
 let auth: Auth;
 
 export function initializeFirebase() {
-  const isBrowser = typeof window !== 'undefined';
+  const isBrowser = typeof window !== 'undefined' && typeof window.document !== 'undefined';
 
   if (!getApps().length) {
     app = initializeApp(firebaseConfig);
     
     setLogLevel('error');
 
-    // Only enable persistence on the client to avoid SSR crashes
     if (isBrowser) {
-      db = initializeFirestore(app, {
-        localCache: persistentLocalCache({ 
-          tabManager: persistentMultipleTabManager() 
-        })
-      });
+      // Browser-only persistent cache
+      try {
+        db = initializeFirestore(app, {
+          localCache: persistentLocalCache({ 
+            tabManager: persistentMultipleTabManager() 
+          })
+        });
+      } catch (e) {
+        // Fallback to simple firestore if persistent cache fails
+        db = getFirestore(app);
+      }
     } else {
-      // Server-side: use simple memory cache for build-time rendering
-      db = initializeFirestore(app, {
-        localCache: memoryLocalCache()
-      });
+      // Server-side: use simple getFirestore which is safe for SSR/build-time
+      db = getFirestore(app);
     }
     
     storage = getStorage(app);
     auth = getAuth(app);
   } else {
     app = getApps()[0];
-    // Return existing instances to avoid re-initialization errors
     try {
       db = getFirestore(app);
     } catch (e) {
-      // Fallback for edge cases where getFirestore fails before initialization
       db = initializeFirestore(app, {});
     }
     storage = getStorage(app);

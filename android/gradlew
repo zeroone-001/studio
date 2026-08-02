@@ -1,3 +1,4 @@
+
 #!/usr/bin/env sh
 
 #
@@ -32,7 +33,7 @@ while [ -h "$PRG" ] ; do
     if expr "$link" : '/.*' > /dev/null; then
         PRG="$link"
     else
-        PRG=`dirname "$PRG"`"/$link"
+        PRG=`dirname "$PRG"`/"$link"
     fi
 done
 SAVED="`pwd`"
@@ -120,11 +121,6 @@ if [ "$cygwin" = "false" -a "$msys" = "false" -a "$darwin" = "false" -a "$nonsto
     fi
 fi
 
-# For Darwin, add options to specify how the application appears in the dock
-if $darwin; then
-    GRADLE_OPTS="$GRADLE_OPTS \"-Xdock:name=$APP_NAME\" \"-Xdock:icon=$APP_HOME/media/gradle.icns\""
-fi
-
 # For Cygwin, switch paths to Windows format before running java
 if $cygwin ; then
     APP_HOME=`cygpath --path --windows "$APP_HOME"`
@@ -132,24 +128,52 @@ if $cygwin ; then
     JAVA_HOME=`cygpath --path --windows "$JAVA_HOME"`
 
     # We build the pattern for arguments to be converted via cygpath
-    ROOTDIRS_PATTERN="(^([A-Z]:[/\\]|\\\\|//|node_modules/))"
-    # Add a user-defined pattern to the a pattern should oh-my-zsh be used?
-    if [ "$OSTYPE" = "cygwin" ] ; then
-        ROOTDIRS_PATTERN="$ROOTDIRS_PATTERN|(^/usr/)"
-    fi
-    
-    # Now look for arguments that look like paths and convert them
-    NEWARGS=""
-    for arg in "$@" ; do
-        if echo "$arg" | grep -E "$ROOTDIRS_PATTERN" > /dev/null ; then
-            arg=`cygpath --path --windows "$arg"`
-        fi
-        NEWARGS="$NEWARGS \"$arg\""
+    ROOTDIRSRAW=`find / -maxdepth 1 -typed d 2>/dev/null`
+    SEP=""
+    for dir in $ROOTDIRSRAW ; do
+        ROOTDIRS="$ROOTDIRS$SEP$dir"
+        SEP="|"
     done
-    set -- $NEWARGS
+    OURCYGPATTERN="(^($ROOTDIRS))"
+    # Add a user-defined pattern to the cygpath arguments
+    if [ "$GRADLE_CYGPATTERN" != "" ] ; then
+        OURCYGPATTERN="$OURCYGPATTERN|($GRADLE_CYGPATTERN)"
+    fi
+    # Now convert the arguments - kludge to limit recursion
+    for arg in "$@" ; do
+        CHECK=`echo "$arg"|egrep "$OURCYGPATTERN"`
+        if [ "$CHECK" != "" ] ; then
+            eval `echo args$i`="`cygpath --path --windows \"$arg\"`"
+        else
+            eval `echo args$i`="\"$arg\""
+        fi
+        i=`expr $i + 1`
+    done
+    case $i in
+        (0) set -- ;;
+        (1) set -- "$args0" ;;
+        (2) set -- "$args0" "$args1" ;;
+        (3) set -- "$args0" "$args1" "$args2" ;;
+        (4) set -- "$args0" "$args1" "$args2" "$args3" ;;
+        (5) set -- "$args0" "$args1" "$args2" "$args3" "$args4" ;;
+        (6) set -- "$args0" "$args1" "$args2" "$args3" "$args4" "$args5" ;;
+        (7) set -- "$args0" "$args1" "$args2" "$args3" "$args4" "$args5" "$args6" ;;
+        (8) set -- "$args0" "$args1" "$args2" "$args3" "$args4" "$args5" "$args6" "$args7" ;;
+        (9) set -- "$args0" "$args1" "$args2" "$args3" "$args4" "$args5" "$args6" "$args7" "$args8" ;;
+    esac
 fi
 
-# Collect all arguments for the java command, following the shell's quoting rules
-eval set -- $DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS "-classpath" "\"$CLASSPATH\"" org.gradle.wrapper.GradleWrapperMain "$@"
+# Escape application args
+save () {
+    for i do printf %s\\n "$i" | sed "s/'/'\\\\''/g;1s/^/'/;\$s/\$/'/"; done
+}
+APP_ARGS=$(save "$@")
+
+# Collect all arguments for the java command, following the shell quoting and substitution rules
+eval set -- "$DEFAULT_JVM_OPTS" "$JAVA_OPTS" "$GRADLE_OPTS" "\"-Dorg.gradle.appname=$APP_BASE_NAME\"" -classpath "\"$CLASSPATH\"" org.gradle.wrapper.GradleWrapperMain "$APP_ARGS"
+
+# by default we should be in the correct project dir, but cases can happen where we are not, so
+# we use the APP_HOME to try and fix it.
+cd "$APP_HOME"
 
 exec "$JAVACMD" "$@"

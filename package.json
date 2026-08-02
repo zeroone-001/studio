@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "static": "next build",
     "cap:sync": "npx cap sync",
-    "cap:open": "npx cap open android"
+    "cap:open": "npx cap open android",
+    "build:android": "npm run static && npx cap sync && npx cap build android --no-open"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",

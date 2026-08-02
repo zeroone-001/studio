@@ -16,7 +16,8 @@ import {
   Printer,
   HardDrive,
   Zap,
-  Image as ImageIcon
+  Image as ImageIcon,
+  FolderOpen
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { KioskLogger } from "@/lib/kiosk/logger";
@@ -32,66 +33,7 @@ interface AdminControlsProps {
   onMountGallery: (handle: FileSystemDirectoryHandle) => void;
   usbHandle: FileSystemDirectoryHandle | null;
   galleryHandle: FileSystemDirectoryHandle | null;
-  runtimeStatus?: {
-    photoGenerated: string;
-    photoSaved: string;
-    intentTriggered: string;
-    intentAcknowledged: string;
-    cloudSync: string;
-    sessionCreated: string;
-    fileCreated: string;
-    fileSize: string;
-    usbBackup: string;
-    navigatorShareStarted: string;
-    navigatorShareResolved: string;
-    navigatorShareRejected: string;
-    nokoprintOpened: string;
-    secureContext: string;
-    topLevelContext: string;
-    userAgent: string;
-    lastErrorMessage: string;
-    savePath?: string;
-    qrSourceUrl?: string;
-    shareIntentPayload?: string;
-    lastSaveError?: string;
-    captureSuccess: string;
-    canvasExists: string;
-    canvasWidth: string;
-    canvasHeight: string;
-    frameApplied: string;
-    filterApplied: string;
-    blobCreated: string;
-    blobSize: string;
-    uploadStarted: string;
-    uploadCompleted: string;
-    uploadFailed: string;
-    uploadTarget: string;
-    uploadedFileUrl: string;
-    storageProvider: string;
-    lastUploadError: string;
-    fbProjectId: string;
-    fbStorageBucket: string;
-    fbUserUid: string;
-    fbAuthState: string;
-    fbUploadProgress: string;
-    fbTaskState: string;
-    fbErrorCode: string;
-    fbErrorMessage: string;
-    fbException: string;
-    fbUrlGenerated: string;
-    usbDevicesCount: number;
-    shareCapable: string;
-    usbHandleValid: string;
-    rawApiKey: string;
-    rawApiKeyType: string;
-    rawApiKeyLength: number;
-    rawAuthDomain: string;
-    rawProjectId: string;
-    rawStorageBucket: string;
-    rawMessagingId: string;
-    rawAppId: string;
-    rawConfigSrc: string;
-  };
+  runtimeStatus?: any;
 }
 
 export function AdminControls({ 
@@ -108,7 +50,6 @@ export function AdminControls({
 }: AdminControlsProps) {
   const [isMinimized, setIsMinimized] = useState(false);
   const [view, setView] = useState<'main' | 'logs' | 'diag'>('main');
-  const [usbStatus, setUsbStatus] = useState("OFFLINE");
   const [position, setPosition] = useState({ x: 20, y: 20 });
   const isDragging = useRef(false);
   const dragOffset = useRef({ x: 0, y: 0 });
@@ -116,21 +57,29 @@ export function AdminControls({
 
   const logs = KioskLogger.getLogs();
 
-  useEffect(() => {
-    const checkUsb = async () => {
-      if ('usb' in navigator) {
-        try {
-          const devices = await navigator.usb.getDevices();
-          setUsbStatus(devices.length > 0 ? "ONLINE" : "OFFLINE");
-        } catch (e) {
-          setUsbStatus("OFFLINE");
-        }
-      }
-    };
-    checkUsb();
-    const interval = setInterval(checkUsb, 3000);
-    return () => clearInterval(interval);
-  }, []);
+  const handleMountUsb = async () => {
+    try {
+      if (!('showDirectoryPicker' in window)) throw new Error('API_NOT_SUPPORTED');
+      // @ts-ignore
+      const handle = await window.showDirectoryPicker();
+      onMountUsb(handle);
+      KioskLogger.log('info', 'HARDWARE', `USB Mounted: ${handle.name}`, 'SUCCESS');
+    } catch (e: any) {
+      KioskLogger.log('error', 'HARDWARE', 'USB Mount Aborted', 'FAILED', e.message);
+    }
+  };
+
+  const handleMountGallery = async () => {
+    try {
+      if (!('showDirectoryPicker' in window)) throw new Error('API_NOT_SUPPORTED');
+      // @ts-ignore
+      const handle = await window.showDirectoryPicker();
+      onMountGallery(handle);
+      KioskLogger.log('info', 'HARDWARE', `Gallery Mounted: ${handle.name}`, 'SUCCESS');
+    } catch (e: any) {
+      KioskLogger.log('error', 'HARDWARE', 'Gallery Mount Aborted', 'FAILED', e.message);
+    }
+  };
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('.drag-handle')) {
@@ -233,6 +182,29 @@ export function AdminControls({
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-2">
                 <button 
+                  onClick={handleMountGallery}
+                  className={cn(
+                    "py-4 border text-[10px] font-black uppercase italic rounded-xl flex flex-col items-center gap-1 transition-all",
+                    galleryHandle ? "bg-green-500/20 border-green-500/40 text-green-500" : "bg-white/5 border-white/10 text-white/40"
+                  )}
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  {galleryHandle ? "GALLERY OK" : "MOUNT GALLERY"}
+                </button>
+                <button 
+                  onClick={handleMountUsb}
+                  className={cn(
+                    "py-4 border text-[10px] font-black uppercase italic rounded-xl flex flex-col items-center gap-1 transition-all",
+                    usbHandle ? "bg-green-500/20 border-green-500/40 text-green-500" : "bg-white/5 border-white/10 text-white/40"
+                  )}
+                >
+                  <HardDrive className="w-4 h-4" />
+                  {usbHandle ? "USB OK" : "MOUNT USB"}
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <button 
                   onClick={() => { onSimulateCash(50); onJumpTo('package-selection'); }}
                   className="py-4 bg-primary/20 border border-primary/40 text-primary text-[10px] font-black uppercase italic rounded-xl hover:bg-primary/30 active:scale-95 transition-all"
                 >
@@ -253,26 +225,12 @@ export function AdminControls({
 
           {view === 'logs' && (
             <div className="space-y-4">
-               <div className="bg-red-500/10 border-2 border-red-500/40 p-3 rounded-xl space-y-2">
-                  <h3 className="text-[8px] font-black uppercase text-red-500 italic mb-2 flex items-center gap-2">
-                    <ShieldAlert className="w-3 h-3" /> FIREBASE STATUS TRACE
-                  </h3>
-                  <div className="grid grid-cols-1 gap-1">
-                     <TraceItem label="Auth State" value={runtimeStatus?.fbAuthState} />
-                     <TraceItem label="Error Code" value={runtimeStatus?.fbErrorCode} />
-                     <div className="flex flex-col py-1 border-b border-red-500/10">
-                       <span className="text-[6px] text-white/40 uppercase">System Exception</span>
-                       <span className="text-[7px] font-black text-red-400 break-words">{runtimeStatus?.fbException}</span>
-                     </div>
-                  </div>
-               </div>
-
                <div className="flex justify-between items-center px-1">
                   <span className="text-[8px] font-black text-white/40 uppercase">Recent System Logs</span>
                   <button onClick={() => KioskLogger.clear()} className="text-red-500"><Trash2 className="w-3 h-3" /></button>
                </div>
                <div className="space-y-1">
-                  {logs.slice(0, 10).map((log, i) => (
+                  {logs.slice(0, 15).map((log, i) => (
                     <div key={i} className="text-[7px] bg-white/5 p-2 rounded-lg border border-white/5 flex flex-col gap-1">
                       <div className="flex justify-between items-center">
                         <span className="text-white/80 font-bold">{log.module}: {log.message}</span>
@@ -289,30 +247,14 @@ export function AdminControls({
             <div className="space-y-4">
                <div className="bg-indigo-500/10 border-2 border-indigo-500/40 p-3 rounded-xl space-y-2">
                   <h3 className="text-[8px] font-black uppercase text-indigo-400 italic mb-2 flex items-center gap-2">
-                    <FileCode className="w-3 h-3" /> RUNTIME CONFIG PROOF
+                    <FileCode className="w-3 h-3" /> HARDWARE API AUDIT
                   </h3>
                   <div className="grid grid-cols-1 gap-1">
-                     <div className="flex flex-col py-1 border-b border-white/10">
-                       <span className="text-[6px] text-white/40 uppercase">apiKey</span>
-                       <span className="text-[7px] font-mono text-amber-400 break-all">{runtimeStatus?.rawApiKey}</span>
-                     </div>
-                     <TraceItem label="apiKey Length" value={runtimeStatus?.rawApiKeyLength} />
-                     <div className="flex flex-col py-1 border-b border-white/10">
-                       <span className="text-[6px] text-white/40 uppercase">projectId</span>
-                       <span className="text-[7px] font-mono text-white/60">{runtimeStatus?.rawProjectId}</span>
-                     </div>
-                     <div className="flex flex-col py-1 border-b border-white/10">
-                       <span className="text-[6px] text-white/40 uppercase">appId</span>
-                       <span className="text-[7px] font-mono text-white/60">{runtimeStatus?.rawAppId}</span>
-                     </div>
-                     <div className="flex flex-col py-1 border-b border-white/10">
-                       <span className="text-[6px] text-white/40 uppercase">authDomain</span>
-                       <span className="text-[7px] font-mono text-white/60">{runtimeStatus?.rawAuthDomain}</span>
-                     </div>
-                     <div className="flex flex-col py-1 border-b border-white/10">
-                       <span className="text-[6px] text-white/40 uppercase">storageBucket</span>
-                       <span className="text-[7px] font-mono text-white/60">{runtimeStatus?.rawStorageBucket}</span>
-                     </div>
+                     <TraceItem label="Directory Picker" value={('showDirectoryPicker' in window) ? 'PASS' : 'FAIL'} />
+                     <TraceItem label="File Writable" value={('FileSystemWritableFileStream' in window) ? 'PASS' : 'FAIL'} />
+                     <TraceItem label="Gallery Handle" value={galleryHandle ? 'YES' : 'NO'} />
+                     <TraceItem label="USB Handle" value={usbHandle ? 'YES' : 'NO'} />
+                     <TraceItem label="Print Bridge" value={runtimeStatus?.printerReady === 'TRUE' ? 'PASS' : 'PENDING'} />
                   </div>
                </div>
             </div>

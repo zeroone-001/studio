@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -77,103 +76,11 @@ export default function KioskPage() {
   const [preparedBlob, setPreparedBlob] = useState<Blob | null>(null);
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
 
-  const [runtimeStatus, setRuntimeStatus] = useState({
-    photoGenerated: 'PENDING',
-    photoSaved: 'PENDING',
-    intentTriggered: 'PENDING',
-    intentAcknowledged: 'PENDING',
-    cloudSync: 'PENDING',
-    sessionCreated: 'PENDING',
-    fileCreated: 'PENDING',
-    fileSize: '0 bytes',
-    usbBackup: 'PENDING',
-    navigatorShareStarted: 'PENDING',
-    navigatorShareResolved: 'PENDING',
-    navigatorShareRejected: 'PENDING',
-    nokoprintOpened: 'PENDING',
-    secureContext: 'CHECKING',
-    topLevelContext: 'CHECKING',
-    userAgent: '',
-    lastErrorMessage: '',
-    savePath: 'NONE',
-    qrSourceUrl: 'NONE',
-    shareIntentPayload: 'NONE',
-    lastSaveError: 'NONE',
-    captureSuccess: 'PENDING',
-    canvasExists: 'PENDING',
-    canvasWidth: '0',
-    canvasHeight: '0',
-    frameApplied: 'PENDING',
-    filterApplied: 'PENDING',
-    blobCreated: 'PENDING',
-    blobSize: '0 bytes',
-    uploadStarted: 'FALSE',
-    uploadCompleted: 'FALSE',
-    uploadFailed: 'FALSE',
-    uploadTarget: 'NONE',
-    uploadedFileUrl: 'NONE',
-    storageProvider: 'Firebase Storage',
-    lastUploadError: 'NONE',
-    fbProjectId: 'NONE',
-    fbStorageBucket: 'NONE',
-    fbUserUid: 'NONE',
-    fbAuthState: 'OFFLINE',
-    fbUploadProgress: '0%',
-    fbTaskState: 'NONE',
-    fbErrorCode: 'NONE',
-    fbErrorMessage: 'NONE',
-    fbException: 'NONE',
-    fbUrlGenerated: 'FALSE',
-    usbDevicesCount: 0,
-    shareCapable: 'UNKNOWN',
-    usbHandleValid: 'FALSE',
-    rawApiKey: 'NONE',
-    rawApiKeyType: 'NONE',
-    rawApiKeyLength: 0,
-    rawAuthDomain: 'NONE',
-    rawProjectId: 'NONE',
-    rawStorageBucket: 'NONE',
-    rawMessagingId: 'NONE',
-    rawAppId: 'NONE',
-    rawConfigSrc: '@/firebase/index.ts'
-  });
-
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const { app, auth } = initializeFirebase();
-      const config = app.options as any;
-      
-      setRuntimeStatus(prev => ({
-        ...prev,
-        fbProjectId: config.projectId || 'UNKNOWN',
-        fbStorageBucket: config.storageBucket || 'UNKNOWN',
-        rawApiKey: config.apiKey || 'MISSING',
-        rawApiKeyType: typeof config.apiKey,
-        rawApiKeyLength: config.apiKey?.length || 0,
-        rawAuthDomain: config.authDomain || 'NONE',
-        rawProjectId: config.projectId || 'NONE',
-        rawStorageBucket: config.storageBucket || 'NONE',
-        rawMessagingId: config.messagingSenderId || 'NONE',
-        rawAppId: config.appId || 'NONE'
-      }));
-
+      const { auth } = initializeFirebase();
       signInAnonymously(auth).catch(e => {
         KioskLogger.log('error', 'SESSION', 'Auth Failed', 'FAILED', `Code: ${e.code}, Msg: ${e.message}`);
-        setRuntimeStatus(prev => ({ 
-          ...prev, 
-          fbException: JSON.stringify({ code: e.code, message: e.message, name: e.name }, null, 2), 
-          fbAuthState: 'ERROR', 
-          fbErrorCode: e.code, 
-          fbErrorMessage: e.message 
-        }));
-      });
-
-      onAuthStateChanged(auth, (user) => {
-        setRuntimeStatus(prev => ({
-          ...prev,
-          fbUserUid: user?.uid || 'NONE',
-          fbAuthState: user ? 'LOGGED_IN' : 'SIGNED_OUT'
-        }));
       });
     }
   }, []);
@@ -199,9 +106,8 @@ export default function KioskPage() {
           });
           setCameraStream(stream);
           if (videoRef.current) videoRef.current.srcObject = stream;
-          KioskLogger.log('info', 'HARDWARE', 'Camera Stream Active', 'SUCCESS');
         } catch (e: any) {
-          KioskLogger.log('error', 'HARDWARE', 'Camera Request Failed', 'FAILED', e.message);
+          KioskLogger.log('error', 'HARDWARE', 'Camera Failed', 'FAILED', e.message);
         }
       };
       startCamera();
@@ -209,45 +115,12 @@ export default function KioskPage() {
   }, [appState, cameraStream]);
 
   useEffect(() => {
-    const { db, storage } = initializeFirebase();
-    const photosRef = collection(db, "photos");
-    const q = query(photosRef, where("status", "==", "complete"));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      snapshot.docChanges().forEach(async (change) => {
-        if (change.type === "added" || change.type === "modified") {
-          const data = change.doc.data();
-          const docId = change.doc.id;
-          
-          const now = Date.now();
-          const timestamp = data.timestamp?.toMillis?.() || 0;
-          const isStale = timestamp > 0 && (now - timestamp > 10 * 60 * 1000); 
-
-          if (data.isDownloaded || isStale) {
-            try {
-              const photoRef = ref(storage, data.storagePath);
-              await deleteObject(photoRef);
-            } catch (e) {}
-
-            try {
-              await deleteDoc(doc(db, "photos", docId));
-            } catch (e) {}
-          }
-        }
-      });
-    });
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
     if (appState === "payment") {
-      if (paymentReceived >= 100) {
-        setAppState("package-selection");
-      } else if (paymentReceived >= 50) {
+      if (paymentReceived >= (packageSelected || 50)) {
         setAppState("package-selection");
       }
     }
-  }, [paymentReceived, appState]);
+  }, [paymentReceived, appState, packageSelected]);
 
   useEffect(() => {
     if (appState === "printing") {
@@ -255,7 +128,6 @@ export default function KioskPage() {
         setPrintProgress(prev => {
           if (prev >= 100) {
             clearInterval(interval);
-            // Automatic transition to Thank You page after progress complete
             setTimeout(() => setAppState("thankyou"), 2000);
             return 100;
           }
@@ -266,59 +138,50 @@ export default function KioskPage() {
     }
   }, [appState]);
 
-  const initiatePrint = async (blob: Blob, sessionId: string) => {
-    KioskLogger.log('info', 'PRINT', '--- START PRODUCTION PIPELINE ---', 'PENDING');
+  const dispatchToPrintSpooler = (blob: Blob) => {
+    KioskLogger.log('info', 'PRINT', 'Sending to Spooler', 'PENDING');
+    if (printFrameRef.current) {
+      const frame = printFrameRef.current;
+      const frameDoc = frame.contentDocument || frame.contentWindow?.document;
+      if (frameDoc) {
+        const url = URL.createObjectURL(blob);
+        frameDoc.body.innerHTML = `
+          <style>@page { size: 4in 6in; margin: 0; } body { margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; background: white; } img { width: 100%; height: 100%; object-fit: contain; }</style>
+          <img src="${url}">
+        `;
+        
+        setTimeout(() => {
+          frame.contentWindow?.focus();
+          frame.contentWindow?.print();
+          KioskLogger.log('info', 'PRINT', 'System Print Triggered', 'SUCCESS');
+        }, 500);
+      }
+    } else {
+      KioskLogger.log('error', 'PRINT', 'Bridge Missing', 'FAILED');
+    }
+  };
+
+  const initiateBackgroundSaves = async (blob: Blob, sessionId: string) => {
+    KioskLogger.log('info', 'SESSION', 'Starting Background Saves', 'PENDING');
     
-    try {
-      // 1. Save to Local Storage (IndexedDB)
-      await SessionStore.savePhotoLocally(sessionId, blob);
+    // 1. IndexedDB (Failsafe)
+    await SessionStore.savePhotoLocally(sessionId, blob);
 
-      // 2. Save to Mounted Handles (Gallery/USB)
-      if (galleryHandle) {
-        KioskLogger.log('info', 'SESSION', 'Starting Background Gallery Save', 'PENDING');
-        await SessionStore.saveToHandle(galleryHandle, 'JNL_GALLERY', sessionId, blob);
-      } else {
-        KioskLogger.log('warn', 'HARDWARE', 'SILENT_SAVE_SKIPPED: Gallery Handle Null', 'FAILED');
-      }
-      
-      if (usbHandle) {
-        KioskLogger.log('info', 'SESSION', 'Starting Background USB Archive', 'PENDING');
-        await SessionStore.saveToHandle(usbHandle, 'JNL_LEXAR_ARCHIVE', sessionId, blob);
-      } else {
-        KioskLogger.log('warn', 'HARDWARE', 'SILENT_SAVE_SKIPPED: USB Handle Null', 'FAILED');
-      }
-
-      // 3. Dispatch to Android Print Spooler (NokoPrint Bridge)
-      if (printFrameRef.current) {
-        const frame = printFrameRef.current;
-        const frameDoc = frame.contentDocument || frame.contentWindow?.document;
-        if (frameDoc) {
-          const url = URL.createObjectURL(blob);
-          frameDoc.body.innerHTML = `
-            <style>
-              @page { size: 4in 6in; margin: 0; } 
-              body { margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; background: white; }
-              img { width: 100%; height: 100%; object-fit: contain; }
-            </style>
-            <img src="${url}">
-          `;
-          
-          setTimeout(() => {
-            frame.contentWindow?.focus();
-            frame.contentWindow?.print();
-            KioskLogger.log('info', 'PRINT', 'System Print Spooler Triggered', 'SUCCESS');
-          }, 500);
-        }
-      }
-
-    } catch (e: any) {
-      KioskLogger.log('error', 'PRINT', 'Production Pipeline Crash', 'FAILED', e.message);
+    // 2. Mounted Handles
+    if (galleryHandle) {
+      await SessionStore.saveToHandle(galleryHandle, 'JNL_GALLERY', sessionId, blob);
+    } else {
+      KioskLogger.log('warn', 'HARDWARE', 'Gallery skipped: Not mounted', 'FAILED');
+    }
+    
+    if (usbHandle) {
+      await SessionStore.saveToHandle(usbHandle, 'JNL_LEXAR', sessionId, blob);
+    } else {
+      KioskLogger.log('warn', 'HARDWARE', 'USB skipped: Not mounted', 'FAILED');
     }
   };
 
   const handleCloudSync = useCallback(async (blob: Blob, sessionId: string) => {
-    KioskLogger.log('info', 'CLOUD', `Sync Start (${sessionId})`, 'PENDING');
-    
     const { storage, db, auth } = initializeFirebase();
     setUploadStatus("uploading");
 
@@ -331,52 +194,39 @@ export default function KioskPage() {
         storagePath: `photos/${sessionId}.jpg`,
         timestamp: serverTimestamp(),
         isDownloaded: false,
-        promoConsent: promoConsent,
         status: 'uploading'
       });
 
       const photoRef = ref(storage, `photos/${sessionId}.jpg`);
       const uploadTask = uploadBytesResumable(photoRef, blob, { contentType: 'image/jpeg' });
 
-      uploadTask.on('state_changed', 
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setRuntimeStatus(prev => ({ ...prev, fbUploadProgress: `${progress.toFixed(1)}%` }));
-        },
-        async (error: any) => {
-          setUploadStatus("error");
-          KioskLogger.log('error', 'CLOUD', 'Upload Task Failed', 'FAILED', error.message);
-        },
+      uploadTask.on('state_changed', null, 
+        (error: any) => { setUploadStatus("error"); },
         async () => {
           const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
           await updateDoc(docRef, { status: 'complete', downloadUrl: downloadUrl });
-          
           const retrievalUrl = `${window.location.origin}/retrieve/${sessionId}`;
           setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
           setUploadStatus("complete");
-          KioskLogger.log('info', 'CLOUD', 'QR Link Generated', 'SUCCESS');
         }
       );
     } catch (error: any) {
       setUploadStatus("error");
-      KioskLogger.log('error', 'SESSION', 'Cloud Sync Crash', 'FAILED', error.message);
     }
-  }, [promoConsent]);
+  }, []);
 
   const preSpoolPrintFile = useCallback(async () => {
     if (!selectedBlueprint || capturedPhotos.length === 0 || spoolingRef.current) return;
     
     setIsPreparingPrint(true);
     spoolingRef.current = true;
-    KioskLogger.log('info', 'SESSION', 'High-Res Layout Render Started', 'PENDING');
 
     try {
       const exportCanvas = document.createElement('canvas');
       exportCanvas.width = 1600;
       exportCanvas.height = 2400;
       const ctx = exportCanvas.getContext('2d', { alpha: false });
-      
-      if (!ctx) throw new Error('Canvas Context Creation Failed');
+      if (!ctx) throw new Error('Context Failed');
 
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(0, 0, 1600, 2400);
@@ -387,9 +237,8 @@ export default function KioskPage() {
       const loadImage = (src: string): Promise<HTMLImageElement> => {
         return new Promise((resolve, reject) => {
           const img = new Image();
-          const timeout = setTimeout(() => reject(new Error(`Asset Timeout: ${src.substring(0, 30)}...`)), 15000);
-          img.onload = () => { clearTimeout(timeout); resolve(img); };
-          img.onerror = () => { clearTimeout(timeout); reject(new Error(`Asset Load Error: ${src.substring(0, 30)}...`)); };
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error('Load Error'));
           img.src = src;
         });
       };
@@ -399,74 +248,50 @@ export default function KioskPage() {
           const slot = selectedBlueprint.slots[i];
           const photo = capturedPhotos[i];
           if (!photo) continue;
-          
           const img = await loadImage(photo);
-          const sX = isStrip ? slot.x / 2 : slot.x;
-          const sW = isStrip ? slot.w / 2 : slot.w;
-
           if (selectedFilter.filter) ctx.filter = selectedFilter.filter;
-          ctx.drawImage(img, sX + offsetX, slot.y, sW, slot.h);
+          ctx.drawImage(img, (isStrip ? slot.x / 2 : slot.x) + offsetX, slot.y, isStrip ? slot.w / 2 : slot.w, slot.h);
           ctx.filter = 'none';
-          
-          await new Promise(r => requestAnimationFrame(r));
         }
         
         for (const s of [...placedStickers].sort((a, b) => a.zIndex - b.zIndex)) {
           const svgContainer = document.querySelector(`[data-sticker-id="${s.id}"]`);
           if (!svgContainer) continue;
-          
           const svgElement = svgContainer.querySelector('svg');
           if (!svgElement) continue;
-
           const svgString = new XMLSerializer().serializeToString(svgElement);
           const svgBlob = new Blob([svgString], {type: 'image/svg+xml;charset=utf-8'});
           const url = URL.createObjectURL(svgBlob);
-          
           try {
             const stickerImg = await loadImage(url);
             const targetW = (s.size / 100) * STRIP_W;
-            const targetX = (s.x / 100) * STRIP_W + offsetX;
-            const targetY = (s.y / 100) * 2400;
-
             ctx.save();
-            ctx.translate(targetX, targetY);
+            ctx.translate((s.x / 100) * STRIP_W + offsetX, (s.y / 100) * 2400);
             ctx.rotate((s.rotation * Math.PI) / 180);
             ctx.scale(s.flipX ? -1 : 1, s.flipY ? -1 : 1);
             ctx.drawImage(stickerImg, -targetW / 2, -targetW / 2, targetW, targetW);
             ctx.restore();
-          } finally {
-            URL.revokeObjectURL(url);
-          }
-          await new Promise(r => setTimeout(r, 0));
+          } finally { URL.revokeObjectURL(url); }
         }
 
         const footerY = 2200;
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(offsetX, footerY, STRIP_W, 200);
-
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#000000';
         ctx.font = `bold italic ${isStrip ? 28 : 40}px Inter, sans-serif`;
         ctx.fillText(`"${selectedQuote.text}"`, offsetX + (STRIP_W / 2), footerY + 80);
-
         ctx.textAlign = 'left';
         ctx.font = '900 24px Inter, sans-serif';
         ctx.fillText('JNL STUDIO', offsetX + 60, footerY + 180);
       };
 
-      if (isStrip) {
-        await drawContent(0);
-        await drawContent(800);
-      } else {
-        await drawContent(0);
-      }
+      if (isStrip) { await drawContent(0); await drawContent(800); }
+      else { await drawContent(0); }
 
       exportCanvas.toBlob((blob) => {
-        if (blob) {
-          setPreparedBlob(blob);
-          KioskLogger.log('info', 'SESSION', `High-Res Generated: ${(blob.size/1024).toFixed(1)} KB`, 'SUCCESS');
-        }
+        if (blob) setPreparedBlob(blob);
         setIsPreparingPrint(false);
         spoolingRef.current = false;
       }, 'image/jpeg', 0.95);
@@ -478,15 +303,7 @@ export default function KioskPage() {
   }, [selectedBlueprint, capturedPhotos, selectedQuote, selectedFilter, placedStickers]);
 
   const addSticker = (type: string) => {
-    const newSticker: PlacedSticker = {
-      id: Math.random().toString(36).substring(7),
-      type,
-      x: 50,
-      y: 50,
-      size: 20,
-      rotation: 0,
-      zIndex: placedStickers.length + 100
-    };
+    const newSticker: PlacedSticker = { id: Math.random().toString(36).substring(7), type, x: 50, y: 50, size: 20, rotation: 0, zIndex: placedStickers.length + 100 };
     setPlacedStickers([...placedStickers, newSticker]);
     setSelectedStickerId(newSticker.id);
   };
@@ -504,25 +321,19 @@ export default function KioskPage() {
     setSelectedQuote(QUOTES[0]);
     setSelectedStickerId(null);
     setPrintProgress(0);
-    setSelectedRetakeIndex(null);
-    setPromoConsent(null);
-    setCurrentShotIndex(0);
     setPreparedBlob(null);
     setUploadStatus("idle");
     setSoftCopyQrUrl("");
-    setCurrentSessionId("");
     spoolingRef.current = false;
   }, []);
 
   const startShotSequence = async () => {
     const totalShots = packageSelected === 50 ? 3 : 6;
     const photos: string[] = capturedPhotos.length > 0 ? [...capturedPhotos] : [];
-    
     setAppState("capturing");
     setIsCapturingReady(true);
 
-    for (let i = (selectedRetakeIndex !== null ? selectedRetakeIndex : 0); 
-         i < (selectedRetakeIndex !== null ? selectedRetakeIndex + 1 : totalShots); i++) {
+    for (let i = (selectedRetakeIndex !== null ? selectedRetakeIndex : 0); i < (selectedRetakeIndex !== null ? selectedRetakeIndex + 1 : totalShots); i++) {
       setCurrentShotIndex(i);
       setCountdown(null);
       await new Promise(r => setTimeout(r, 200));
@@ -534,11 +345,8 @@ export default function KioskPage() {
       setIsProcessing(true);
       const shot = takePhoto();
       if (shot) {
-        if (selectedRetakeIndex !== null) {
-          photos[i] = shot;
-        } else {
-          photos.push(shot);
-        }
+        if (selectedRetakeIndex !== null) photos[i] = shot;
+        else photos.push(shot);
         setCapturedPhotos([...photos]);
       }
       await new Promise(r => setTimeout(r, 300)); 
@@ -560,12 +368,6 @@ export default function KioskPage() {
     return null;
   };
 
-  const handleStartTouch = () => {
-    // Failsafe local storage init
-    SessionStore.initDB().catch(() => {});
-    setAppState("payment");
-  };
-
   useEffect(() => {
     if (appState === "final-preview" && !preparedBlob && !isPreparingPrint) {
       preSpoolPrintFile();
@@ -576,7 +378,7 @@ export default function KioskPage() {
     <KioskLayout>
       <iframe ref={printFrameRef} className="hidden" title="print-frame" />
       <canvas ref={canvasRef} className="hidden" />
-      <div className="flex-1 w-full h-full flex flex-col items-center overflow-hidden kiosk-container safe-area-spacing landscape-container">
+      <div className="flex-1 w-full h-full flex flex-col items-center overflow-hidden kiosk-container safe-area-spacing">
         
         <AdminAuthDialog isOpen={isAdminDialogOpen} onClose={() => setIsAdminDialogOpen(false)} onAuthSuccess={() => setIsOwnerMode(true)} />
         {isOwnerMode && (
@@ -585,14 +387,12 @@ export default function KioskPage() {
             onJumpTo={setAppState}
             onReset={resetSession}
             onExitOwnerMode={() => setIsOwnerMode(false)}
-            onSimulateCash={(amount) => {
-              setPaymentReceived(prev => prev + amount);
-            }}
+            onSimulateCash={(amount) => setPaymentReceived(prev => prev + amount)}
             onMountUsb={setUsbHandle}
             onMountGallery={setGalleryHandle}
-            runtimeStatus={runtimeStatus}
             usbHandle={usbHandle}
             galleryHandle={galleryHandle}
+            runtimeStatus={{ printerReady: printFrameRef.current ? 'TRUE' : 'FALSE' }}
           />
         )}
         {isOwnerMode && <HealthMonitor usbMounted={!!usbHandle} galleryMounted={!!galleryHandle} />}
@@ -602,19 +402,14 @@ export default function KioskPage() {
             <div className="flex-1 flex flex-col items-center justify-center relative">
               <div onClick={() => {
                 setLogoTapCount(p => p + 1);
-                if (logoTapCount >= 4) {
-                  setIsAdminDialogOpen(true);
-                  setLogoTapCount(0);
-                }
+                if (logoTapCount >= 4) { setIsAdminDialogOpen(true); setLogoTapCount(0); }
               }}>
                 <JnlLogo variant="hero" color="light" />
               </div>
             </div>
             <div className="w-full flex flex-col items-center pb-8">
-              <div className="text-sm font-black uppercase text-white/60 mb-6 tracking-[0.3em] animate-pulse">
-                INSERT ₱50 OR ₱100 BILL
-              </div>
-              <NeonButton onClick={handleStartTouch} className="w-[35%] text-2xl py-10">TOUCH TO START</NeonButton>
+              <div className="text-sm font-black uppercase text-white/60 mb-6 tracking-[0.3em] animate-pulse">INSERT ₱50 OR ₱100 BILL</div>
+              <NeonButton onClick={() => { SessionStore.initDB().catch(()=>{}); setAppState("payment"); }} className="w-[35%] text-2xl py-10">TOUCH TO START</NeonButton>
             </div>
           </div>
         )}
@@ -623,9 +418,7 @@ export default function KioskPage() {
           <div className="w-full max-w-2xl text-center flex flex-col items-center justify-center h-full px-6">
             <h2 className="font-headline font-black text-4xl mb-2 italic uppercase">WAITING ON INSERT OF MONEY</h2>
             <div className="bg-white/5 border-2 border-white/10 p-10 mb-8 w-full flex flex-col items-center justify-center">
-               <div className="text-sm font-black uppercase text-white/40 mb-4 tracking-widest">
-                 {paymentReceived === 0 ? "INSERT BILL NOW" : "CASH DETECTED"}
-               </div>
+               <div className="text-sm font-black uppercase text-white/40 mb-4 tracking-widest">{paymentReceived === 0 ? "INSERT BILL NOW" : "CASH DETECTED"}</div>
                <div className="text-6xl font-black italic text-primary">{paymentReceived} PHP</div>
             </div>
           </div>
@@ -636,30 +429,16 @@ export default function KioskPage() {
             <h2 className="text-4xl font-headline font-black italic uppercase text-primary">CONFIRM PACKAGE</h2>
             <div className="flex justify-center w-full max-w-5xl">
               {paymentReceived >= 100 ? (
-                <button 
-                  onClick={() => { setPackageSelected(100); setAppState("setup"); }}
-                  className="group relative bg-white/5 border-4 border-primary p-10 flex flex-col items-center transition-all hover:bg-primary/5 active:scale-95 w-[420px]"
-                >
+                <button onClick={() => { setPackageSelected(100); setAppState("setup"); }} className="group relative bg-white/5 border-4 border-primary p-10 flex flex-col items-center transition-all hover:bg-primary/5 active:scale-95 w-[420px]">
                   <span className="text-6xl font-black italic text-white mb-2">₱100</span>
                   <span className="text-lg font-bold uppercase text-primary">PREMIUM PORTRAIT</span>
-                  <div className="mt-4 space-y-1 text-center text-xs font-bold uppercase text-white/60">
-                    <p>6 PHOTO SHOTS</p>
-                    <p>4x6 SINGLE PORTRAIT</p>
-                    <p>FULL FILTER LIBRARY</p>
-                  </div>
+                  <div className="mt-4 space-y-1 text-center text-xs font-bold uppercase text-white/60"><p>6 PHOTO SHOTS</p><p>4x6 SINGLE PORTRAIT</p><p>FULL FILTER LIBRARY</p></div>
                 </button>
               ) : (
-                <button 
-                  onClick={() => { setPackageSelected(50); setAppState("setup"); }}
-                  className="group relative bg-white/5 border-4 border-primary p-10 flex flex-col items-center transition-all hover:bg-primary/5 active:scale-95 w-[420px]"
-                >
+                <button onClick={() => { setPackageSelected(50); setAppState("setup"); }} className="group relative bg-white/5 border-4 border-primary p-10 flex flex-col items-center transition-all hover:bg-primary/5 active:scale-95 w-[420px]">
                   <span className="text-6xl font-black italic text-white mb-2">₱50</span>
                   <span className="text-lg font-bold uppercase text-primary">CLASSIC STRIP</span>
-                  <div className="mt-4 space-y-1 text-center text-xs font-bold uppercase text-white/60">
-                    <p>3 PHOTO SHOTS</p>
-                    <p>2x6 PHOTO STRIP</p>
-                    <p>5 BEAUTY FILTERS</p>
-                  </div>
+                  <div className="mt-4 space-y-1 text-center text-xs font-bold uppercase text-white/60"><p>3 PHOTO SHOTS</p><p>2x6 PHOTO STRIP</p><p>5 BEAUTY FILTERS</p></div>
                 </button>
               )}
             </div>
@@ -670,20 +449,18 @@ export default function KioskPage() {
           <div className="w-full h-full max-w-[98%] flex flex-row gap-4 items-start py-2 px-2 overflow-hidden">
              <div className="flex-[0.4] space-y-3 pr-2 scrollbar-hide h-full pb-6">
                 <div className="space-y-2">
-                  <h2 className="font-headline font-black text-lg italic uppercase text-primary">Layout Selection</h2>
+                  <h2 className="font-headline font-black text-lg italic uppercase text-primary">Layout</h2>
                   <div className="grid grid-cols-3 gap-1.5">
                     {BLUEPRINTS.filter(b => b.package === packageSelected).map(bp => (
                       <button key={bp.id} onClick={() => setSelectedBlueprint(bp)} className={cn("p-1.5 border-2 flex flex-col items-center bg-white/5 transition-all min-h-[110px]", selectedBlueprint?.id === bp.id ? "border-primary bg-primary/10" : "border-white/10")}>
-                        <div className="flex-1 w-full relative mb-1">
-                          <BlueprintFrame blueprint={bp} photos={[]} isPreview className="!h-full !w-auto" />
-                        </div>
+                        <div className="flex-1 w-full relative mb-1"><BlueprintFrame blueprint={bp} photos={[]} isPreview className="!h-full !w-auto" /></div>
                         <span className="text-[6px] font-black uppercase italic text-center">{bp.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <h2 className="font-headline font-black text-lg italic uppercase text-primary">Beauty Filters</h2>
+                  <h2 className="font-headline font-black text-lg italic uppercase text-primary">Filters</h2>
                   <div className="grid grid-cols-5 gap-1.5">
                     {FILTERS.slice(0, packageSelected === 50 ? 5 : FILTERS.length).map(f => (
                       <button key={f.id} onClick={() => setSelectedFilter(f)} className={cn("p-2 border-2 flex flex-col items-center justify-center bg-white/5 transition-all min-h-[50px]", selectedFilter.id === f.id ? "border-primary bg-primary/10" : "border-white/10")}>
@@ -723,19 +500,12 @@ export default function KioskPage() {
           <div className="w-full h-full flex flex-row items-center justify-center gap-8 py-4 px-6">
             <div className="flex-1 h-[82vh] flex items-center justify-center">
               <div className="h-full aspect-[1600/2400] shadow-2xl relative border-4 border-white bg-white overflow-hidden">
-                 {selectedBlueprint && (
-                    <BlueprintFrame 
-                      blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.filter} isPreview 
-                      onSelectSlot={(idx) => setSelectedRetakeIndex(idx)} selectedSlotIndex={selectedRetakeIndex}
-                    />
-                 )}
+                 {selectedBlueprint && <BlueprintFrame blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.filter} isPreview onSelectSlot={(idx) => setSelectedRetakeIndex(idx)} selectedSlotIndex={selectedRetakeIndex} />}
               </div>
             </div>
             <div className="w-80 space-y-3">
                <NeonButton onClick={() => setAppState("decorating")} className="w-full py-6 text-xl">DECORATE</NeonButton>
-               <button onClick={() => selectedRetakeIndex !== null && startShotSequence()} disabled={selectedRetakeIndex === null} className={cn("w-full py-6 font-black uppercase italic border-2 flex items-center justify-center gap-3", selectedRetakeIndex !== null ? "bg-white text-black" : "bg-white/5 text-white/20")}>
-                 <Target className="w-5 h-5" /> Retake Selection
-               </button>
+               <button onClick={() => selectedRetakeIndex !== null && startShotSequence()} disabled={selectedRetakeIndex === null} className={cn("w-full py-6 font-black uppercase italic border-2 flex items-center justify-center gap-3", selectedRetakeIndex !== null ? "bg-white text-black" : "bg-white/5 text-white/20")}><Target className="w-5 h-5" /> Retake Selection</button>
                <button onClick={() => { setCapturedPhotos([]); setAppState("setup"); }} className="w-full py-3 text-[9px] font-black uppercase italic border border-white/10 text-white/40">Retake All</button>
             </div>
           </div>
@@ -747,8 +517,7 @@ export default function KioskPage() {
                 <div className="h-full aspect-[1600/2400] relative border-4 border-white bg-white shadow-2xl overflow-hidden">
                   {selectedBlueprint && (
                     <BlueprintFrame 
-                      blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.filter} 
-                      quoteText={selectedQuote.text} stickers={placedStickers} selectedStickerId={selectedStickerId}
+                      blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.filter} quoteText={selectedQuote.text} stickers={placedStickers} selectedStickerId={selectedStickerId}
                       onUpdateSticker={(id, updates) => setPlacedStickers(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))}
                       onRemoveSticker={(id) => { setPlacedStickers(prev => prev.filter(s => s.id !== id)); setSelectedStickerId(null); }}
                       onSelectSticker={setSelectedStickerId} isPreview 
@@ -762,9 +531,7 @@ export default function KioskPage() {
                       <h3 className="text-[9px] font-black uppercase text-white/40 italic">Premium Stickers</h3>
                       <div className="grid grid-cols-5 gap-1.5">
                         {STICKER_DEFS.map(s => (
-                          <button key={s.id} onClick={() => addSticker(s.id)} className="aspect-square bg-white/5 border border-white/10 p-1 flex items-center justify-center hover:border-primary transition-colors">
-                            <s.icon className={cn("w-full h-full", s.color)} />
-                          </button>
+                          <button key={s.id} onClick={() => addSticker(s.id)} className="aspect-square bg-white/5 border border-white/10 p-1 flex items-center justify-center hover:border-primary transition-colors"><s.icon className={cn("w-full h-full", s.color)} /></button>
                         ))}
                       </div>
                    </div>
@@ -786,13 +553,11 @@ export default function KioskPage() {
           <div className="w-full h-full flex flex-col items-center justify-center py-4 px-6 space-y-4">
             <div className="flex-1 h-[82vh] flex items-center justify-center">
               <div className="h-full relative border-[10px] border-white bg-white shadow-2xl overflow-hidden" style={{ aspectRatio: packageSelected === 50 ? '800/2400' : '1600/2400' }}>
-                {selectedBlueprint && (
-                  <BlueprintFrame blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.filter} quoteText={selectedQuote.text} stickers={placedStickers} isPreview={true} />
-                )}
+                {selectedBlueprint && <BlueprintFrame blueprint={selectedBlueprint} photos={capturedPhotos} filterClass={selectedFilter.filter} quoteText={selectedQuote.text} stickers={placedStickers} isPreview={true} />}
                 {isPreparingPrint && (
                   <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center space-y-3 z-[80]">
                     <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                    <span className="text-[9px] font-black uppercase italic text-primary">Finalizing High-Res Render...</span>
+                    <span className="text-[9px] font-black uppercase italic text-primary">Finalizing...</span>
                   </div>
                 )}
               </div>
@@ -803,7 +568,8 @@ export default function KioskPage() {
                 if (preparedBlob) {
                   const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
                   setCurrentSessionId(sessionId);
-                  initiatePrint(preparedBlob, sessionId);
+                  dispatchToPrintSpooler(preparedBlob);
+                  initiateBackgroundSaves(preparedBlob, sessionId);
                   handleCloudSync(preparedBlob, sessionId);
                 }
                 setAppState("printing");
@@ -818,36 +584,21 @@ export default function KioskPage() {
         {appState === "printing" && (
           <div className="w-full h-full flex flex-row overflow-hidden relative">
              <div className="flex-1 flex flex-col items-center justify-center p-12 border-r border-white/10">
-                <div className="mb-12 min-h-[40px]">
-                   {promoConsent !== null && (
-                     <div className="flex items-center gap-3 text-primary font-black uppercase italic text-2xl animate-in slide-in-from-top-4">
-                       <CheckCircle2 className="w-8 h-8" />
-                       {promoConsent ? "Promotion Approved" : "Private Session"}
-                     </div>
-                   )}
-                </div>
-
                 <div className="text-center mb-8">
                    <h2 className="font-headline font-black text-6xl italic uppercase text-primary mb-4">Printing...</h2>
                    <div className="flex flex-col items-center justify-center gap-3">
                      <div className="flex items-center gap-2">
-                        {(uploadStatus === 'uploading' || runtimeStatus.cloudSync === 'PENDING') && uploadStatus !== 'error' && <Loader2 className="w-4 h-4 text-white/40 animate-spin" />}
+                        {uploadStatus === 'uploading' && <Loader2 className="w-4 h-4 text-white/40 animate-spin" />}
                         <p className={cn("font-bold uppercase tracking-[0.3em] text-sm italic", uploadStatus === 'error' ? "text-red-500" : "text-white/40")}>
-                          {uploadStatus === 'idle' && "Initializing Sequence..."}
-                          {uploadStatus === 'uploading' && "Uploading High-Res Version..."}
-                          {uploadStatus === 'complete' && "Cloud Storage Verified"}
-                          {uploadStatus === 'error' && "Soft Copy Unavailable (Offline)"}
+                          {uploadStatus === 'idle' && "Initializing..."}
+                          {uploadStatus === 'uploading' && "Syncing Soft Copy..."}
+                          {uploadStatus === 'complete' && "Cloud Sync Complete"}
+                          {uploadStatus === 'error' && "Offline Mode Active"}
                         </p>
                      </div>
-                     <p className="text-primary text-[10px] font-black uppercase italic animate-pulse">
-                        {softCopyQrUrl ? "SYSTEM READY - SCAN QR" : (uploadStatus === 'error' ? "Physical Print in Progress" : "HOLD ON, SYNCING...")}
-                     </p>
                    </div>
                 </div>
-
-                <div className="w-full max-w-2xl">
-                   <Progress value={printProgress} className="h-8 bg-white/10 w-full" />
-                </div>
+                <div className="w-full max-w-2xl"><Progress value={printProgress} className="h-8 bg-white/10 w-full" /></div>
              </div>
 
              <div className="w-[480px] bg-white/5 flex flex-col items-center justify-center p-10">
@@ -855,88 +606,27 @@ export default function KioskPage() {
                   <div className="animate-in fade-in zoom-in-95 duration-700 flex flex-col items-center space-y-8">
                      <div className="text-center space-y-2">
                        <h3 className="text-3xl font-black italic uppercase text-primary">HD SOFT COPY</h3>
-                       <p className="text-[10px] font-black uppercase text-white/30 tracking-widest">Available for 10 minutes only</p>
+                       <p className="text-[10px] font-black uppercase text-white/30 tracking-widest">Expires in 10 minutes</p>
                      </div>
-                     <div className="bg-white p-6 rounded-[3rem] shadow-[0_0_50px_rgba(255,51,153,0.1)]">
-                        <img src={softCopyQrUrl} alt="Scan to save" className="w-64 h-64" />
-                     </div>
-                     <p className="text-xs font-bold uppercase text-white/40 text-center leading-relaxed">Scan now to save your<br/>high-resolution portrait</p>
-                     
-                     {printProgress >= 100 && (
-                        <button 
-                          onClick={() => setAppState("thankyou")} 
-                          className="w-full bg-primary py-8 text-2xl font-black uppercase italic rounded-3xl shadow-[0_10px_30px_rgba(255,51,153,0.3)] active:scale-95 transition-all text-white border-2 border-white/20"
-                        >
-                          DONE
-                        </button>
-                     )}
-                  </div>
-                ) : uploadStatus === 'error' ? (
-                  <div className="flex flex-col items-center space-y-8 animate-in fade-in duration-500">
-                    <div className="w-32 h-32 bg-red-500/10 border-2 border-red-500/30 rounded-full flex items-center justify-center">
-                      <WifiOff className="w-16 h-16 text-red-500" />
-                    </div>
-                    <div className="text-center space-y-4">
-                      <h3 className="text-2xl font-black italic uppercase text-white/60">OFFLINE MODE</h3>
-                      <p className="text-[10px] font-bold uppercase text-white/30 leading-relaxed max-w-[250px]">Internet connection lost or Cloud Disabled. Your physical print is unaffected.</p>
-                    </div>
-                    {printProgress >= 100 && (
-                        <button 
-                          onClick={() => setAppState("thankyou")} 
-                          className="w-full bg-zinc-800 py-8 text-2xl font-black uppercase italic rounded-3xl shadow-xl active:scale-95 transition-all text-white/40"
-                        >
-                          DONE
-                        </button>
-                     )}
+                     <div className="bg-white p-6 rounded-[3rem] shadow-2xl"><img src={softCopyQrUrl} alt="Scan" className="w-64 h-64" /></div>
+                     <p className="text-xs font-bold uppercase text-white/40 text-center">Scan to save your high-res portrait</p>
+                     {printProgress >= 100 && <button onClick={() => setAppState("thankyou")} className="w-full bg-primary py-8 text-2xl font-black uppercase italic rounded-3xl text-white">DONE</button>}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center space-y-6 opacity-20">
-                     <div className="relative">
-                        <Loader2 className="w-16 h-16 text-white animate-spin" />
-                        <Camera className="w-6 h-6 absolute inset-0 m-auto" />
-                     </div>
-                     <div className="text-center space-y-2">
-                        <span className="text-sm font-black uppercase italic tracking-widest block">Verifying Upload...</span>
-                        <span className="text-[8px] font-bold uppercase block">QR generates after success</span>
-                     </div>
-                  </div>
+                  <div className="flex flex-col items-center space-y-6 opacity-20"><Loader2 className="w-16 h-16 text-white animate-spin" /><span className="text-sm font-black uppercase italic tracking-widest">Preparing QR...</span></div>
                 )}
              </div>
 
              {promoConsent === null && (
                <div className="absolute inset-0 bg-black/95 z-[200] flex items-center justify-center p-6 backdrop-blur-md">
                  <div className="bg-zinc-950 border-4 border-primary p-12 flex flex-col items-center space-y-8 rounded-[4rem] w-full max-w-4xl shadow-2xl">
-                   <div className="space-y-4 text-center">
-                     <div className="space-y-1">
-                        <h3 className="text-3xl font-black italic uppercase text-primary">📸 Moment Sharing Consent</h3>
-                        <p className="text-primary/60 text-lg font-black italic uppercase">Pahintulot sa Pagbabahagi ng Larawan at Moment</p>
-                     </div>
-                     
-                     <div className="space-y-4 py-4 border-y border-white/10">
-                        <div className="space-y-1">
-                          <p className="text-white text-lg font-bold">JNL Studio may share your photobooth moments on our Facebook page for promotional purposes.</p>
-                          <p className="text-white/40 text-sm italic font-medium">Maaaring ibahagi ng JNL Studio ang inyong photobooth moments sa aming Facebook page para sa promotion.</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-white/80 text-sm font-bold uppercase tracking-wider">Your choice will not affect your photos, prints, or soft copy.</p>
-                          <p className="text-white/40 text-[10px] italic font-medium">Ang inyong sagot ay hindi makakaapekto sa inyong prints o soft copy.</p>
-                        </div>
-                     </div>
+                   <div className="text-center space-y-4">
+                     <h3 className="text-3xl font-black italic uppercase text-primary">📸 Moment Sharing</h3>
+                     <p className="text-white text-lg font-bold">May JNL Studio share your moments on Facebook for promotion?</p>
                    </div>
-
                    <div className="grid grid-cols-2 gap-6 w-full pt-4">
-                      <button 
-                        onClick={() => setPromoConsent(true)} 
-                        className="py-8 border-4 border-green-500 bg-green-500/10 text-green-500 text-2xl font-black italic uppercase rounded-3xl hover:bg-green-500/20 active:scale-95 transition-all flex flex-col items-center justify-center gap-1"
-                      >
-                        <span>✅ YES, I AGREE</span>
-                      </button>
-                      <button 
-                        onClick={() => setPromoConsent(false)} 
-                        className="py-8 border-4 border-red-500 bg-red-500/10 text-red-500 text-2xl font-black italic uppercase rounded-3xl hover:bg-red-500/20 active:scale-95 transition-all flex flex-col items-center justify-center gap-1"
-                      >
-                        <span>❌ NO, THANK YOU</span>
-                      </button>
+                      <button onClick={() => setPromoConsent(true)} className="py-8 border-4 border-green-500 bg-green-500/10 text-green-500 text-2xl font-black italic uppercase rounded-3xl transition-all">✅ YES, I AGREE</button>
+                      <button onClick={() => setPromoConsent(false)} className="py-8 border-4 border-red-500 bg-red-500/10 text-red-500 text-2xl font-black italic uppercase rounded-3xl transition-all">❌ NO, THANK YOU</button>
                    </div>
                  </div>
                </div>
@@ -951,22 +641,11 @@ export default function KioskPage() {
                   <h2 className="font-headline font-black text-8xl italic uppercase text-primary leading-tight">THANK YOU</h2>
                   <p className="text-white/60 font-bold uppercase tracking-[0.4em] text-2xl">PLEASE COME AGAIN</p>
                </div>
-
-               <div className="bg-white/5 border-2 border-white/10 p-10 rounded-[3rem] flex flex-col items-center space-y-6 shadow-2xl backdrop-blur-sm">
-                  <div className="flex items-center gap-6">
-                     <h3 className="text-3xl font-black italic uppercase text-primary">FOLLOW US</h3>
-                     <span className="text-4xl animate-bounce">👇</span>
-                  </div>
-                  <div className="bg-white p-6 rounded-[2rem] shadow-xl">
-                     <img 
-                       src={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent("https://www.facebook.com/share/18vnB4a7gB/")}`} 
-                       alt="Facebook Page" 
-                       className="w-52 h-52" 
-                     />
-                  </div>
+               <div className="bg-white/5 border-2 border-white/10 p-10 rounded-[3rem] flex flex-col items-center space-y-6">
+                  <div className="flex items-center gap-6"><h3 className="text-3xl font-black italic uppercase text-primary">FOLLOW US</h3></div>
+                  <div className="bg-white p-6 rounded-[2rem]"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent("https://www.facebook.com/share/18vnB4a7gB/")}`} alt="FB" className="w-52 h-52" /></div>
                   <p className="text-white/40 font-bold uppercase tracking-widest text-sm">Scan to follow JNL Studio on Facebook</p>
                </div>
-
                <NeonButton onClick={resetSession} className="px-20 !py-8 text-2xl rounded-2xl">BACK TO START</NeonButton>
              </div>
           </div>

@@ -1,15 +1,15 @@
+
 ext {
-    minSdkVersion = 22
+    minSdkVersion = 23
     compileSdkVersion = 34
     targetSdkVersion = 34
+    androidxActivityVersion = '1.8.0'
     androidxAppCompatVersion = '1.6.1'
-    androidxCoreVersion = '1.12.0'
     androidxCoordinatorLayoutVersion = '1.2.0'
+    androidxCoreVersion = '1.12.0'
+    androidxFragmentVersion = '1.6.2'
     junitVersion = '4.13.2'
+    androidxJunitVersion = '1.1.5'
     androidxEspressoCoreVersion = '3.5.1'
-    androidxTestRunnerVersion = '1.5.2'
-    androidxTestRulesVersion = '1.5.0'
-    androidxTestCoreVersion = '1.5.0'
-    androidxTestExtJunitVersion = '1.1.5'
-    androidTestJunitVersion = '1.1.5'
+    cordovaAndroidVersion = '10.1.1'
 }

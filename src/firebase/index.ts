@@ -5,7 +5,8 @@ import {
   persistentMultipleTabManager, 
   Firestore,
   getFirestore,
-  setLogLevel
+  setLogLevel,
+  memoryLocalCache
 } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getAuth, Auth } from 'firebase/auth';
@@ -17,30 +18,25 @@ let storage: FirebaseStorage;
 let auth: Auth;
 
 export function initializeFirebase() {
-  // CRITICAL DIAGNOSTIC PROOF - DO NOT REMOVE
-  // This allows the owner to verify exactly what config is loaded at runtime.
-  console.log('--- FIREBASE RUNTIME CONFIG PROOF ---');
-  console.log('Import Source: src/firebase/config.ts');
-  console.log('Project ID:', firebaseConfig.projectId);
-  console.log('API Key:', firebaseConfig.apiKey);
-  console.log('App ID:', firebaseConfig.appId);
-  console.log('Auth Domain:', firebaseConfig.authDomain);
-  console.log('Storage Bucket:', firebaseConfig.storageBucket);
-  console.log('Messaging Sender ID:', firebaseConfig.messagingSenderId);
-  console.log('--------------------------------------');
+  const isBrowser = typeof window !== 'undefined';
 
   if (!getApps().length) {
     app = initializeApp(firebaseConfig);
     
-    // Enable error-only logging for stable kiosk performance
     setLogLevel('error');
 
-    // Enable IndexedDB Persistence for offline resiliency
-    db = initializeFirestore(app, {
-      localCache: persistentLocalCache({ 
-        tabManager: persistentMultipleTabManager() 
-      })
-    });
+    // Only enable persistence on the client to avoid SSR crashes
+    if (isBrowser) {
+      db = initializeFirestore(app, {
+        localCache: persistentLocalCache({ 
+          tabManager: persistentMultipleTabManager() 
+        })
+      });
+    } else {
+      db = initializeFirestore(app, {
+        localCache: memoryLocalCache()
+      });
+    }
     
     storage = getStorage(app);
     auth = getAuth(app);

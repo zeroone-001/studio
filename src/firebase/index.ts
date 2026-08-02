@@ -33,6 +33,7 @@ export function initializeFirebase() {
         })
       });
     } else {
+      // Server-side: use simple memory cache for build-time rendering
       db = initializeFirestore(app, {
         localCache: memoryLocalCache()
       });
@@ -42,9 +43,11 @@ export function initializeFirebase() {
     auth = getAuth(app);
   } else {
     app = getApps()[0];
+    // Return existing instances to avoid re-initialization errors
     try {
       db = getFirestore(app);
     } catch (e) {
+      // Fallback for edge cases where getFirestore fails before initialization
       db = initializeFirestore(app, {});
     }
     storage = getStorage(app);

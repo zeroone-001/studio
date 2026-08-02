@@ -39,9 +39,9 @@ export default function RootLayout({
                 const originalError = console.error;
                 console.error = function(...args) {
                   const msg = args[0] ? args[0].toString() : '';
-                  // Silence "Could not reach Cloud Firestore backend" for non-admin sessions
+                  // Robust null-check for document.body to prevent Internal Server Errors during SSR
                   if (msg.includes('Could not reach Cloud Firestore backend')) {
-                    if (typeof document !== 'undefined' && document.body && !document.body.classList.contains('admin-mode')) {
+                    if (typeof document !== 'undefined' && document.body && document.body.classList && !document.body.classList.contains('admin-mode')) {
                       return;
                     }
                   }

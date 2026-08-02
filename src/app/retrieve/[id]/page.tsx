@@ -10,12 +10,17 @@ export async function generateStaticParams() {
   return [{ id: "placeholder" }];
 }
 
-// Ensure static export behavior for dynamic routes
+// Static export requirement for dynamic routes in Capacitor
 export const dynamicParams = false;
 
-export default async function RetrievePage({ params }: { params: Promise<{ id: string }> }) {
-  // Await params as required by Next.js 15
-  await params;
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default async function RetrievePage({ params }: PageProps) {
+  // Await the params Promise as required by Next.js 15
+  const resolvedParams = await params;
   
+  // We pass the resolved ID to ensure the component is properly hydrated
   return <RetrieveClient />;
 }

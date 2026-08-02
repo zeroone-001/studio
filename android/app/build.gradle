@@ -1,18 +1,18 @@
-
 apply plugin: 'com.android.application'
 
 android {
     namespace "com.jnlstudio.booth"
-    compileSdk 34
+    compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "com.jnlstudio.booth"
-        minSdk 23
-        targetSdk 34
+        minSdk rootProject.ext.minSdkVersion
+        targetSdk rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
-             noCompress "foo"
+             // Strings and resources for support
+             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
     buildTypes {
@@ -31,12 +31,14 @@ repositories {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'androidx.appcompat:androidx.appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.10.0'
-    implementation 'androidx.constraintlayout:androidx.constraintlayout:2.1.4'
+    implementation "androidx.appcompat:androidx.appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:androidx.coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:androidx.core:$androidxCoreVersion"
     implementation project(':capacitor-android')
     implementation project(':capacitor-cordova-android-plugins')
 }
+
+apply from: 'capacitor.build.gradle'
 
 try {
     def servicesJSON = file('google-services.json')
@@ -44,5 +46,5 @@ try {
         apply plugin: 'com.google.gms.google-services'
     }
 } catch(Exception e) {
-    // google-services.json not found
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }

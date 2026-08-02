@@ -6,9 +6,7 @@ import {
   persistentMultipleTabManager, 
   Firestore,
   getFirestore,
-  setLogLevel,
-  memoryLocalCache,
-  terminate
+  setLogLevel
 } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getAuth, Auth } from 'firebase/auth';
@@ -20,15 +18,14 @@ let storage: FirebaseStorage;
 let auth: Auth;
 
 export function initializeFirebase() {
-  const isBrowser = typeof window !== 'undefined' && typeof window.document !== 'undefined';
+  // Robust check for browser environment
+  const isBrowser = typeof window !== 'undefined' && typeof window.indexedDB !== 'undefined';
 
   if (!getApps().length) {
     app = initializeApp(firebaseConfig);
-    
     setLogLevel('error');
 
     if (isBrowser) {
-      // Browser-only persistent cache
       try {
         db = initializeFirestore(app, {
           localCache: persistentLocalCache({ 
@@ -36,11 +33,10 @@ export function initializeFirebase() {
           })
         });
       } catch (e) {
-        // Fallback to simple firestore if persistent cache fails
         db = getFirestore(app);
       }
     } else {
-      // Server-side: use simple getFirestore which is safe for SSR/build-time
+      // Server-side safe initialization
       db = getFirestore(app);
     }
     
@@ -48,11 +44,7 @@ export function initializeFirebase() {
     auth = getAuth(app);
   } else {
     app = getApps()[0];
-    try {
-      db = getFirestore(app);
-    } catch (e) {
-      db = initializeFirestore(app, {});
-    }
+    db = getFirestore(app);
     storage = getStorage(app);
     auth = getAuth(app);
   }

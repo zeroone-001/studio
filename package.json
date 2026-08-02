@@ -14,7 +14,8 @@
     "static": "next build",
     "cap:sync": "npx cap sync",
     "cap:open": "npx cap open android",
-    "build:android": "npm run static && npx cap sync && cd android && (gradle wrapper || true) && ./gradlew assembleDebug"
+    "gradle:fix": "mkdir -p android/gradle/wrapper && curl -L https://raw.githubusercontent.com/gradle/gradle/v8.2.0/gradle/wrapper/gradle-wrapper.jar -o android/gradle/wrapper/gradle-wrapper.jar",
+    "build:android": "npm run static && npx cap sync && npm run gradle:fix && cd android && chmod +x gradlew && ./gradlew assembleDebug"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",

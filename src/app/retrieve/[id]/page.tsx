@@ -1,16 +1,17 @@
+
 import RetrieveClient from "./RetrieveClient";
 
 /**
  * Page component for photo retrieval.
- * Provides generateStaticParams to support Next.js static export for Capacitor.
+ * Satisfies Next.js static export requirement while handling dynamic IDs at runtime.
  */
 export async function generateStaticParams() {
-  // Returning a placeholder to satisfy the build error for static export.
-  // The actual retrieval happens client-side using the ID from the URL.
+  // Return a placeholder ID to ensure the static page /retrieve/placeholder/index.html is generated.
+  // The RetrieveClient handles the actual ID from the URL at runtime.
   return [{ id: "placeholder" }];
 }
 
-// Static export requirement for dynamic routes in Capacitor
+// In static export mode, this must be false
 export const dynamicParams = false;
 
 interface PageProps {
@@ -18,9 +19,8 @@ interface PageProps {
 }
 
 export default async function RetrievePage({ params }: PageProps) {
-  // Await the params Promise as required by Next.js 15
+  // Await params as required by Next.js 15
   const resolvedParams = await params;
   
-  // We pass the resolved ID to ensure the component is properly hydrated
   return <RetrieveClient />;
 }

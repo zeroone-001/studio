@@ -1,3 +1,4 @@
+
 import type {Metadata, Viewport} from 'next';
 import './globals.css';
 import { KioskErrorBoundary } from '@/components/kiosk/error-boundary';
@@ -39,7 +40,6 @@ export default function RootLayout({
                 const originalError = console.error;
                 console.error = function(...args) {
                   const msg = args[0] ? args[0].toString() : '';
-                  // Robust null-check for document.body to prevent Internal Server Errors during SSR
                   if (msg.includes('Could not reach Cloud Firestore backend')) {
                     if (typeof document !== 'undefined' && document.body && document.body.classList && !document.body.classList.contains('admin-mode')) {
                       return;
@@ -47,6 +47,13 @@ export default function RootLayout({
                   }
                   originalError.apply(console, args);
                 };
+                
+                // Safe diagnostic wrapper
+                if (typeof window !== 'undefined') {
+                  window.addEventListener('DOMContentLoaded', () => {
+                    console.log('JNL System: Interface Hydrated');
+                  });
+                }
               })();
             `,
           }}

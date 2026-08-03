@@ -1,0 +1,21 @@
+workflows:
+  android-apk:
+    name: JNL Studio Booth APK Build
+
+    max_build_duration: 60
+
+    environment:
+      node: latest
+      java: 17
+
+    scripts:
+      - name: Install dependencies
+        script: |
+          npm install
+
+      - name: Build Android APK
+        script: |
+          npm run build:android
+
+    artifacts:
+      - android/app/build/outputs/apk/**/*.apk

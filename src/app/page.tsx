@@ -638,12 +638,12 @@ export default function KioskPage() {
           <div className="fixed inset-0 bg-black flex flex-col items-center justify-center animate-in fade-in duration-1000 p-8 z-[500]">
              <div className="flex-1 flex flex-col items-center justify-center space-y-10 w-full max-w-4xl">
                <div className="text-center space-y-4">
-                  <h2 className="font-headline font-black text-8xl italic uppercase text-primary leading-tight">THANK YOU</h2>
+                  <h2 className="font-headline font-black text-6xl italic uppercase text-primary leading-tight">THANK YOU</h2>
                   <p className="text-white/60 font-bold uppercase tracking-[0.4em] text-2xl">PLEASE COME AGAIN</p>
                </div>
                <div className="bg-white/5 border-2 border-white/10 p-10 rounded-[3rem] flex flex-col items-center space-y-6">
                   <div className="flex items-center gap-6"><h3 className="text-3xl font-black italic uppercase text-primary">FOLLOW US</h3></div>
-                  <div className="bg-white p-6 rounded-[2rem]"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent("https://www.facebook.com/share/18vnB4a7gB/")}`} alt="FB" className="w-52 h-52" /></div>
+                  <div className="bg-white p-6 rounded-[2rem]"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent("https://www.facebook.com/share/18vnB4a7gB/")}`} alt="FB" className="w-36 h-36" /></div>
                   <p className="text-white/40 font-bold uppercase tracking-widest text-sm">Scan to follow JNL Studio on Facebook</p>
                </div>
                <NeonButton onClick={resetSession} className="px-20 !py-8 text-2xl rounded-2xl">BACK TO START</NeonButton>

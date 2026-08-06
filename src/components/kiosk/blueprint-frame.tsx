@@ -179,16 +179,14 @@ export const BlueprintFrame = React.memo(({
         
         <div className="flex-1 flex items-center justify-center w-full px-2 text-center overflow-hidden py-0.5">
           {quoteText && (
-            <p 
-              className="font-bold text-black italic text-center leading-tight break-words transition-all duration-300" 
-             style={{
-  fontSize: isStrip
-    ? (quoteText.length > 60 ? '8px' : quoteText.length > 35 ? '10px' : '12px')
-    : (quoteText.length > 80 ? '12px' : quoteText.length > 45 ? '16px' : '20px'),
-  overflowWrap: 'break-word',
-  wordBreak: 'break-word',
-}}
-            >
+              <p
+  className="font-bold text-black italic text-center leading-tight break-words transition-all duration-300"
+  style={{
+    fontSize: `${Math.max(8, Math.min(20, 20 - quoteText.length / 12))}px`,
+    overflowWrap: 'break-word',
+    wordBreak: 'break-word',
+  }}
+>
               "{quoteText}"
             </p>
           )}

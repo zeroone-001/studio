@@ -127,10 +127,9 @@ export default function KioskPage() {
       const interval = setInterval(() => {
         setPrintProgress(prev => {
           if (prev >= 100) {
-            clearInterval(interval);
-            setTimeout(() => setAppState("thankyou"), 2000);
-            return 100;
-          }
+  clearInterval(interval);
+  return 100;
+}
           return prev + 2;
         });
       }, 150);

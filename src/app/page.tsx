@@ -277,10 +277,56 @@ export default function KioskPage() {
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(offsetX, footerY, STRIP_W, 200);
         ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#000000';
-        ctx.font = `bold italic ${isStrip ? 28 : 40}px Inter, sans-serif`;
-        ctx.fillText(`"${selectedQuote.text}"`, offsetX + (STRIP_W / 2), footerY + 80);
+ctx.textBaseline = 'middle';
+ctx.fillStyle = '#000000';
+
+const quote = `"${selectedQuote.text}"`;
+const maxWidth = STRIP_W - 120;
+const maxHeight = 120;
+
+let fontSize = isStrip ? 28 : 40;
+let lines: string[] = [];
+
+while (fontSize >= 10) {
+  ctx.font = `bold italic ${fontSize}px Inter, sans-serif`;
+
+  lines = [];
+  let line = '';
+
+  quote.split(' ').forEach((word) => {
+    const testLine = line ? `${line} ${word}` : word;
+
+    if (ctx.measureText(testLine).width > maxWidth) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = testLine;
+    }
+  });
+
+  if (line) lines.push(line);
+
+  const lineHeight = fontSize * 1.15;
+
+  if (lines.length * lineHeight <= maxHeight) {
+    break;
+  }
+
+  fontSize--;
+}
+
+ctx.font = `bold italic ${fontSize}px Inter, sans-serif`;
+
+const lineHeight = fontSize * 1.15;
+const startY = footerY + 80 - ((lines.length - 1) * lineHeight) / 2;
+
+lines.forEach((line, index) => {
+  ctx.fillText(
+    line,
+    offsetX + (STRIP_W / 2),
+    startY + (index * lineHeight)
+  );
+});
         ctx.textAlign = 'left';
         ctx.font = '900 24px Inter, sans-serif';
         ctx.fillText('JNL STUDIO', offsetX + 60, footerY + 180);

@@ -1,25 +1,31 @@
-
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { 
-  initializeFirestore, 
-  persistentLocalCache, 
-  persistentMultipleTabManager, 
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   Firestore,
   getFirestore,
   setLogLevel
 } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 import { getAuth, Auth } from 'firebase/auth';
+import {
+  initializeAppCheck,
+  ReCaptchaEnterpriseProvider,
+  AppCheck
+} from 'firebase/app-check';
 import { firebaseConfig } from './config';
 
 let app: FirebaseApp;
 let db: Firestore;
 let storage: FirebaseStorage;
 let auth: Auth;
+let appCheck: AppCheck | undefined;
 
 export function initializeFirebase() {
-  // Robust check for browser environment
-  const isBrowser = typeof window !== 'undefined' && typeof window.indexedDB !== 'undefined';
+  const isBrowser =
+    typeof window !== 'undefined' &&
+    typeof window.indexedDB !== 'undefined';
 
   if (!getApps().length) {
     app = initializeApp(firebaseConfig);
@@ -28,18 +34,17 @@ export function initializeFirebase() {
     if (isBrowser) {
       try {
         db = initializeFirestore(app, {
-          localCache: persistentLocalCache({ 
-            tabManager: persistentMultipleTabManager() 
+          localCache: persistentLocalCache({
+            tabManager: persistentMultipleTabManager()
           })
         });
       } catch (e) {
         db = getFirestore(app);
       }
     } else {
-      // Server-side safe initialization
       db = getFirestore(app);
     }
-    
+
     storage = getStorage(app);
     auth = getAuth(app);
   } else {
@@ -48,6 +53,20 @@ export function initializeFirebase() {
     storage = getStorage(app);
     auth = getAuth(app);
   }
+
+  if (isBrowser && !appCheck) {
+    try {
+      appCheck = initializeAppCheck(app, {
+        provider: new ReCaptchaEnterpriseProvider(
+          '6LeFZX4tAAAAAOkluCTX_38CA-lo-QinTiu0eJxx'
+        ),
+        isTokenAutoRefreshEnabled: true
+      });
+    } catch (e) {
+      // App Check is non-critical for initialization, ignore failures during pre-render
+    }
+  }
+
   return { app, db, storage, auth };
 }
 

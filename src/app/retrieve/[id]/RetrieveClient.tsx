@@ -15,7 +15,7 @@ import { Download, Loader2, AlertCircle, Image as ImageIcon, RefreshCcw } from "
  */
 export default function RetrieveClient() {
   const params = useParams();
-  const id = params?.id as string;
+  const [id, setId] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,38 +62,57 @@ export default function RetrieveClient() {
   }, [id]);
 
   useEffect(() => {
-    fetchPhoto();
-  }, [fetchPhoto]);
+    const queryId = new URLSearchParams(window.location.search).get("id");
+    setId(queryId || "");
+  }, []);
+
+  useEffect(() => {
+    if (id) {
+      fetchPhoto();
+    }
+  }, [id, fetchPhoto]);
 
   const handleDownload = async () => {
     if (!imageUrl || !id) return;
 
     console.log("[RETRIEVAL_DIAG] --- DOWNLOAD CLICKED ---");
-    
+
     try {
       const { db } = initializeFirebase();
-      updateDoc(doc(db, "photos", id), { isDownloaded: true }).catch(() => {});
-      
-      const response = await fetch(imageUrl, { mode: 'cors' });
-      if (!response.ok) throw new Error('CORS or Network Block');
-      
+
+      updateDoc(doc(db, "photos", id), {
+        isDownloaded: true
+      }).catch(() => {});
+
+      const response = await fetch(imageUrl);
+
+      if (!response.ok) {
+        throw new Error("Unable to fetch image");
+      }
+
       const blob = await response.blob();
-      console.log(`[RETRIEVAL_DIAG] Blob verified: ${blob.size} bytes`);
-      
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
+      console.log("[RETRIEVAL_DIAG] Blob verified:", blob.size);
+
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = blobUrl;
       a.download = `JNL_Studio_Portrait_${id}.jpg`;
+      a.style.display = "none";
+
       document.body.appendChild(a);
       a.click();
-      
+      a.remove();
+
       setTimeout(() => {
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }, 100);
-    } catch (e: any) {
-      console.warn("[RETRIEVAL_DIAG] Save-As link failed, using fallback tab open");
-      window.open(imageUrl, '_blank');
+        window.URL.revokeObjectURL(blobUrl);
+      }, 1000);
+
+    } catch (error) {
+      console.error("[RETRIEVAL_DIAG] Download failed:", error);
+
+      // Mobile fallback
+      window.location.href = imageUrl;
     }
   };
 

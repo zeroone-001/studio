@@ -93,30 +93,79 @@ export default function KioskPage() {
 
   useEffect(() => {
     if (appState === "package-preview" || appState === "setup" || appState === "capturing") {
-      const startCamera = async () => {
-        if (cameraStream && cameraStream.active) {
-          if (videoRef.current && videoRef.current.srcObject !== cameraStream) {
-             videoRef.current.srcObject = cameraStream;
-          }
-          return;
-        }
+      let cancelled = false;
 
+      const startCamera = async () => {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { 
-              width: { ideal: 1920 }, 
-              height: { ideal: 1080 },
-              facingMode: "user"
-            }, 
-            audio: false 
-          });
-          setCameraStream(stream);
-          if (videoRef.current) videoRef.current.srcObject = stream;
+          let stream = cameraStream;
+
+          if (!stream || !stream.active) {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: {
+                width: { ideal: 1920 },
+                height: { ideal: 1080 },
+                facingMode: "user"
+              },
+              audio: false
+            });
+
+            if (cancelled) {
+              stream.getTracks().forEach(track => track.stop());
+              return;
+            }
+
+            setCameraStream(stream);
+          }
+
+          const attachVideo = async () => {
+            if (!videoRef.current || !stream) return;
+
+            const video = videoRef.current;
+
+            video.autoplay = true;
+            video.muted = true;
+            video.playsInline = true;
+
+            video.setAttribute("autoplay", "");
+            video.setAttribute("muted", "");
+            video.setAttribute("playsinline", "");
+
+            if (video.srcObject !== stream) {
+              video.srcObject = stream;
+            }
+
+            try {
+              await video.play();
+              KioskLogger.log('info', 'HARDWARE', 'Camera Preview Started', 'SUCCESS');
+            } catch (playError: any) {
+              KioskLogger.log(
+                'error',
+                'HARDWARE',
+                'Camera Preview Play Failed',
+                'FAILED',
+                playError?.message || 'VIDEO_PLAY_FAILED'
+              );
+            }
+          };
+
+          await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+          await attachVideo();
         } catch (e: any) {
-          KioskLogger.log('error', 'HARDWARE', 'Camera Failed', 'FAILED', e.message);
+          KioskLogger.log(
+            'error',
+            'HARDWARE',
+            'Camera Failed',
+            'FAILED',
+            e?.message || 'CAMERA_ERROR'
+          );
         }
       };
+
       startCamera();
+
+      return () => {
+        cancelled = true;
+      };
     }
   }, [appState, cameraStream]);
 
@@ -730,8 +779,13 @@ lines.forEach((line, index) => {
                   setPackageSelected(previewPackage);
                   setSelectedBlueprint(previewBlueprint ?? BLUEPRINTS.find(bp => bp.package === previewPackage) ?? null);
                   setSelectedFilter(previewFilter);
-                  setPaymentReceived(0);
-                  setAppState("payment");
+
+                  if (isOwnerMode && paymentReceived >= previewPackage) {
+                    setAppState("setup");
+                  } else {
+                    setPaymentReceived(0);
+                    setAppState("payment");
+                  }
                 }}
                 className="w-full py-6 text-xl"
               >

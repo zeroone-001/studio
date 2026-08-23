@@ -29,6 +29,7 @@ interface AdminControlsProps {
   onReset: () => void;
   onExitOwnerMode: () => void;
   onSimulateCash: (amount: number) => void;
+  onBuyPass: (amount: 50 | 100) => void;
   onMountUsb: (handle: FileSystemDirectoryHandle) => void;
   onMountGallery: (handle: FileSystemDirectoryHandle) => void;
   usbHandle: FileSystemDirectoryHandle | null;
@@ -42,6 +43,7 @@ export function AdminControls({
   onReset, 
   onExitOwnerMode,
   onSimulateCash,
+  onBuyPass,
   onMountUsb,
   onMountGallery,
   usbHandle,
@@ -203,19 +205,30 @@ export function AdminControls({
                 </button>
               </div>
               
-              <div className="grid grid-cols-2 gap-2">
-                <button 
-                  onClick={() => { onSimulateCash(50); onJumpTo('package-selection'); }}
-                  className="py-4 bg-primary/20 border border-primary/40 text-primary text-[10px] font-black uppercase italic rounded-xl hover:bg-primary/30 active:scale-95 transition-all"
-                >
-                  TEST ₱50 TIER
-                </button>
-                <button 
-                  onClick={() => { onSimulateCash(100); onJumpTo('package-selection'); }}
-                  className="py-4 bg-primary/20 border border-primary/40 text-primary text-[10px] font-black uppercase italic rounded-xl hover:bg-primary/30 active:scale-95 transition-all"
-                >
-                  TEST ₱100 TIER
-                </button>
+              <div className="space-y-2">
+                <div className="text-[9px] font-black uppercase italic tracking-widest text-primary">
+                  BUY PASS
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => onBuyPass(50)}
+                    className="py-4 bg-primary/20 border-2 border-primary/40 text-primary text-[10px] font-black uppercase italic rounded-xl hover:bg-primary/30 active:scale-95 transition-all"
+                  >
+                    BUY PASS<br />₱50
+                  </button>
+
+                  <button
+                    onClick={() => onBuyPass(100)}
+                    className="py-4 bg-primary/20 border-2 border-primary/40 text-primary text-[10px] font-black uppercase italic rounded-xl hover:bg-primary/30 active:scale-95 transition-all"
+                  >
+                    BUY PASS<br />₱100
+                  </button>
+                </div>
+
+                <div className="text-[8px] text-white/30 uppercase italic text-center pt-1">
+                  INSERT PAYMENT
+                </div>
               </div>
               <button onClick={onReset} className="w-full py-4 bg-red-500/10 border border-red-500/30 text-[9px] font-black uppercase text-red-500 rounded-xl flex items-center justify-center gap-2">
                 <RefreshCcw className="w-3 h-3" /> RESET SESSION

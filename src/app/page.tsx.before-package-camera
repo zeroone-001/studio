@@ -59,8 +59,6 @@ export default function KioskPage() {
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [selectedFilter, setSelectedFilter] = useState(FILTERS[0]);
   const [selectedBlueprint, setSelectedBlueprint] = useState<FrameBlueprint | null>(null);
-  const [previewFilter, setPreviewFilter] = useState(FILTERS[0]);
-  const [previewBlueprint, setPreviewBlueprint] = useState<FrameBlueprint | null>(null);
   const [placedStickers, setPlacedStickers] = useState<PlacedSticker[]>([]);
   const [selectedQuote, setSelectedQuote] = useState(QUOTES[0]);
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
@@ -397,13 +395,6 @@ lines.forEach((line, index) => {
     spoolingRef.current = false;
   }, []);
 
-  const handleOwnerBuyPass = useCallback((amount: 50 | 100) => {
-    setPaymentReceived(amount);
-    setPackageSelected(null);
-    setAppState("package-selection");
-    KioskLogger.log('info', 'SESSION', `BUY PASS ₱${amount}`, 'SUCCESS');
-  }, []);
-
   const startShotSequence = async () => {
     const totalShots = packageSelected === 50 ? 3 : 6;
     const photos: string[] = capturedPhotos.length > 0 ? [...capturedPhotos] : [];
@@ -465,7 +456,6 @@ lines.forEach((line, index) => {
             onReset={resetSession}
             onExitOwnerMode={() => setIsOwnerMode(false)}
             onSimulateCash={(amount) => setPaymentReceived(prev => prev + amount)}
-            onBuyPass={handleOwnerBuyPass}
             onMountUsb={setUsbHandle}
             onMountGallery={setGalleryHandle}
             usbHandle={usbHandle}
@@ -637,27 +627,9 @@ lines.forEach((line, index) => {
               <div className="w-[110px]" />
             </div>
 
-            <div className="flex-1 w-full max-w-6xl grid grid-cols-[1.4fr_1fr] gap-6 overflow-hidden">
+            <div className="flex-1 w-full max-w-6xl grid grid-cols-2 gap-6 overflow-hidden">
 
-              <div className="relative bg-zinc-900 border-4 border-white overflow-hidden shadow-2xl min-h-0">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="absolute inset-0 w-full h-full object-cover"
-                  style={{ filter: previewFilter.filter }}
-                />
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 px-5 py-2 border border-primary backdrop-blur-md">
-                  <span className="text-sm font-black italic uppercase text-primary">
-                    LIVE CAMERA PREVIEW
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-4 min-h-0 overflow-hidden">
-
-              <div className="flex-1 bg-white/5 border-2 border-white/10 p-5 overflow-y-auto scrollbar-hide">
+              <div className="bg-white/5 border-2 border-white/10 p-5 overflow-y-auto scrollbar-hide">
                 <h3 className="text-xl font-black italic uppercase text-primary mb-4">
                   FRAMES
                 </h3>
@@ -666,15 +638,9 @@ lines.forEach((line, index) => {
                   {BLUEPRINTS
                     .filter(bp => bp.package === previewPackage)
                     .map(bp => (
-                      <button
+                      <div
                         key={bp.id}
-                        onClick={() => setPreviewBlueprint(bp)}
-                        className={cn(
-                          "border-2 bg-black/30 p-2 flex flex-col items-center transition-all",
-                          previewBlueprint?.id === bp.id
-                            ? "border-primary bg-primary/10"
-                            : "border-white/10 hover:border-primary/50"
-                        )}
+                        className="border-2 border-white/10 bg-black/30 p-2 flex flex-col items-center"
                       >
                         <div className="w-full h-[260px] flex items-center justify-center">
                           <BlueprintFrame
@@ -688,7 +654,7 @@ lines.forEach((line, index) => {
                         <span className="mt-2 text-[9px] font-black uppercase italic text-center text-white">
                           {bp.label}
                         </span>
-                      </button>
+                      </div>
                     ))}
                 </div>
               </div>
@@ -702,24 +668,16 @@ lines.forEach((line, index) => {
                   {FILTERS
                     .slice(0, previewPackage === 50 ? 5 : FILTERS.length)
                     .map(filter => (
-                      <button
+                      <div
                         key={filter.id}
-                        onClick={() => setPreviewFilter(filter)}
-                        className={cn(
-                          "border-2 bg-black/30 p-5 min-h-[90px] flex items-center justify-center text-center transition-all",
-                          previewFilter.id === filter.id
-                            ? "border-primary bg-primary/10"
-                            : "border-white/10 hover:border-primary/50"
-                        )}
+                        className="border-2 border-white/10 bg-black/30 p-5 min-h-[90px] flex items-center justify-center text-center"
                       >
                         <span className="text-sm font-black uppercase italic text-white">
                           {filter.label}
                         </span>
-                      </button>
+                      </div>
                     ))}
                 </div>
-              </div>
-
               </div>
 
             </div>
@@ -728,8 +686,6 @@ lines.forEach((line, index) => {
               <NeonButton
                 onClick={() => {
                   setPackageSelected(previewPackage);
-                  setSelectedBlueprint(previewBlueprint ?? BLUEPRINTS.find(bp => bp.package === previewPackage) ?? null);
-                  setSelectedFilter(previewFilter);
                   setPaymentReceived(0);
                   setAppState("payment");
                 }}

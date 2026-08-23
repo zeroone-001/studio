@@ -84,19 +84,22 @@ export default function RetrieveClient() {
         isDownloaded: true
       }).catch(() => {});
 
-      // Ask the browser to download the actual JPG file.
-      const a = document.createElement("a");
-      a.href = imageUrl;
-      a.download = `JNL_Studio_Portrait_${id}.jpg`;
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
+      // Open the Firebase image directly.
+      // This is more reliable on mobile Chrome than a generated blob URL.
+      const link = document.createElement("a");
+      link.href = imageUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.download = `JNL_Studio_Portrait_${id}.jpg`;
 
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
 
     } catch (error) {
       console.error("[RETRIEVAL_DIAG] Download failed:", error);
+
+      // Final mobile fallback
       window.open(imageUrl, "_blank", "noopener,noreferrer");
     }
   };

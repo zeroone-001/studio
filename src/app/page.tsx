@@ -8,7 +8,7 @@ import { AdminControls } from "@/components/kiosk/admin-controls";
 import { HealthMonitor } from "@/components/kiosk/health-monitor";
 import { JnlLogo } from "@/components/kiosk/jnl-logo";
 import { 
-  Target, CheckCircle2, AlertCircle, Loader2, Camera, WifiOff
+  Target, CheckCircle2, AlertCircle, Loader2, Camera, WifiOff, Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLUEPRINTS, FrameBlueprint } from "@/components/kiosk/frame-blueprint";
@@ -37,13 +37,16 @@ import {
   STICKER_DEFS, 
   PlacedSticker 
 } from "@/lib/kiosk/constants";
+import { aiPortraitEnhancement } from "@/ai/flows/ai-portrait-enhancement";
 
 export default function KioskPage() {
   const [appState, setAppState] = useState<SessionState>("welcome");
   const [packageSelected, setPackageSelected] = useState<50 | 100 | null>(null);
+  const [previewPackage, setPreviewPackage] = useState<50 | 100 | null>(null);
   const [paymentReceived, setPaymentReceived] = useState(0);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
   const [printProgress, setPrintProgress] = useState(0);
   const [selectedRetakeIndex, setSelectedRetakeIndex] = useState<number | null>(null);
@@ -117,8 +120,8 @@ export default function KioskPage() {
 
   useEffect(() => {
     if (appState === "payment") {
-      if (paymentReceived >= (packageSelected || 50)) {
-        setAppState("package-selection");
+      if (packageSelected && paymentReceived >= packageSelected) {
+        setAppState("setup");
       }
     }
   }, [paymentReceived, appState, packageSelected]);
@@ -354,6 +357,25 @@ lines.forEach((line, index) => {
     setSelectedStickerId(newSticker.id);
   };
 
+  const handleAiEnhance = async () => {
+    if (isEnhancing) return;
+    setIsEnhancing(true);
+    try {
+      const enhanced = await Promise.all(
+        capturedPhotos.map(async (photo) => {
+          const result = await aiPortraitEnhancement({ photoDataUri: photo });
+          return result.enhancedPhotoDataUri;
+        })
+      );
+      setCapturedPhotos(enhanced);
+      KioskLogger.log('info', 'SESSION', 'AI Enhancement Complete', 'SUCCESS');
+    } catch (error: any) {
+      KioskLogger.log('error', 'SESSION', 'AI Enhancement Failed', 'FAILED', error.message);
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
   const resetSession = useCallback(() => {
     setAppState("welcome");
     setPaymentReceived(0);
@@ -455,39 +477,224 @@ lines.forEach((line, index) => {
             </div>
             <div className="w-full flex flex-col items-center pb-8">
               <div className="text-sm font-black uppercase text-white/60 mb-6 tracking-[0.3em] animate-pulse">INSERT ₱50 OR ₱100 BILL</div>
-              <NeonButton onClick={() => { SessionStore.initDB().catch(()=>{}); setAppState("payment"); }} className="w-[35%] text-2xl py-10">TOUCH TO START</NeonButton>
+              <NeonButton onClick={() => { SessionStore.initDB().catch(()=>{}); setAppState("package-selection"); }} className="w-[35%] text-2xl py-10">TOUCH TO START</NeonButton>
             </div>
           </div>
         )}
 
         {appState === "payment" && (
-          <div className="w-full max-w-2xl text-center flex flex-col items-center justify-center h-full px-6">
-            <h2 className="font-headline font-black text-4xl mb-2 italic uppercase">WAITING ON INSERT OF MONEY</h2>
-            <div className="bg-white/5 border-2 border-white/10 p-10 mb-8 w-full flex flex-col items-center justify-center">
-               <div className="text-sm font-black uppercase text-white/40 mb-4 tracking-widest">{paymentReceived === 0 ? "INSERT BILL NOW" : "CASH DETECTED"}</div>
-               <div className="text-6xl font-black italic text-primary">{paymentReceived} PHP</div>
+          <div className="w-full max-w-3xl text-center flex flex-col items-center justify-center h-full px-6">
+
+            <h2 className="font-headline font-black text-4xl mb-6 italic uppercase text-primary">
+              PAYMENT
+            </h2>
+
+            <div className="bg-white/5 border-2 border-primary/40 p-8 mb-6 w-full flex flex-col items-center justify-center rounded-3xl">
+
+              <div className="text-sm font-black uppercase text-white/40 mb-2 tracking-widest">
+                SELECTED PACKAGE
+              </div>
+
+              <div className="text-4xl font-black italic text-white uppercase">
+                ₱{packageSelected}
+              </div>
+
+              <div className="text-lg font-bold uppercase text-primary mt-1">
+                {packageSelected === 50 ? "CLASSIC STRIP" : "PREMIUM PORTRAIT"}
+              </div>
+
             </div>
+
+            <div className="bg-white/5 border-2 border-white/10 p-8 mb-6 w-full flex flex-col items-center justify-center rounded-3xl">
+
+              <div className="text-sm font-black uppercase text-white/40 mb-3 tracking-widest">
+                {paymentReceived === 0 ? "INSERT BILL NOW" : "CASH DETECTED"}
+              </div>
+
+              <div className="text-6xl font-black italic text-primary">
+                ₱{paymentReceived}
+              </div>
+
+              <div className="mt-4 text-lg font-bold uppercase text-white/60">
+                REQUIRED: ₱{packageSelected}
+              </div>
+
+              {paymentReceived < (packageSelected || 0) && (
+                <div className="mt-3 text-xl font-black uppercase italic text-yellow-400">
+                  INSERT ₱{(packageSelected || 0) - paymentReceived} MORE
+                </div>
+              )}
+
+              {paymentReceived >= (packageSelected || 0) && (
+                <div className="mt-3 text-xl font-black uppercase italic text-green-400">
+                  PAYMENT COMPLETE
+                </div>
+              )}
+
+            </div>
+
+            {paymentReceived < (packageSelected || 0) && (
+              <div className="text-sm font-black uppercase text-white/40 tracking-widest animate-pulse">
+                PLEASE INSERT YOUR BILL
+              </div>
+            )}
+
           </div>
         )}
 
         {appState === "package-selection" && (
           <div className="w-full h-full flex flex-col items-center justify-center px-6 gap-8">
-            <h2 className="text-4xl font-headline font-black italic uppercase text-primary">CONFIRM PACKAGE</h2>
-            <div className="flex justify-center w-full max-w-5xl">
-              {paymentReceived >= 100 ? (
-                <button onClick={() => { setPackageSelected(100); setAppState("setup"); }} className="group relative bg-white/5 border-4 border-primary p-10 flex flex-col items-center transition-all hover:bg-primary/5 active:scale-95 w-[420px]">
-                  <span className="text-6xl font-black italic text-white mb-2">₱100</span>
-                  <span className="text-lg font-bold uppercase text-primary">PREMIUM PORTRAIT</span>
-                  <div className="mt-4 space-y-1 text-center text-xs font-bold uppercase text-white/60"><p>6 PHOTO SHOTS</p><p>4x6 SINGLE PORTRAIT</p><p>FULL FILTER LIBRARY</p></div>
-                </button>
-              ) : (
-                <button onClick={() => { setPackageSelected(50); setAppState("setup"); }} className="group relative bg-white/5 border-4 border-primary p-10 flex flex-col items-center transition-all hover:bg-primary/5 active:scale-95 w-[420px]">
-                  <span className="text-6xl font-black italic text-white mb-2">₱50</span>
-                  <span className="text-lg font-bold uppercase text-primary">CLASSIC STRIP</span>
-                  <div className="mt-4 space-y-1 text-center text-xs font-bold uppercase text-white/60"><p>3 PHOTO SHOTS</p><p>2x6 PHOTO STRIP</p><p>5 BEAUTY FILTERS</p></div>
-                </button>
-              )}
+            <h2 className="text-4xl font-headline font-black italic uppercase text-primary">
+              CHOOSE YOUR PACKAGE
+            </h2>
+
+            <div className="flex justify-center items-stretch gap-8 w-full max-w-5xl">
+
+              <button
+                onClick={() => {
+                  setPreviewPackage(50);
+                  setAppState("package-preview");
+                }}
+                className="group relative bg-white/5 border-4 border-primary p-10 flex flex-col items-center justify-center transition-all hover:bg-primary/5 active:scale-95 w-[420px]"
+              >
+                <span className="text-6xl font-black italic text-white mb-2">
+                  ₱50
+                </span>
+
+                <span className="text-lg font-bold uppercase text-primary">
+                  CLASSIC STRIP
+                </span>
+
+                <div className="mt-4 space-y-1 text-center text-xs font-bold uppercase text-white/60">
+                  <p>3 PHOTO SHOTS</p>
+                  <p>2x6 PHOTO STRIP</p>
+                  <p>5 BEAUTY FILTERS</p>
+                </div>
+
+                <span className="mt-6 text-sm font-black uppercase text-white/40">
+                  VIEW PACKAGE
+                </span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setPreviewPackage(100);
+                  setAppState("package-preview");
+                }}
+                className="group relative bg-white/5 border-4 border-primary p-10 flex flex-col items-center justify-center transition-all hover:bg-primary/5 active:scale-95 w-[420px]"
+              >
+                <span className="text-6xl font-black italic text-white mb-2">
+                  ₱100
+                </span>
+
+                <span className="text-lg font-bold uppercase text-primary">
+                  PREMIUM PORTRAIT
+                </span>
+
+                <div className="mt-4 space-y-1 text-center text-xs font-bold uppercase text-white/60">
+                  <p>6 PHOTO SHOTS</p>
+                  <p>4x6 SINGLE PORTRAIT</p>
+                  <p>FULL FILTER LIBRARY</p>
+                </div>
+
+                <span className="mt-6 text-sm font-black uppercase text-white/40">
+                  VIEW PACKAGE
+                </span>
+              </button>
+
             </div>
+          </div>
+        )}
+
+        {appState === "package-preview" && previewPackage && (
+          <div className="w-full h-full flex flex-col items-center py-6 px-6 overflow-hidden">
+
+            <div className="w-full flex items-center justify-between mb-4">
+              <button
+                onClick={() => {
+                  setPreviewPackage(null);
+                  setAppState("package-selection");
+                }}
+                className="px-6 py-3 border-2 border-white/20 bg-white/5 text-white font-black uppercase italic hover:border-primary transition-all"
+              >
+                ← BACK
+              </button>
+
+              <h2 className="text-3xl font-headline font-black italic uppercase text-primary">
+                ₱{previewPackage} PACKAGE
+              </h2>
+
+              <div className="w-[110px]" />
+            </div>
+
+            <div className="flex-1 w-full max-w-6xl grid grid-cols-2 gap-6 overflow-hidden">
+
+              <div className="bg-white/5 border-2 border-white/10 p-5 overflow-y-auto scrollbar-hide">
+                <h3 className="text-xl font-black italic uppercase text-primary mb-4">
+                  FRAMES
+                </h3>
+
+                <div className="grid grid-cols-3 gap-3">
+                  {BLUEPRINTS
+                    .filter(bp => bp.package === previewPackage)
+                    .map(bp => (
+                      <div
+                        key={bp.id}
+                        className="border-2 border-white/10 bg-black/30 p-2 flex flex-col items-center"
+                      >
+                        <div className="w-full h-[260px] flex items-center justify-center">
+                          <BlueprintFrame
+                            blueprint={bp}
+                            photos={[]}
+                            isPreview
+                            className="!h-full !w-auto"
+                          />
+                        </div>
+
+                        <span className="mt-2 text-[9px] font-black uppercase italic text-center text-white">
+                          {bp.label}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              <div className="bg-white/5 border-2 border-white/10 p-5 overflow-y-auto scrollbar-hide">
+                <h3 className="text-xl font-black italic uppercase text-primary mb-4">
+                  FILTERS
+                </h3>
+
+                <div className="grid grid-cols-3 gap-3">
+                  {FILTERS
+                    .slice(0, previewPackage === 50 ? 5 : FILTERS.length)
+                    .map(filter => (
+                      <div
+                        key={filter.id}
+                        className="border-2 border-white/10 bg-black/30 p-5 min-h-[90px] flex items-center justify-center text-center"
+                      >
+                        <span className="text-sm font-black uppercase italic text-white">
+                          {filter.label}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+            </div>
+
+            <div className="w-full max-w-2xl mt-5">
+              <NeonButton
+                onClick={() => {
+                  setPackageSelected(previewPackage);
+                  setPaymentReceived(0);
+                  setAppState("payment");
+                }}
+                className="w-full py-6 text-xl"
+              >
+                SELECT ₱{previewPackage} PACKAGE
+              </NeonButton>
+            </div>
+
           </div>
         )}
 
@@ -551,6 +758,14 @@ lines.forEach((line, index) => {
             </div>
             <div className="w-80 space-y-3">
                <NeonButton onClick={() => setAppState("decorating")} className="w-full py-6 text-xl">DECORATE</NeonButton>
+               <button 
+                onClick={handleAiEnhance} 
+                disabled={isEnhancing} 
+                className="w-full py-6 bg-indigo-600 text-white font-black uppercase italic border-2 border-indigo-400 flex items-center justify-center gap-3 transition-all active:scale-95"
+               >
+                 {isEnhancing ? <Loader2 className="animate-spin w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
+                 AI Enhance
+               </button>
                <button onClick={() => selectedRetakeIndex !== null && startShotSequence()} disabled={selectedRetakeIndex === null} className={cn("w-full py-6 font-black uppercase italic border-2 flex items-center justify-center gap-3", selectedRetakeIndex !== null ? "bg-white text-black" : "bg-white/5 text-white/20")}><Target className="w-5 h-5" /> Retake Selection</button>
                <button onClick={() => { setCapturedPhotos([]); setAppState("setup"); }} className="w-full py-3 text-[9px] font-black uppercase italic border border-white/10 text-white/40">Retake All</button>
             </div>

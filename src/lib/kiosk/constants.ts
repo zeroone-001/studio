@@ -5,6 +5,7 @@ export type SessionState =
   | "welcome" 
   | "payment" 
   | "package-selection"
+  | "package-preview"
   | "setup" 
   | "test-camera"
   | "capturing" 

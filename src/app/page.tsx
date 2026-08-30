@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { registerPlugin } from "@capacitor/core";
+
 import { KioskLayout } from "@/components/kiosk/kiosk-layout";
 import { NeonButton } from "@/components/kiosk/neon-button";
 import { AdminAuthDialog } from "@/components/kiosk/admin-auth-dialog";
@@ -38,6 +40,10 @@ import {
   PlacedSticker 
 } from "@/lib/kiosk/constants";
 import { aiPortraitEnhancement } from "@/ai/flows/ai-portrait-enhancement";
+
+const PrintBridge = registerPlugin<{
+  printImage: (options: { base64: string }) => Promise<{ success: boolean }>;
+}>("PrintBridge");
 
 export default function KioskPage() {
   const [appState, setAppState] = useState<SessionState>("welcome");
@@ -192,6 +198,31 @@ export default function KioskPage() {
     }
   }, [appState]);
 
+  const printPreparedPhoto = async (blob: Blob) => {
+    try {
+      KioskLogger.log("info", "PRINT", "Sending final photo to Android", "PENDING");
+
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (typeof reader.result === "string") resolve(reader.result);
+          else reject(new Error("Failed to convert photo"));
+        };
+        reader.onerror = () => reject(reader.error || new Error("FileReader failed"));
+        reader.readAsDataURL(blob);
+      });
+
+      await PrintBridge.printImage({ base64 });
+
+      KioskLogger.log("info", "PRINT", "Photo sent to NokoPrint", "SUCCESS");
+      return true;
+    } catch (error: any) {
+      KioskLogger.log("error", "PRINT", "NokoPrint handoff failed", "FAILED", error?.message || String(error));
+      return false;
+    }
+  };
+
+
   const dispatchToPrintSpooler = (blob: Blob) => {
     KioskLogger.log('info', 'PRINT', 'Sending to Spooler', 'PENDING');
     if (printFrameRef.current) {
@@ -259,7 +290,7 @@ export default function KioskPage() {
         async () => {
           const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
           await updateDoc(docRef, { status: 'complete', downloadUrl: downloadUrl });
-          const retrievalUrl = `${window.location.origin}/retrieve?id=${sessionId}`;
+          const retrievalUrl = `https://studio-1669569175-a1589.web.app/retrieve?id=${sessionId}`;
           setSoftCopyQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(retrievalUrl)}`);
           setUploadStatus("complete");
         }
@@ -967,15 +998,19 @@ lines.forEach((line, index) => {
             </div>
             <NeonButton 
               disabled={isPreparingPrint || !preparedBlob}
-              onClick={() => {
+              onClick={async () => {
                 if (preparedBlob) {
                   const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
                   setCurrentSessionId(sessionId);
-                  dispatchToPrintSpooler(preparedBlob);
-                  initiateBackgroundSaves(preparedBlob, sessionId);
-                  handleCloudSync(preparedBlob, sessionId);
+
+                  const printStarted = await printPreparedPhoto(preparedBlob);
+
+                  if (printStarted) {
+                    initiateBackgroundSaves(preparedBlob, sessionId);
+                    handleCloudSync(preparedBlob, sessionId);
+                    setAppState("printing");
+                  }
                 }
-                setAppState("printing");
               }} 
               className="w-full max-w-md py-6 text-xl"
             >

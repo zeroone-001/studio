@@ -39,7 +39,6 @@ import {
   STICKER_DEFS, 
   PlacedSticker 
 } from "@/lib/kiosk/constants";
-import { aiPortraitEnhancement } from "@/ai/flows/ai-portrait-enhancement";
 
 const PrintBridge = registerPlugin<{
   printImage: (options: { base64: string }) => Promise<{ success: boolean }>;
@@ -445,8 +444,7 @@ lines.forEach((line, index) => {
     try {
       const enhanced = await Promise.all(
         capturedPhotos.map(async (photo) => {
-          const result = await aiPortraitEnhancement({ photoDataUri: photo });
-          return result.enhancedPhotoDataUri;
+          return photo;
         })
       );
       setCapturedPhotos(enhanced);
@@ -997,21 +995,15 @@ lines.forEach((line, index) => {
               </div>
             </div>
             <NeonButton 
-              disabled={isPreparingPrint || !preparedBlob}
-              onClick={async () => {
-                if (preparedBlob) {
-                  const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
-                  setCurrentSessionId(sessionId);
-
-                  const printStarted = await printPreparedPhoto(preparedBlob);
-
-                  if (printStarted) {
-                    initiateBackgroundSaves(preparedBlob, sessionId);
-                    handleCloudSync(preparedBlob, sessionId);
-                    setAppState("printing");
-                  }
-                }
-              }} 
+              onClick={() => {
+                if (!preparedBlob) return;
+                const sessionId = `jnl_${Math.random().toString(36).substring(2, 12)}`;
+                setCurrentSessionId(sessionId);
+                setAppState("printing");
+                setTimeout(() => printPreparedPhoto(preparedBlob), 100);
+                initiateBackgroundSaves(preparedBlob, sessionId);
+                handleCloudSync(preparedBlob, sessionId);
+              }}
               className="w-full max-w-md py-6 text-xl"
             >
               PROCEED TO PRINT

@@ -52,6 +52,7 @@ public class PrintBridgePlugin extends Plugin {
 
             Intent intent = new Intent(Intent.ACTION_SEND);
             intent.setType("image/jpeg");
+            intent.setPackage("com.nokoprint");
             intent.putExtra(Intent.EXTRA_STREAM, imageUri);
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
